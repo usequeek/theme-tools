@@ -27,14 +27,14 @@ export const HELP = `Create a Queek storefront theme.
 npm needs -- before these flags. In a terminal, anything you leave out is asked.
 
   --name <text>          theme name (default: the folder name)
-  --templates <keys>     businesses to make templates for, comma-separated
+  --templates <keys>     businesses to make templates for, comma-separated (required with --yes)
   --primary <key>        the primary template (default: the first)
   --categories <keys>    business categories (default: the templates')
-  --tags <tags>          1–6 tags for the look
+  --tags <tags>          1–6 tags for the look (required with --yes)
   --pages <list|none>    extra pages: contact, faq (default: both)
   --ai <list>, --no-ai   AI assistants: claude, gemini (default: both; AGENTS.md unless --no-ai)
   --pm <npm|pnpm|yarn|bun>, --no-install, --no-git
-  --yes, -y              accept every default, never prompt
+  --yes, -y              never prompt; take the default for everything else
   --dry-run              print what would be written; write nothing
   --force                allow a folder that is not empty
   --template <source>    another starter: a giget source or a local folder`;

@@ -198,4 +198,10 @@ describe('create-theme, as a command (pnpm build first)', () => {
   it('shows the npm form with -- in --help', () => {
     expect(cli(tmpdir(), '--help').stdout).toContain('npm create @usequeek/theme@latest my-theme -- --templates');
   });
+
+  it('marks --templates and --tags required with --yes in --help, which has no default for them', () => {
+    const help = cli(tmpdir(), '--help').stdout;
+    expect(help).toMatch(/--templates <keys> .*\(required with --yes\)/);
+    expect(help).toMatch(/--tags <tags> .*\(required with --yes\)/);
+  });
 });

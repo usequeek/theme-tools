@@ -61,7 +61,7 @@ function checkAll<T extends string>(kind: string, flag: string, values: string[]
 }
 
 function required(flag: string, allowed?: readonly string[]): never {
-  throw new UsageError(`${flag} is required when not running in a terminal${allowed ? ` (choose from: ${allowed.join(', ')})` : ''}.`);
+  throw new UsageError(`${flag} is required with --yes or without a terminal${allowed ? ` (choose from: ${allowed.join(', ')})` : ''}.`);
 }
 
 /** Why a typed theme name cannot be used, or null. */

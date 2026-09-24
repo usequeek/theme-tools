@@ -16,9 +16,9 @@ describe('resolveAnswers without a terminal', () => {
     expect(answers).toMatchObject({ name: 'my-theme', pages: ['contact', 'faq'], ai: ['claude', 'gemini'] });
   });
 
-  it('names the flag a missing answer needs', async () => {
-    await expect(resolveAnswers(flags({ dir: 'x-theme', tags: 'minimal' }), null)).rejects.toThrow(/--templates is required/);
-    await expect(resolveAnswers(flags({ dir: 'x-theme', templates: 'laundry' }), null)).rejects.toThrow(/--tags is required/);
+  it('names the flag a missing answer needs, true under --yes in a terminal too', async () => {
+    await expect(resolveAnswers(flags({ dir: 'x-theme', tags: 'minimal' }), null)).rejects.toThrow(/^--templates is required with --yes or without a terminal \(choose from: /);
+    await expect(resolveAnswers(flags({ dir: 'x-theme', templates: 'laundry' }), null)).rejects.toThrow(/^--tags is required with --yes or without a terminal \(choose from: /);
   });
 
   it('suggests the nearest value for an unknown one', async () => {
