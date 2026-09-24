@@ -116,6 +116,27 @@ describe('create-theme, as a command (pnpm build first)', () => {
     expect(existsSync(join(cwd, 'my-theme'))).toBe(false);
   });
 
+  it('exits 2 on a mistyped flag, naming the nearest one, with no stack trace', () => {
+    const result = cli(mkdtempSync(join(tmpdir(), 'create-')), 'my-theme', '--tag', 'minimal');
+    expect(result.status, result.stderr).toBe(2);
+    expect(result.stderr).toContain('✖ Unknown flag --tag. Did you mean --tags?');
+    expect(result.stderr).not.toMatch(/^\s+at /m);
+  });
+
+  it('leaves the suggestion out when no flag is near', () => {
+    const result = cli(mkdtempSync(join(tmpdir(), 'create-')), 'my-theme', '--zzzzzzzz');
+    expect(result.status, result.stderr).toBe(2);
+    expect(result.stderr).toContain('✖ Unknown flag --zzzzzzzz.');
+    expect(result.stderr).not.toContain('Did you mean');
+  });
+
+  it('exits 2 when a flag is missing its value, with no stack trace', () => {
+    const result = cli(mkdtempSync(join(tmpdir(), 'create-')), 'my-theme', '--templates');
+    expect(result.status, result.stderr).toBe(2);
+    expect(result.stderr).toContain('✖ --templates needs a value.');
+    expect(result.stderr).not.toMatch(/^\s+at /m);
+  });
+
   it('shows the npm form with -- in --help', () => {
     expect(cli(tmpdir(), '--help').stdout).toContain('npm create @usequeek/theme@latest my-theme -- --templates');
   });
