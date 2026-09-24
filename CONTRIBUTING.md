@@ -111,14 +111,19 @@ that used to pass — e.g. "`check` now errors on …".
 ## Releases
 
 Before releasing a new `@usequeek/create-theme` version, publish the matching
-starter from the storefront:
+starter. In the storefront, set `packages/theme-starter/package.json`'s
+`@usequeek/theme-cli` range to include the new version, then:
 
 ```sh
 yarn starter:publish --tag v<new version>
 ```
 
 `create` downloads `github:usequeek/theme-starter#v<version>` and fails if the tag
-is missing.
+is missing, and a created project installs whatever `@usequeek/theme-cli` its
+starter's range allows (on 0.x, `^0.1.0` never reaches 0.2.0). Tags never move, so
+get the range right before tagging. `pnpm release` enforces the tag: it runs
+`scripts/check-starter-tag.mjs` first, which fails when the starter has no tag for
+create-theme's version.
 
 ## AI-assisted contributions
 

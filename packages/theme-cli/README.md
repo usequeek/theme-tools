@@ -56,7 +56,27 @@ submission, and warns if errors would block it. `--output <file>` to choose wher
 
 ### `queek-theme init [dir]`
 
-The same as `npm create @usequeek/theme [dir]`. `--no-install` to skip installing.
+The same as `npm create @usequeek/theme [dir]`, with the same flags; see
+[create-theme's README](../create-theme#usage). In a terminal, anything you leave out is
+asked; with `--yes` or without a terminal, nothing is, and `--templates` and `--tags` are
+required. With no `dir`, the folder is named after the theme in a terminal, `my-theme`
+otherwise.
+
+| Flag | |
+|---|---|
+| `--name <text>` | Theme name (default: the folder name). |
+| `--templates <keys>` | Businesses to make templates for, comma-separated (required with `--yes`). |
+| `--primary <key>` | The primary template (default: the first). |
+| `--categories <keys>` | Business categories (default: the templates'). |
+| `--tags <tags>` | 1–6 tags for the look (required with `--yes`). |
+| `--pages <list\|none>` | Extra pages: `contact`, `faq` (default: both). |
+| `--ai <list>`, `--no-ai` | AI assistants: `claude`, `gemini` (default: both; AGENTS.md unless `--no-ai`). |
+| `--pm <npm\|pnpm\|yarn\|bun>` | The package manager to install with. |
+| `--no-install`, `--no-git` | Skip installing, or `git init`. |
+| `--yes`, `-y` | Never prompt; take the default for everything else. |
+| `--dry-run` | Print what would be written; write nothing. |
+| `--force` | Allow a folder that is not empty. |
+| `--template <source>` | Another starter: a giget source or a local folder. |
 
 ## Environment
 

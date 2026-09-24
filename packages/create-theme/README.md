@@ -31,7 +31,7 @@ The starter is pinned to the tag matching this package's version. Everything is 
 
 ## What you get
 
-Right after `create`, `npm run check` rejects exactly these: `theme/placeholder-content`, `theme/structure`, `theme/template-description`, `theme/template-screenshot`, and `theme/template-versions` — the author's to-do list. The starter includes placeholder products and photos, each template needs its description and screenshot, and each must have its own home page.
+Right after `create`, `npm run check` rejects exactly your to-do list. For a one-template theme that is four rules: `theme/placeholder-content` (the starter's placeholder products and photos, and the theme's placeholder description), `theme/structure` and `theme/template-screenshot` (each template's screenshot), and `theme/template-description` (each template's description). With two or more templates, `theme/template-versions` is added: each template must have its own home page.
 
 The target folder must be missing, empty, or hold only `.git`. The `--force` flag allows writing into another folder but refuses file-or-folder clashes and symlinks at paths the starter writes. A regular file at the target path is always refused.
 
