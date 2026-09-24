@@ -135,6 +135,13 @@ describe('equivalentCommand', () => {
     expect(equivalentCommand('pnpm', 'mo', answers)).toMatch(/^pnpm create @usequeek\/theme mo --name/);
   });
 
+  it('adds --template, --no-install and --no-git only when they were given', async () => {
+    const answers = await resolveAnswers(flags({ dir: 'mo', name: 'Mo', templates: 'laundry', tags: 'minimal' }), null);
+    expect(equivalentCommand('pnpm', 'mo', answers)).not.toMatch(/--template |--no-install|--no-git/);
+    expect(equivalentCommand('pnpm', 'mo', answers, { template: './my starter', install: false, git: false }))
+      .toMatch(/ --ai claude,gemini --template '\.\/my starter' --no-install --no-git$/);
+  });
+
   it('quotes dir when it contains special characters', async () => {
     const answers = await resolveAnswers(flags({ dir: 'New Theme', name: 'New', templates: 'laundry', tags: 'minimal' }), null);
     expect(equivalentCommand('npm', 'New Theme', answers)).toMatch(/^npm create @usequeek\/theme@latest 'New Theme' -- /);

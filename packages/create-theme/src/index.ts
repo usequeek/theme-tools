@@ -3,7 +3,7 @@ import { cpSync, existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { downloadTemplate } from 'giget';
-import { UsageError, equivalentCommand, resolveAnswers, type Flags, type PackageManager, type Prompter } from './options.js';
+import { UsageError, equivalentCommand, resolveAnswers, shellWord, type Flags, type PackageManager, type Prompter } from './options.js';
 import { setupTheme, type Answers } from './setup.js';
 
 export { UsageError, CancelledError, type Flags, type Prompter, type PackageManager } from './options.js';
@@ -157,10 +157,12 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
   }
 
   const shown = relative(process.cwd(), target) || '.';
+  const here = shown === '.';
+  const where = here ? 'the current folder' : shown;
   if (options.install) {
     log(`Installing dependencies with ${options.pm}…`);
     const result = spawnSync(options.pm, ['install'], { cwd: target, stdio: 'inherit', shell: process.platform === 'win32' });
-    if (result.status !== 0) throw new Error(`${options.pm} install failed. The theme is in ${shown}; run \`${options.pm} install\` there.`);
+    if (result.status !== 0) throw new Error(`${options.pm} install failed. The theme is in ${where}; run \`${options.pm} install\` there.`);
   }
   if (options.git) {
     const inside = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: target, encoding: 'utf8' });
@@ -172,13 +174,13 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
   // `run` for every package manager: Yarn 1's built-in `yarn check` shadows the script.
   const run = `${options.pm} run`;
   log('');
-  log(`Created ${answers.name} in ${shown}. Next:`);
-  log(`  cd ${shown}`);
+  log(`Created ${answers.name} in ${where}. Next:`);
+  if (!here) log(`  cd ${shellWord(shown)}`);
   if (!options.install) log(`  ${options.pm} install`);
   log(`  ${run} dev     # preview every template`);
   log(`  ${run} check   # your to-do list: each template's description, its own home and screenshot, your products and photos`);
   log('');
-  log(`To repeat this setup: ${equivalentCommand(options.pm, dir, answers)}`);
+  log(`To repeat this setup: ${equivalentCommand(options.pm, dir, answers, { template: options.template, install: options.install, git: options.git })}`);
 }
 
 /** Why `dir` cannot take the theme (`checkTarget`'s message), or null. */

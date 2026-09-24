@@ -187,6 +187,38 @@ describe('runCreate with no folder argument', () => {
   });
 });
 
+describe('the closing lines', () => {
+  const inFolder = async (cwd: string, run: () => Promise<void>): Promise<void> => {
+    const before = process.cwd();
+    process.chdir(cwd);
+    try { await run(); } finally { process.chdir(before); }
+  };
+
+  it("say \"the current folder\" for ., with no cd", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'create-'));
+    const lines: string[] = [];
+    await inFolder(cwd, () => runCreate(flags('.', { name: 'Dot Theme' }), null, (line) => lines.push(line)));
+    expect(lines).toContain('Created Dot Theme in the current folder. Next:');
+    expect(lines.some((line) => /^\s*cd /.test(line))).toBe(false);
+  });
+
+  it('quote a cd path with a space', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'create-'));
+    const lines: string[] = [];
+    await inFolder(cwd, () => runCreate(flags('My Theme'), null, (line) => lines.push(line)));
+    expect(lines).toContain("  cd 'My Theme'");
+  });
+
+  it('repeat --template, --no-install and --no-git when they were given', async () => {
+    const dir = join(mkdtempSync(join(tmpdir(), 'create-')), 'my-theme');
+    const template = starterProject();
+    const lines: string[] = [];
+    await runCreate(flags(dir, { template }), null, (line) => lines.push(line));
+    const repeat = lines.find((line) => line.startsWith('To repeat this setup: '));
+    expect(repeat).toContain(` --template ${template} --no-install --no-git`);
+  });
+});
+
 describe('create-theme, as a command (pnpm build first)', () => {
   it('exits 2 naming the flag when a required answer is missing and there is no terminal', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'create-'));

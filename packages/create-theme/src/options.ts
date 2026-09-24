@@ -140,9 +140,14 @@ const quote = (text: string): string => `'${text.replace(/'/g, "'\\''")}'`;
 
 const needsQuoting = (text: string): boolean => !/^[A-Za-z0-9._/-]+$/.test(text);
 
-/** The command that repeats this setup without a single prompt. npm needs `--` before create's flags. */
-export function equivalentCommand(pm: PackageManager, dir: string, answers: Answers): string {
-  const quotedDir = needsQuoting(dir) ? quote(dir) : dir;
+/** `text` as one POSIX shell word: quoted only when it has a space or a shell-special character. */
+export const shellWord = (text: string): string => (needsQuoting(text) ? quote(text) : text);
+
+/**
+ * The command that repeats this setup without a single prompt. npm needs `--` before create's flags.
+ * `given` holds the flags that are not answers, repeated only when they were given.
+ */
+export function equivalentCommand(pm: PackageManager, dir: string, answers: Answers, given: { template?: string; install?: boolean; git?: boolean } = {}): string {
   const flags = [
     `--name ${quote(answers.name)}`,
     `--templates ${answers.templates.map((t) => t.key).join(',')}`,
@@ -151,6 +156,9 @@ export function equivalentCommand(pm: PackageManager, dir: string, answers: Answ
     `--tags ${answers.tags.join(',')}`,
     `--pages ${answers.pages.length ? answers.pages.join(',') : 'none'}`,
     answers.ai === false ? '--no-ai' : `--ai ${answers.ai.join(',')}`,
+    ...(given.template !== undefined ? [`--template ${shellWord(given.template)}`] : []),
+    ...(given.install === false ? ['--no-install'] : []),
+    ...(given.git === false ? ['--no-git'] : []),
   ].join(' ');
-  return pm === 'npm' ? `npm create @usequeek/theme@latest ${quotedDir} -- ${flags}` : `${pm} create @usequeek/theme ${quotedDir} ${flags}`;
+  return pm === 'npm' ? `npm create @usequeek/theme@latest ${shellWord(dir)} -- ${flags}` : `${pm} create @usequeek/theme ${shellWord(dir)} ${flags}`;
 }
