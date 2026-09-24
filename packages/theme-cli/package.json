@@ -37,7 +37,7 @@
     }
   },
   "dependencies": {
-    "@oclif/core": "^4.14.0",
+    "@oclif/core": "^5.0.0",
     "@oclif/plugin-warn-if-update-available": "^3.1.0",
     "@usequeek/create-theme": "workspace:^",
     "@usequeek/theme-check": "workspace:^",
