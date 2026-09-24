@@ -12,7 +12,6 @@ export const SKELETON: Identity = { slug: 'bare', prefix: 'bare', name: 'Bare' }
 
 const TEXT = new Set(['.ts', '.tsx', '.css', '.json', '.md', '.mdx']);
 const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const token = (text: string): RegExp => new RegExp(`(?<![\\w-])${escape(text)}(?![\\w-])`, 'g');
 
 /** The display name as a literal of the file it is written into. */
 function literal(ext: string, text: string): string {
@@ -35,14 +34,20 @@ function literal(ext: string, text: string): string {
  * bare-product` — both), the display name (`Bare`) and the slug (`bare`). The
  * skeleton keeps the English word "bare" out of its copy so every remaining
  * standalone token is identity.
+ *
+ * The display name and the slug go in ONE pass (an alternation), so a name that
+ * holds the old slug as a word ("simply bare") is never rewritten by the slug
+ * pass. Nothing the earlier passes write can match it: the slug they write
+ * follows a `-` and a class prefix is followed by one, and a token has a `-` on
+ * neither side.
  */
 export function renameContent(content: string, ext: string, from: Identity, to: Identity): string {
+  const nameOrSlug = new RegExp(`(?<![\\w-])(?:(${escape(from.name)})|${escape(from.slug)})(?![\\w-])`, 'g');
   return content
     .replace(new RegExp(`(?<![\\w-])theme-${escape(from.slug)}(?![\\w-])`, 'g'), () => `theme-${to.slug}`)
     .replace(new RegExp(`(?<![\\w-])demo-${escape(from.slug)}(?![\\w])`, 'g'), () => `demo-${to.slug}`)
     .replace(new RegExp(`(?<![\\w-])${escape(from.prefix)}-(?=[\\w$])`, 'g'), () => `${to.prefix}-`)
-    .replace(token(from.name), () => literal(ext, to.name))
-    .replace(token(from.slug), () => to.slug);
+    .replace(nameOrSlug, (_match, name: string | undefined) => (name !== undefined ? literal(ext, to.name) : to.slug));
 }
 
 function walk(dir: string): string[] {

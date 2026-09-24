@@ -33,7 +33,35 @@ describe('renameTheme', () => {
   });
 });
 
+// "simply bare" used to come out as "simply simply-bare": the slug pass ran over the name it had just written.
+describe('renameTheme when the new identity holds the skeleton token', () => {
+  const theme = join(starterProject(), 'theme');
+  const to = { slug: 'barefoot-bare', prefix: 'bb', name: 'simply bare' };
+  renameTheme(theme, SKELETON, to);
+  const demo = JSON.parse(readFileSync(join(theme, 'demo.json'), 'utf8'));
+
+  it('writes the display name exactly as given', () => {
+    expect(demo.profile).toMatchObject({ id: 'demo-barefoot-bare', slug: 'barefoot-bare', name: 'simply bare' });
+    expect(demo.pages.about.seo.title).toBe('About — simply bare');
+    expect(readFileSync(join(theme, 'theme.config.ts'), 'utf8')).toContain("name: 'simply bare',");
+  });
+
+  it('writes the slug, root class and class prefix exactly as given', () => {
+    expect(readFileSync(join(theme, 'theme.config.ts'), 'utf8')).toContain("slug: 'barefoot-bare',");
+    expect(demo.config.theme).toBe('barefoot-bare');
+    expect(readFileSync(join(theme, 'layout.tsx'), 'utf8')).toContain('theme-barefoot-bare');
+    expect(readFileSync(join(theme, 'pages/product.tsx'), 'utf8')).toContain('className="bb-main bb-product"');
+  });
+});
+
 describe('renameContent', () => {
+  it('renames the name and the slug in one pass, so neither rewrites the other', () => {
+    expect(renameContent("name: 'Bare', slug: 'bare'", '.ts', SKELETON, { slug: 'simply-bare', prefix: 'sb', name: 'simply bare' }))
+      .toBe("name: 'simply bare', slug: 'simply-bare'");
+    expect(renameContent('"name": "Bare", "slug": "bare"', '.json', SKELETON, { slug: 'bare-bones', prefix: 'bb', name: 'Bare Bones' }))
+      .toBe('"name": "Bare Bones", "slug": "bare-bones"');
+  });
+
   it('escapes the display name for the file it lands in', () => {
     expect(renameContent("name: 'Bare',", '.ts', SKELETON, TO)).toBe("name: 'Mọ́ Laundry\\'s',");
     expect(renameContent('{"name": "Bare"}', '.json', SKELETON, { ...TO, name: 'Say "hi"' })).toBe('{"name": "Say \\"hi\\""}');
