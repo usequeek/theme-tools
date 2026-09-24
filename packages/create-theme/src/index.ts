@@ -32,7 +32,7 @@ npm needs -- before these flags. In a terminal, anything you leave out is asked.
   --categories <keys>    business categories (default: the templates')
   --tags <tags>          1–6 tags for the look
   --pages <list|none>    extra pages: contact, faq (default: both)
-  --ai <list>, --no-ai   AI assistants: claude, gemini (default: both; AGENTS.md always)
+  --ai <list>, --no-ai   AI assistants: claude, gemini (default: both; AGENTS.md unless --no-ai)
   --pm <npm|pnpm|yarn|bun>, --no-install, --no-git
   --yes, -y              accept every default, never prompt
   --dry-run              print what would be written; write nothing
@@ -173,7 +173,7 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
   log(`  cd ${shown}`);
   if (!options.install) log(`  ${options.pm} install`);
   log(`  ${run} dev     # preview every template`);
-  log(`  ${run} check   # your to-do list: descriptions, each template's own home, your products and photos`);
+  log(`  ${run} check   # your to-do list: each template's description, its own home and screenshot, your products and photos`);
   log('');
   log(`To repeat this setup: ${equivalentCommand(options.pm, dir, answers)}`);
 }
