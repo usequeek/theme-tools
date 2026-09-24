@@ -1,6 +1,9 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUSINESS_KEYS, businessRoot, isBusinessKey } from '../src/utils/business-vocabulary.js';
-import { templateBusinessRule, templateCopyRule, templateDescriptionRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
+import { vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
 import { copyViolations } from '../src/utils/template-copy.js';
 import type { DemoStore, ThemeContext } from '../src/types.js';
 
@@ -137,5 +140,16 @@ describe('theme/template-pages', () => {
       'template "default" has no `landing` page',
     ]);
     expect(await templatePagesRule.run(context({ pageBased: false, demos: [{ id: 'default', file: 'demo.json', data: { pages: {} } }] }))).toEqual([]);
+  });
+});
+
+describe('theme/vendor-facts', () => {
+  it("rejects a vendor fact with a worded fallback, allows an empty one", async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'vendor-facts-'));
+    writeFileSync(join(dir, 'footer.tsx'), "<span>{vendor.address ?? 'Lagos, Nigeria'}</span>");
+    const found = await vendorFactsRule.run({ ...context({}), dir });
+    expect(found.map((f) => f.found)).toEqual(['vendor.address falls back to "Lagos, Nigeria"']);
+    writeFileSync(join(dir, 'footer.tsx'), "<span>{vendor.address ?? ''}</span>");
+    expect(await vendorFactsRule.run({ ...context({}), dir })).toEqual([]);
   });
 });

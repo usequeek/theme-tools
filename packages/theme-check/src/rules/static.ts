@@ -1050,7 +1050,38 @@ export const templateCopyRule: Rule = {
   },
 };
 
+/* ── BE8: a vendor's facts never fall back to the theme author's words ── */
+
+/**
+ * `vendor.tagline ?? 'Editorial fashion house'`: a store without a tagline
+ * (address, phone, email, description) then shows the theme author's words
+ * as its own — "Lagos, Nigeria" under every atelier store with no address.
+ * An empty fallback is fine; a worded one is not.
+ */
+const VENDOR_FACT_FALLBACK = /vendor\??\.(tagline|address|phone|email|description)\b[^;\n]{0,40}?(?:\?\?|\|\|)\s*['"`]([^'"`\n]*[^'"`\s][^'"`\n]*)['"`]/;
+
+export const vendorFactsRule: Rule = {
+  id: 'theme/vendor-facts',
+  summary: "A vendor's tagline, address, phone, email or description never falls back to the theme's own words",
+  kind: 'static',
+  run(context) {
+    if (context.retired) return [];
+    const findings: Finding[] = [];
+    for (const path of themeSourceFiles(context.dir)) {
+      const match = VENDOR_FACT_FALLBACK.exec(stripComments(readFileSync(path, 'utf8')));
+      if (!match) continue;
+      findings.push(finding(context, 'theme/vendor-facts', 'reject', {
+        where: relative(context.dir, path),
+        found: `vendor.${match[1]} falls back to "${match[2]}"`,
+        fix: `A store with no ${match[1]} would show these words as its own. Render nothing when it is empty (\`vendor.${match[1]} ?? ''\`, or leave the element out).`,
+        docs: `${context.env.docs}#component-rules`,
+      }));
+    }
+    return findings;
+  },
+};
+
 export const STATIC_RULES: Rule[] = [moduleContractRule, structureRule, demoStoreRule, demoStoresRule, demoArtRule, codeQualityRule, sdkBoundaryRule, selectionMetadataRule, demoCompletenessRule, subscribeScopeRule, demoBlockTypesRule, identityRule, productMetafieldsRule, poweredByRule,
   templateDescriptionRule, templateScreenshotRule, templateChromeRule, templateStyleRule,
-  templateBusinessRule, templateVersionsRule, templatePagesRule, templateCopyRule,
+  templateBusinessRule, templateVersionsRule, templatePagesRule, templateCopyRule, vendorFactsRule,
 ];
