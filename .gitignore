@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.DS_Store
+.env*
+# fixtures run `queek-theme dev`, which writes here
+.queek/
+.next/
+packages/theme-cli/templates/

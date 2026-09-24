@@ -1,0 +1,55 @@
+name: Bug report
+description: Something in theme-tools is broken — tell us how to reproduce it.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: "`queek-theme check` exits 0 on a theme with a missing required file…"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+      description: What correct behaviour looks like.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Link to a minimal repro repo/gist, or list the exact steps to reproduce.
+      placeholder: "1. `npm create @usequeek/theme@latest demo`\n2. delete `theme.json`\n3. run `queek-theme check demo`"
+    validations:
+      required: true
+  - type: dropdown
+    id: command
+    attributes:
+      label: Which command?
+      description: Which CLI command does this affect?
+      options:
+        - check
+        - dev
+        - package
+        - init
+        - create-theme (`npm create @usequeek/theme`)
+        - theme-check library API (not the CLI)
+        - not sure / other
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Paste the output of these commands plus your OS.
+      placeholder: |
+        $ npx queek-theme --version
+        $ node --version
+        OS: Ubuntu 24.04 / macOS 15 / Windows 11
+      render: shell
+    validations:
+      required: true

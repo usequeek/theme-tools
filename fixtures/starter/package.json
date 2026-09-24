@@ -1,0 +1,5 @@
+{
+  "name": "fixture-starter",
+  "private": true,
+  "description": "A theme project as a developer has it — the Queek skeleton theme. Tests and the e2e run use it."
+}

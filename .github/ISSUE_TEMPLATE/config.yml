@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/usequeek/theme-tools/discussions
+    about: Questions, ideas, and general discussion — please ask here before filing an issue.
+  - name: Security policy
+    url: https://github.com/usequeek/theme-tools/blob/main/SECURITY.md
+    about: How to report a security vulnerability privately (never via public issues).

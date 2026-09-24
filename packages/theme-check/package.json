@@ -1,0 +1,55 @@
+{
+  "name": "@usequeek/theme-check",
+  "version": "0.1.0",
+  "description": "The rules a Queek storefront theme is checked against, as a library.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node -e \"require('node:fs').copyFileSync('src/utils/business-vocabulary.json','dist/utils/business-vocabulary.json')\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "jiti": "^2.7.0",
+    "typescript": "~5.9.3"
+  },
+  "peerDependencies": {
+    "@usequeek/theme-kit": ">=0.1.8"
+  },
+  "keywords": [
+    "queek",
+    "theme",
+    "storefront",
+    "linter",
+    "validator"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/usequeek/theme-tools.git",
+    "directory": "packages/theme-check"
+  },
+  "bugs": "https://github.com/usequeek/theme-tools/issues",
+  "homepage": "https://github.com/usequeek/theme-tools/tree/main/packages/theme-check#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "peerDependenciesMeta": {
+    "@usequeek/theme-kit": {
+      "optional": false
+    }
+  }
+}

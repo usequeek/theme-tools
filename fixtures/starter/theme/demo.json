@@ -1,0 +1,730 @@
+{
+  "profile": {
+    "id": "demo-bare",
+    "slug": "bare",
+    "name": "Bare",
+    "tagline": "A starting point, not a design.",
+    "logo": null,
+    "banner": "https://media.usequeek.com/theme-assets/lumiere/cd48af92c911f8b6.jpg",
+    "currency": "NGN",
+    "rating": 5,
+    "rating_count": 1,
+    "delivery_time": "1-3 days",
+    "social": {}
+  },
+  "config": {
+    "theme": "bare",
+    "header": {
+      "variant": "default",
+      "show_search": true,
+      "show_cart": true,
+      "show_account": true
+    },
+    "footer": {
+      "variant": "default"
+    },
+    "apps": {
+      "subscribe": {
+        "enabled": true,
+        "variant": "inline",
+        "heading": "Stay in touch",
+        "tagline": "Occasional updates.",
+        "cta": "Subscribe"
+      }
+    }
+  },
+  "menus": [
+    {
+      "id": "bare-header",
+      "location": "header",
+      "items": [
+        {
+          "label": "Shop",
+          "type": "shop"
+        },
+        {
+          "label": "Collections",
+          "type": "collections"
+        },
+        {
+          "label": "Journal",
+          "type": "blog"
+        },
+        {
+          "label": "About",
+          "type": "page",
+          "ref": "about"
+        }
+      ]
+    }
+  ],
+  "categories": [
+    {
+      "id": "bare-c1",
+      "name": "First",
+      "slug": "first",
+      "image": "https://media.usequeek.com/theme-assets/lumiere/201b6247be904af4.jpg"
+    },
+    {
+      "id": "bare-c2",
+      "name": "Second",
+      "slug": "second",
+      "image": "https://media.usequeek.com/theme-assets/lumiere/0e21e31030533d79.jpg"
+    },
+    {
+      "id": "bare-c3",
+      "name": "Third",
+      "slug": "third",
+      "image": "https://media.usequeek.com/theme-assets/lumiere/57e4183c303aab31.jpg"
+    }
+  ],
+  "products": [
+    {
+      "shop_id": "demo-bare",
+      "id": "bare-p0",
+      "p_id": 0,
+      "title": "Placeholder One",
+      "slug": "placeholder-one",
+      "excerpt": "Placeholder One — a placeholder product for the bare theme's demo store.",
+      "description": "Placeholder One. Replace this demo store with your own before submitting.",
+      "kind": "physical",
+      "status": "active",
+      "currency": "NGN",
+      "pricing": {
+        "base_amount": 12000,
+        "sale_amount": 12000,
+        "compare_at_amount": 12000,
+        "discount_amount": 0,
+        "discount_percent": 0,
+        "is_price_from": false,
+        "tax_inclusive": false,
+        "price_range": {
+          "min_amount": 12000,
+          "max_amount": 12000
+        }
+      },
+      "shop": {
+        "id": "bare-shop",
+        "name": "Bare",
+        "slug": "bare",
+        "logo": null,
+        "rating": 5,
+        "rating_count": 1
+      },
+      "media": {
+        "thumbnail": "https://media.usequeek.com/theme-assets/lumiere/cd48af92c911f8b6.jpg",
+        "image": "https://media.usequeek.com/theme-assets/lumiere/cd48af92c911f8b6.jpg",
+        "original": "https://media.usequeek.com/theme-assets/lumiere/cd48af92c911f8b6.jpg",
+        "gallery": []
+      },
+      "inventory": {
+        "in_stock": true,
+        "quantity": 25,
+        "track_quantity": true
+      },
+      "variants_count": 0,
+      "review_summary": {
+        "rating": 5,
+        "review_count": 1
+      },
+      "flags": {
+        "featured": true,
+        "is_marketplace": false,
+        "is_wholesale": false,
+        "is_new": true
+      },
+      "categories": [
+        {
+          "id": "bare-c1",
+          "name": "First",
+          "slug": "first"
+        }
+      ],
+      "options": [],
+      "variants": [],
+      "addons": [],
+      "reviews": [],
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "shop_id": "demo-bare",
+      "id": "bare-p1",
+      "p_id": 1,
+      "title": "Placeholder Two",
+      "slug": "placeholder-two",
+      "excerpt": "Placeholder Two — a placeholder product for the bare theme's demo store.",
+      "description": "Placeholder Two. Replace this demo store with your own before submitting.",
+      "kind": "physical",
+      "status": "active",
+      "currency": "NGN",
+      "pricing": {
+        "base_amount": 18500,
+        "sale_amount": 18500,
+        "compare_at_amount": 18500,
+        "discount_amount": 0,
+        "discount_percent": 0,
+        "is_price_from": false,
+        "tax_inclusive": false,
+        "price_range": {
+          "min_amount": 18500,
+          "max_amount": 18500
+        }
+      },
+      "shop": {
+        "id": "bare-shop",
+        "name": "Bare",
+        "slug": "bare",
+        "logo": null,
+        "rating": 5,
+        "rating_count": 1
+      },
+      "media": {
+        "thumbnail": "https://media.usequeek.com/theme-assets/lumiere/201b6247be904af4.jpg",
+        "image": "https://media.usequeek.com/theme-assets/lumiere/201b6247be904af4.jpg",
+        "original": "https://media.usequeek.com/theme-assets/lumiere/201b6247be904af4.jpg",
+        "gallery": []
+      },
+      "inventory": {
+        "in_stock": true,
+        "quantity": 25,
+        "track_quantity": true
+      },
+      "variants_count": 0,
+      "review_summary": {
+        "rating": 5,
+        "review_count": 1
+      },
+      "flags": {
+        "featured": true,
+        "is_marketplace": false,
+        "is_wholesale": false,
+        "is_new": true
+      },
+      "categories": [
+        {
+          "id": "bare-c2",
+          "name": "Second",
+          "slug": "second"
+        }
+      ],
+      "options": [],
+      "variants": [],
+      "addons": [],
+      "reviews": [],
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "shop_id": "demo-bare",
+      "id": "bare-p2",
+      "p_id": 2,
+      "title": "Placeholder Three",
+      "slug": "placeholder-three",
+      "excerpt": "Placeholder Three — a placeholder product for the bare theme's demo store.",
+      "description": "Placeholder Three. Replace this demo store with your own before submitting.",
+      "kind": "physical",
+      "status": "active",
+      "currency": "NGN",
+      "pricing": {
+        "base_amount": 9000,
+        "sale_amount": 9000,
+        "compare_at_amount": 9000,
+        "discount_amount": 0,
+        "discount_percent": 0,
+        "is_price_from": false,
+        "tax_inclusive": false,
+        "price_range": {
+          "min_amount": 9000,
+          "max_amount": 9000
+        }
+      },
+      "shop": {
+        "id": "bare-shop",
+        "name": "Bare",
+        "slug": "bare",
+        "logo": null,
+        "rating": 5,
+        "rating_count": 1
+      },
+      "media": {
+        "thumbnail": "https://media.usequeek.com/theme-assets/lumiere/0e21e31030533d79.jpg",
+        "image": "https://media.usequeek.com/theme-assets/lumiere/0e21e31030533d79.jpg",
+        "original": "https://media.usequeek.com/theme-assets/lumiere/0e21e31030533d79.jpg",
+        "gallery": []
+      },
+      "inventory": {
+        "in_stock": true,
+        "quantity": 25,
+        "track_quantity": true
+      },
+      "variants_count": 0,
+      "review_summary": {
+        "rating": 5,
+        "review_count": 1
+      },
+      "flags": {
+        "featured": true,
+        "is_marketplace": false,
+        "is_wholesale": false,
+        "is_new": false
+      },
+      "categories": [
+        {
+          "id": "bare-c3",
+          "name": "Third",
+          "slug": "third"
+        }
+      ],
+      "options": [],
+      "variants": [],
+      "addons": [],
+      "reviews": [],
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "shop_id": "demo-bare",
+      "id": "bare-p3",
+      "p_id": 3,
+      "title": "Placeholder Four",
+      "slug": "placeholder-four",
+      "excerpt": "Placeholder Four — a placeholder product for the bare theme's demo store.",
+      "description": "Placeholder Four. Replace this demo store with your own before submitting.",
+      "kind": "physical",
+      "status": "active",
+      "currency": "NGN",
+      "pricing": {
+        "base_amount": 24000,
+        "sale_amount": 24000,
+        "compare_at_amount": 24000,
+        "discount_amount": 0,
+        "discount_percent": 0,
+        "is_price_from": false,
+        "tax_inclusive": false,
+        "price_range": {
+          "min_amount": 24000,
+          "max_amount": 24000
+        }
+      },
+      "shop": {
+        "id": "bare-shop",
+        "name": "Bare",
+        "slug": "bare",
+        "logo": null,
+        "rating": 5,
+        "rating_count": 1
+      },
+      "media": {
+        "thumbnail": "https://media.usequeek.com/theme-assets/lumiere/57e4183c303aab31.jpg",
+        "image": "https://media.usequeek.com/theme-assets/lumiere/57e4183c303aab31.jpg",
+        "original": "https://media.usequeek.com/theme-assets/lumiere/57e4183c303aab31.jpg",
+        "gallery": []
+      },
+      "inventory": {
+        "in_stock": true,
+        "quantity": 25,
+        "track_quantity": true
+      },
+      "variants_count": 0,
+      "review_summary": {
+        "rating": 5,
+        "review_count": 1
+      },
+      "flags": {
+        "featured": false,
+        "is_marketplace": false,
+        "is_wholesale": false,
+        "is_new": false
+      },
+      "categories": [
+        {
+          "id": "bare-c1",
+          "name": "First",
+          "slug": "first"
+        }
+      ],
+      "options": [],
+      "variants": [],
+      "addons": [],
+      "reviews": [],
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "shop_id": "demo-bare",
+      "id": "bare-p4",
+      "p_id": 4,
+      "title": "Placeholder Five",
+      "slug": "placeholder-five",
+      "excerpt": "Placeholder Five — a placeholder product for the bare theme's demo store.",
+      "description": "Placeholder Five. Replace this demo store with your own before submitting.",
+      "kind": "physical",
+      "status": "active",
+      "currency": "NGN",
+      "pricing": {
+        "base_amount": 15000,
+        "sale_amount": 15000,
+        "compare_at_amount": 15000,
+        "discount_amount": 0,
+        "discount_percent": 0,
+        "is_price_from": false,
+        "tax_inclusive": false,
+        "price_range": {
+          "min_amount": 15000,
+          "max_amount": 15000
+        }
+      },
+      "shop": {
+        "id": "bare-shop",
+        "name": "Bare",
+        "slug": "bare",
+        "logo": null,
+        "rating": 5,
+        "rating_count": 1
+      },
+      "media": {
+        "thumbnail": "https://media.usequeek.com/theme-assets/lumiere/67913acc7ef19523.jpg",
+        "image": "https://media.usequeek.com/theme-assets/lumiere/67913acc7ef19523.jpg",
+        "original": "https://media.usequeek.com/theme-assets/lumiere/67913acc7ef19523.jpg",
+        "gallery": []
+      },
+      "inventory": {
+        "in_stock": true,
+        "quantity": 25,
+        "track_quantity": true
+      },
+      "variants_count": 0,
+      "review_summary": {
+        "rating": 5,
+        "review_count": 1
+      },
+      "flags": {
+        "featured": false,
+        "is_marketplace": false,
+        "is_wholesale": false,
+        "is_new": false
+      },
+      "categories": [
+        {
+          "id": "bare-c2",
+          "name": "Second",
+          "slug": "second"
+        }
+      ],
+      "options": [],
+      "variants": [],
+      "addons": [],
+      "reviews": [],
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "shop_id": "demo-bare",
+      "id": "bare-p5",
+      "p_id": 5,
+      "title": "Placeholder Six",
+      "slug": "placeholder-six",
+      "excerpt": "Placeholder Six — a placeholder product for the bare theme's demo store.",
+      "description": "Placeholder Six. Replace this demo store with your own before submitting.",
+      "kind": "physical",
+      "status": "active",
+      "currency": "NGN",
+      "pricing": {
+        "base_amount": 31000,
+        "sale_amount": 31000,
+        "compare_at_amount": 31000,
+        "discount_amount": 0,
+        "discount_percent": 0,
+        "is_price_from": false,
+        "tax_inclusive": false,
+        "price_range": {
+          "min_amount": 31000,
+          "max_amount": 31000
+        }
+      },
+      "shop": {
+        "id": "bare-shop",
+        "name": "Bare",
+        "slug": "bare",
+        "logo": null,
+        "rating": 5,
+        "rating_count": 1
+      },
+      "media": {
+        "thumbnail": "https://media.usequeek.com/theme-assets/lumiere/377756cea202d263.jpg",
+        "image": "https://media.usequeek.com/theme-assets/lumiere/377756cea202d263.jpg",
+        "original": "https://media.usequeek.com/theme-assets/lumiere/377756cea202d263.jpg",
+        "gallery": []
+      },
+      "inventory": {
+        "in_stock": true,
+        "quantity": 25,
+        "track_quantity": true
+      },
+      "variants_count": 0,
+      "review_summary": {
+        "rating": 5,
+        "review_count": 1
+      },
+      "flags": {
+        "featured": false,
+        "is_marketplace": false,
+        "is_wholesale": false,
+        "is_new": false
+      },
+      "categories": [
+        {
+          "id": "bare-c3",
+          "name": "Third",
+          "slug": "third"
+        }
+      ],
+      "options": [],
+      "variants": [],
+      "addons": [],
+      "reviews": [],
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "posts": [
+    {
+      "id": "bare-post-1",
+      "slug": "hello",
+      "type": "post",
+      "title": "Hello",
+      "excerpt": "A placeholder journal entry.",
+      "cover_image_url": "https://media.usequeek.com/theme-assets/lumiere/67913acc7ef19523.jpg",
+      "tags": [],
+      "seo": {
+        "title": "Hello — Bare",
+        "description": "A placeholder journal entry."
+      },
+      "published_at": "2026-01-01T00:00:00Z",
+      "created_at": "2026-01-01T00:00:00Z",
+      "content": "## Hello\n\nReplace this with your own writing."
+    }
+  ],
+  "pages": {
+    "home": {
+      "id": "demo-bare-home",
+      "slug": "home",
+      "type": "page",
+      "title": "Home",
+      "is_home": true,
+      "editor_mode": "sections",
+      "content": [
+        {
+          "type": "gallery",
+          "variant": "banner",
+          "data": {
+            "images": [
+              {
+                "url": "https://media.usequeek.com/theme-assets/lumiere/cd48af92c911f8b6.jpg",
+                "alt": "",
+                "title": "A starting point",
+                "subtitle": "Structure and token wiring, no design opinions.",
+                "cta_label": "Shop",
+                "cta_url": "/shop"
+              }
+            ]
+          }
+        },
+        {
+          "type": "products",
+          "variant": "grid",
+          "data": {
+            "title": "Products",
+            "sort": "latest",
+            "limit": 6
+          }
+        },
+        {
+          "type": "categories",
+          "variant": "grid",
+          "data": {
+            "title": "Categories",
+            "limit": 3
+          }
+        },
+        {
+          "type": "content",
+          "data": {
+            "markdown": "## Make this yours\n\nEvery section above is a variant declared in `manifest.ts`. Add your own, then run `yarn theme:check`."
+          }
+        }
+      ],
+      "seo": {
+        "title": "Bare",
+        "description": "A starting point, not a design."
+      }
+    },
+    "about": {
+      "id": "demo-bare-about",
+      "slug": "about",
+      "type": "page",
+      "title": "About",
+      "editor_mode": "sections",
+      "content": [
+        {
+          "type": "content",
+          "data": {
+            "markdown": "## About\n\nReplace this page with your own."
+          }
+        }
+      ],
+      "seo": {
+        "title": "About — Bare",
+        "description": "About this store."
+      }
+    },
+    "shop": {
+      "id": "demo-bare-shop",
+      "slug": "shop",
+      "type": "page",
+      "title": "Shop",
+      "editor_mode": "sections",
+      "content": [
+        {
+          "type": "products",
+          "variant": "grid",
+          "data": {
+            "title": "Everything",
+            "sort": "latest",
+            "limit": 12
+          }
+        }
+      ],
+      "seo": {
+        "title": "Shop — Bare",
+        "description": "Browse everything."
+      }
+    },
+    "contact": {
+      "id": "demo-bare-contact",
+      "slug": "contact",
+      "type": "page",
+      "title": "Contact",
+      "editor_mode": "sections",
+      "content": [
+        {
+          "type": "content",
+          "data": {
+            "markdown": "## Contact\n\nhello@example.com"
+          }
+        }
+      ],
+      "seo": {
+        "title": "Contact — Bare",
+        "description": "Get in touch."
+      }
+    },
+    "sales": {
+      "id": "demo-bare-sales",
+      "slug": "sales",
+      "type": "page",
+      "title": "Sales",
+      "editor_mode": "sections",
+      "content": [
+        {
+          "type": "gallery",
+          "variant": "banner",
+          "data": {
+            "images": [
+              {
+                "url": "https://media.usequeek.com/theme-assets/lumiere/cd48af92c911f8b6.jpg",
+                "alt": "",
+                "title": "One product, the whole page",
+                "subtitle": "A sales page sells one to three products. The backend binds the merchant’s own to every products section here.",
+                "cta_label": "Buy now",
+                "cta_url": "/shop"
+              }
+            ]
+          }
+        },
+        {
+          "type": "products",
+          "variant": "grid",
+          "data": {
+            "title": "The product",
+            "ids": [
+              "bare-p0"
+            ]
+          }
+        },
+        {
+          "type": "content",
+          "data": {
+            "markdown": "## Why it is worth it\n\nThree short reasons, in the buyer’s words. Replace this with sections your theme designs for a sales page: benefits, steps, reviews, a guarantee."
+          }
+        },
+        {
+          "type": "content",
+          "data": {
+            "markdown": "## Questions?\n\nhello@example.com. A sales page closes on a way to ask; give your theme a contact section and end on it."
+          }
+        }
+      ],
+      "seo": {
+        "title": "Sales — Bare",
+        "description": "One product, the whole page."
+      }
+    },
+    "landing": {
+      "id": "demo-bare-landing",
+      "slug": "landing",
+      "type": "page",
+      "title": "Landing",
+      "editor_mode": "sections",
+      "content": [
+        {
+          "type": "gallery",
+          "variant": "banner",
+          "data": {
+            "images": [
+              {
+                "url": "https://media.usequeek.com/theme-assets/lumiere/201b6247be904af4.jpg",
+                "alt": "",
+                "title": "A campaign page",
+                "subtitle": "A season, a launch or an offer: a hero, the products in it, and why now.",
+                "cta_label": "Shop the edit",
+                "cta_url": "/shop"
+              }
+            ]
+          }
+        },
+        {
+          "type": "products",
+          "variant": "grid",
+          "data": {
+            "title": "In this edit",
+            "ids": [
+              "bare-p1",
+              "bare-p2",
+              "bare-p3"
+            ]
+          }
+        },
+        {
+          "type": "categories",
+          "variant": "grid",
+          "data": {
+            "title": "Shop by category",
+            "limit": 3
+          }
+        },
+        {
+          "type": "content",
+          "data": {
+            "markdown": "## Get in touch\n\nhello@example.com"
+          }
+        }
+      ],
+      "seo": {
+        "title": "Landing — Bare",
+        "description": "A campaign page."
+      }
+    }
+  }
+}

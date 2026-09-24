@@ -1,0 +1,73 @@
+{
+  "name": "@usequeek/theme-cli",
+  "version": "0.1.0",
+  "description": "queek-theme \u2014 preview, check and package Queek storefront themes.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "queek-theme": "./bin/run.js"
+  },
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "templates",
+    "!dist/**/*.map"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && tsc -p preview/tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p preview/tsconfig.json --noEmit"
+  },
+  "oclif": {
+    "bin": "queek-theme",
+    "dirname": "queek-theme",
+    "commands": "./dist/commands",
+    "topicSeparator": " ",
+    "plugins": [
+      "@oclif/plugin-warn-if-update-available"
+    ],
+    "warn-if-update-available": {
+      "timeoutInDays": 1,
+      "message": "<%= config.name %> <%= latest %> is available (you have <%= config.version %>). Update: npm install -D <%= config.name %>@latest"
+    }
+  },
+  "dependencies": {
+    "@oclif/core": "^4.14.0",
+    "@oclif/plugin-warn-if-update-available": "^3.1.0",
+    "@usequeek/create-theme": "workspace:^",
+    "@usequeek/theme-check": "workspace:^",
+    "yazl": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/yazl": "^3.3.0"
+  },
+  "peerDependencies": {
+    "@usequeek/theme-kit": ">=0.1.8",
+    "next": "^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "keywords": [
+    "queek",
+    "theme",
+    "storefront",
+    "cli",
+    "nextjs"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/usequeek/theme-tools.git",
+    "directory": "packages/theme-cli"
+  },
+  "bugs": "https://github.com/usequeek/theme-tools/issues",
+  "homepage": "https://github.com/usequeek/theme-tools/tree/main/packages/theme-cli#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

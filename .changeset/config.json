@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config/schema.json",
+  "changelog": ["@changesets/changelog-github", { "repo": "usequeek/theme-tools" }],
+  "commit": false,
+  "fixed": [],
+  "linked": [["@usequeek/theme-cli", "@usequeek/theme-check", "@usequeek/create-theme"]],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": []
+}

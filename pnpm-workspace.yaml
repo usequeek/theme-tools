@@ -1,0 +1,4 @@
+packages:
+  - packages/*
+minimumReleaseAgeExclude:
+  - '@queekai/client-sdk@0.3.1'
