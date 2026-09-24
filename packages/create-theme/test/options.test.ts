@@ -43,6 +43,15 @@ describe('resolveAnswers without a terminal', () => {
     await expect(resolveAnswers(flags({ dir: 'x-theme', templates: 'laundry', tags: 'minimal', pages: 'none,faq' }), null)).rejects.toThrow(/--pages none cannot be combined/);
   });
 
+  it('keeps each value once, in the order first given', async () => {
+    const answers = await resolveAnswers(flags({ dir: 'x-theme', templates: 'laundry,foods,laundry', categories: 'foods,laundry,foods', tags: 'minimal,minimal', pages: 'faq,contact,faq', ai: 'gemini,gemini' }), null);
+    expect(answers.tags).toEqual(['minimal']);
+    expect(answers.categories).toEqual(['foods', 'laundry']);
+    expect(answers.pages).toEqual(['faq', 'contact']);
+    expect(answers.templates.map((t) => t.key)).toEqual(['laundry', 'foods']);
+    expect(answers.ai).toEqual(['gemini']);
+  });
+
   it('--categories cannot be empty', async () => {
     await expect(resolveAnswers(flags({ dir: 'x-theme', templates: 'laundry', tags: 'minimal', categories: '' }), null)).rejects.toThrow(/at least one business category/);
   });

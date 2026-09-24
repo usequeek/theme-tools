@@ -47,8 +47,9 @@ export interface Prompter {
 const PAGES: readonly OptionalPage[] = ['contact', 'faq'];
 const ASSISTANTS: readonly Assistant[] = ['claude', 'gemini'];
 
+/** A comma-separated flag: trimmed, each value once, in the order first given. */
 const csv = (value: string | undefined): string[] | undefined =>
-  value === undefined ? undefined : value.split(',').map((item) => item.trim()).filter(Boolean);
+  value === undefined ? undefined : [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
 
 function checkAll<T extends string>(kind: string, flag: string, values: string[], allowed: readonly T[]): T[] {
   for (const value of values) {
