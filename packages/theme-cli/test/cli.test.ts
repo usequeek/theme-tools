@@ -48,6 +48,15 @@ describe('queek-theme check', () => {
   }, 60_000);
 });
 
+describe('queek-theme init', () => {
+  it('creates a theme from flags alone', () => {
+    const out = join(mkdtempSync(join(tmpdir(), 'init-')), 'my-theme');
+    const { code, stderr } = run('init', out, '--yes', '--template', FIXTURE, '--templates', 'laundry', '--tags', 'minimal', '--no-install', '--no-git');
+    expect(code, stderr).toBe(0);
+    expect(existsSync(join(out, 'theme/theme.config.ts'))).toBe(true);
+  }, 60_000);
+});
+
 describe('queek-theme package', () => {
   it('zips the theme folder, and nothing else', () => {
     const out = join(mkdtempSync(join(tmpdir(), 'queek-package-')), 'theme.zip');
