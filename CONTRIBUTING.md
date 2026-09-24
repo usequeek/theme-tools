@@ -108,6 +108,18 @@ that used to pass — e.g. "`check` now errors on …".
 - Be kind and assume good intent, per our
   [Code of Conduct](CODE_OF_CONDUCT.md).
 
+## Releases
+
+Before releasing a new `@usequeek/create-theme` version, publish the matching
+starter from the storefront:
+
+```sh
+yarn starter:publish --tag v<new version>
+```
+
+`create` downloads `github:usequeek/theme-starter#v<version>` and fails if the tag
+is missing.
+
 ## AI-assisted contributions
 
 AI coding assistants are welcome here, under the same bar Storybook sets for
