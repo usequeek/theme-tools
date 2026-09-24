@@ -190,8 +190,13 @@ const ENTRY_KEYS = /\[\{([^}\]]+)\}\]/;
  * hotspot coordinates, icons — belongs to the demo store, not the design.
  */
 const ENTRY_TEXT_KEYS = new Set(['title', 'subtitle', 'caption', 'text', 'heading', 'eyebrow', 'label', 'cta_label', 'question', 'answer', 'quote', 'author', 'name', 'role', 'body', 'description', 'content', 'kicker']);
-/** Links, references, prices, media, alt text (it describes one photo) and icon names are never copy, whatever their declared type. */
-const NOT_COPY = /(^|_)(url|link|href|slug|id|ids|price|amount|currency|video|image|icon|alt)$/;
+/**
+ * Links, references, prices, media, alt text (it describes one photo) and icon
+ * names are never copy, whatever their declared type. Nor are the demo store's
+ * own facts — its email, phone, address, opening hours and coupon code — or
+ * hotspot coordinates (`spots`): the vendor's profile supplies the facts.
+ */
+const NOT_COPY = /(^|_)(url|link|href|slug|id|ids|price|amount|currency|video|image|icon|alt|email|phone|whatsapp|address|hours|code|spots)$/;
 /** `[the balm](/products/balm)` → `the balm`: copy keeps a link's words, never where it pointed. */
 const MARKDOWN_LINK = /\[([^\]]*)\]\([^)]*\)/g;
 

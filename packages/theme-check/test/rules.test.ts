@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUSINESS_KEYS, businessRoot, isBusinessKey } from '../src/utils/business-vocabulary.js';
-import { templateBusinessRule, templateDescriptionRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
+import { templateBusinessRule, templateCopyRule, templateDescriptionRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
+import { copyViolations } from '../src/utils/template-copy.js';
 import type { DemoStore, ThemeContext } from '../src/types.js';
 
 /**
@@ -8,7 +9,7 @@ import type { DemoStore, ThemeContext } from '../src/types.js';
  * fault it exists for, not only staying quiet on a healthy theme.
  */
 
-function context(parts: Partial<Pick<ThemeContext, 'demos' | 'declaredDemos' | 'defaultDescription' | 'defaultFor' | 'pageBased'>>): ThemeContext {
+function context(parts: Partial<Pick<ThemeContext, 'demos' | 'declaredDemos' | 'defaultDescription' | 'defaultFor' | 'pageBased' | 'manifest'>>): ThemeContext {
   const demos: DemoStore[] = parts.demos ?? [{ id: 'default', file: 'demo.json', data: { pages: {} } }];
   return {
     env: { root: 'theme/', docs: 'https://example.test/THEME.md', vocabulary: 'the vocabulary', scaffold: 'npm create @usequeek/theme', preview: (id) => `http://localhost:3000/${id}`, submission: false },
@@ -20,7 +21,7 @@ function context(parts: Partial<Pick<ThemeContext, 'demos' | 'declaredDemos' | '
     declaredDemos: parts.declaredDemos ?? [],
     defaultDescription: parts.defaultDescription ?? null,
     defaultFor: parts.defaultFor ?? null,
-    manifest: { slug: 'x', variants: {} },
+    manifest: parts.manifest ?? { slug: 'x', variants: {} },
     pageBased: parts.pageBased ?? true,
     file: (path) => `/nowhere/theme/${path}`,
     exists: () => false,
@@ -35,6 +36,47 @@ describe('business vocabulary', () => {
     expect(isBusinessKey('jewellery')).toBe(false);
     expect(BUSINESS_KEYS.size).toBeGreaterThan(70);
     expect(businessRoot('shoes')).toBe('fashion');
+  });
+
+  it('holds jewelry (under bags-accessories) and beverages, spelled as the categories are', () => {
+    expect(isBusinessKey('jewelry')).toBe(true);
+    expect(isBusinessKey('beverages')).toBe(true);
+    expect(isBusinessKey('coffee')).toBe(false);
+    expect(businessRoot('jewelry')).toBe('fashion');
+  });
+});
+
+describe('theme/template-copy', () => {
+  const variants = {
+    content: [
+      { id: 'steps', fields: { heading: { type: 'string' }, items: { type: 'object[]', of: { title: { type: 'string' }, text: { type: 'text' } } } } },
+      { id: 'testimonials', fields: { items: { type: 'object[]', of: { quote: { type: 'text' }, author: { type: 'string' } } } } },
+    ],
+  };
+  const store = (sections: unknown[]): DemoStore => ({ id: 'food', file: 'demos/food.json', data: { profile: { name: 'Ata Kitchen' }, pages: { home: { content: sections } } } });
+
+  it('rejects copy naming the store, a place, a naira amount or a promise', async () => {
+    const found = await templateCopyRule.run(context({
+      manifest: { slug: 'x', variants } as unknown as ThemeContext['manifest'],
+      demos: [store([{ type: 'content', variant: 'steps', data: { heading: 'How Ata Kitchen cooks', items: [{ title: 'Grill', text: 'Free delivery in Yaba over ₦5,000.' }] } }])],
+    }));
+    expect(found).toHaveLength(1);
+    expect(found[0].where).toBe('theme/demos/food.json → pages.home.content[0] (content.steps)');
+    expect(found[0].found).toContain('names the store ("Ata Kitchen")');
+    expect(found[0].found).toContain('names a place (Yaba); states a naira amount; makes a promise ("Free delivery")');
+  });
+
+  it('passes generic copy and leaves testimonials alone', async () => {
+    const found = await templateCopyRule.run(context({
+      manifest: { slug: 'x', variants } as unknown as ThemeContext['manifest'],
+      demos: [store([
+        { type: 'content', variant: 'steps', data: { heading: 'How our kitchen cooks', items: [{ title: 'Grill', text: 'Over open fire.' }] } },
+        { type: 'content', variant: 'testimonials', data: { items: [{ quote: 'Best suya in Yaba', author: 'Tolu' }] } },
+      ])],
+    }));
+    expect(found).toEqual([]);
+    expect(copyViolations('Sourdough fermented for 36 hours', null)).toEqual([]);
+    expect(copyViolations('Cooked over open flame since 2014', null)).toEqual(['dates the store ("since 2014")']);
   });
 });
 

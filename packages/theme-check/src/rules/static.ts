@@ -2,7 +2,8 @@ import { join, relative } from 'node:path';
 import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { foreignImageRefs } from '../utils/theme-demo-images.js';
 import { DEMO_ID_FORMAT, PRIMARY_DEMO_ID } from '../utils/theme-demos.js';
-import { SCREENSHOT_LOCK, TEMPLATE_DESCRIPTION_MAX, TEMPLATE_DESCRIPTION_PLACEHOLDER, isPresentationalField, screenshotFile, screenshotUrl } from '../utils/theme-templates.js';
+import { SCREENSHOT_LOCK, TEMPLATE_DESCRIPTION_MAX, TEMPLATE_DESCRIPTION_PLACEHOLDER, declaredFieldsByVariant, isPresentationalField, screenshotFile, screenshotUrl, sectionCopy } from '../utils/theme-templates.js';
+import { copyViolations, isTestimonialSection } from '../utils/template-copy.js';
 import { BUSINESS_KEYS, isBusinessKey } from '../utils/business-vocabulary.js';
 import { themeSourceFiles } from '../context.js';
 import { finding, type DemoStore, type Finding, type Rule, type ThemeContext } from '../types.js';
@@ -1006,7 +1007,50 @@ export const templatePagesRule: Rule = {
   },
 };
 
+/* ── Round 2.6: copy a real store can publish unchanged ───────────────── */
+
+/** Every string in a section's copy, with where it sits (`items[2].text`). */
+function copyStrings(value: unknown, path = ''): Array<[string, string]> {
+  if (typeof value === 'string') return [[path, value]];
+  if (Array.isArray(value)) return value.flatMap((entry, i) => copyStrings(entry, `${path}[${i}]`));
+  if (value && typeof value === 'object') return Object.entries(value).flatMap(([key, entry]) => copyStrings(entry, path ? `${path}.${key}` : key));
+  return [];
+}
+
+export const templateCopyRule: Rule = {
+  id: 'theme/template-copy',
+  summary: 'Template copy is true of any store in its business: no store name, place, naira amount, promise or founding date',
+  kind: 'static',
+  run(context) {
+    if (context.retired || !context.manifest) return [];
+    const declared = declaredFieldsByVariant(context.manifest.variants);
+    const findings: Finding[] = [];
+    for (const store of context.demos) {
+      const name = (store.data?.profile as { name?: unknown } | undefined)?.name;
+      for (const [pageKey, page] of Object.entries(pagesOf(store))) {
+        (page?.content ?? []).forEach((section, index) => {
+          if (typeof section?.type !== 'string') return;
+          const variant = section.variant ?? 'default';
+          if (isTestimonialSection(section.type, variant, declared[section.type]?.[variant])) return;
+          const lines = copyStrings(sectionCopy(section, declared) ?? {}).flatMap(([path, text]) => {
+            const why = copyViolations(text, typeof name === 'string' ? name : null);
+            return why.length > 0 ? [`${path}: ${why.join('; ')} — "${text.length > 80 ? `${text.slice(0, 77)}…` : text}"`] : [];
+          });
+          if (lines.length === 0) return;
+          findings.push(finding(context, 'theme/template-copy', 'reject', {
+            where: `${context.env.root}${store.file} → pages.${pageKey}.content[${index}] (${section.type}.${variant})`,
+            found: lines.join('\n'),
+            fix: 'The setup wizard publishes this copy onto real stores unchanged. Write it for any store in the business: the store\'s name becomes a role ("our kitchen", "the studio"), a place becomes generic ("across the city") or goes, and prices, delivery windows, guarantees and founding dates go — they are the vendor’s to state. Testimonials and reviews are exempt.',
+            docs: `${context.env.docs}#templates`,
+          }));
+        });
+      }
+    }
+    return findings;
+  },
+};
+
 export const STATIC_RULES: Rule[] = [moduleContractRule, structureRule, demoStoreRule, demoStoresRule, demoArtRule, codeQualityRule, sdkBoundaryRule, selectionMetadataRule, demoCompletenessRule, subscribeScopeRule, demoBlockTypesRule, identityRule, productMetafieldsRule, poweredByRule,
   templateDescriptionRule, templateScreenshotRule, templateChromeRule, templateStyleRule,
-  templateBusinessRule, templateVersionsRule, templatePagesRule,
+  templateBusinessRule, templateVersionsRule, templatePagesRule, templateCopyRule,
 ];
