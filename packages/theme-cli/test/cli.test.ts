@@ -8,25 +8,46 @@ import { afterAll, describe, expect, it } from 'vitest';
 const BIN = resolve(import.meta.dirname, '../bin/run.js');
 const FIXTURE = resolve(import.meta.dirname, '../../../fixtures/starter');
 
+const passingDemo = (json: string): string =>
+  json.replaceAll('placeholder-', 'sample-').replaceAll('/theme-assets/_bare/', '/theme-assets/test-fixture/');
+const passingConfig = (json: string): string =>
+  json.replace(/description: 'Replace before publishing\.[^']*'/, "description: 'A plain test store: a banner, a product grid and category tiles. Needs a few product photos.'");
+
 /**
- * The starter with its placeholders replaced — a theme that should pass.
- * Copied inside the repo's fixtures/ (like theme-check's own copy()) rather
- * than the OS tmpdir: theme.config.ts loads through jiti, which resolves
+ * A copy of the starter, its placeholders replaced by `mutateDemo` (default:
+ * just the photo/slug swap — a theme that should pass clean). Copied inside
+ * the repo's fixtures/ (like theme-check's own copy()) rather than the OS
+ * tmpdir: theme.config.ts loads through jiti, which resolves
  * @usequeek/theme-kit by walking up from the file's own directory, and a
  * folder outside this workspace has no node_modules chain to find it in.
  */
-function passingTheme(): string {
+function stageTheme(mutateDemo: (json: string) => string = passingDemo): string {
   const dir = mkdtempSync(join(resolve(import.meta.dirname, '../../../fixtures'), '.tmp-cli-passing-'));
   cpSync(FIXTURE, dir, { recursive: true });
   const demo = join(dir, 'theme/demo.json');
-  writeFileSync(demo, readFileSync(demo, 'utf8').replaceAll('placeholder-', 'sample-').replaceAll('/theme-assets/_bare/', '/theme-assets/test-fixture/'));
+  writeFileSync(demo, mutateDemo(readFileSync(demo, 'utf8')));
   const config = join(dir, 'theme/theme.config.ts');
-  writeFileSync(config, readFileSync(config, 'utf8').replace(/description: 'Replace before publishing\.[^']*'/, "description: 'A plain test store: a banner, a product grid and category tiles. Needs a few product photos.'"));
+  writeFileSync(config, passingConfig(readFileSync(config, 'utf8')));
   return dir;
 }
 
-const PASSING = passingTheme();
-afterAll(() => rmSync(PASSING, { recursive: true, force: true }));
+/** A theme with 0 errors but at least one warning: the sales page's closing
+ *  contact section is dropped, so theme/template-pages warns ("does not
+ *  close on a contact section") without rejecting anything. */
+function warningsOnlyTheme(): string {
+  return stageTheme((json) => {
+    const demo = JSON.parse(passingDemo(json)) as { pages: Record<string, { content?: unknown[] }> };
+    demo.pages.sales?.content?.pop();
+    return JSON.stringify(demo, null, 2);
+  });
+}
+
+const PASSING = stageTheme();
+const WARNINGS_ONLY = warningsOnlyTheme();
+afterAll(() => {
+  rmSync(PASSING, { recursive: true, force: true });
+  rmSync(WARNINGS_ONLY, { recursive: true, force: true });
+});
 
 function runAt(cwd: string, ...args: string[]) {
   const result = spawnSync(process.execPath, [BIN, ...args], { cwd, encoding: 'utf8', env: { ...process.env, NO_COLOR: '1', QUEEK_THEME_SKIP_NEW_VERSION_CHECK: 'true' } });
@@ -44,11 +65,16 @@ describe('queek-theme check', () => {
     expect(stdout).toContain('Also checked when you submit');
   }, 60_000);
 
-  it('exits 1 at --fail-level warning when there are findings', () => {
-    // The unmodified skeleton carries the starter's placeholders by design
-    // (theme/placeholder-content, theme/template-description) — a fixture
-    // guaranteed to have at least one finding, unlike the passing copy above.
-    const { code, stderr } = runAt(FIXTURE, 'check', '--fail-level', 'warning');
+  it('exits 1 at --fail-level warning when there are only warnings', () => {
+    const json = runAt(WARNINGS_ONLY, 'check', '--format', 'json');
+    const report = JSON.parse(json.stdout);
+    expect(report.summary.errors, json.stderr).toBe(0);
+    expect(report.summary.warnings, json.stderr).toBeGreaterThanOrEqual(1);
+
+    const plain = runAt(WARNINGS_ONLY, 'check');
+    expect(plain.code, plain.stderr).toBe(0);
+
+    const { code, stderr } = runAt(WARNINGS_ONLY, 'check', '--fail-level', 'warning');
     expect(code, stderr).toBe(1);
   }, 60_000);
 

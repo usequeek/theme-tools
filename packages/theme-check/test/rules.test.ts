@@ -179,4 +179,8 @@ describe('theme/placeholder-content', () => {
   it("passes a store with the developer's own products", async () => {
     expect(await placeholderContentRule.run(context({ demos: [store([{ slug: 'real-dress', media: { image: 'https://example.test/dress.jpg' } }])] }))).toEqual([]);
   });
+
+  it("passes a store using lumiere's original photos", async () => {
+    expect(await placeholderContentRule.run(context({ demos: [store([{ slug: 'real-dress', media: { image: 'https://media.usequeek.com/theme-assets/lumiere/0e21e31030533d79.jpg' } }])] }))).toEqual([]);
+  });
 });
