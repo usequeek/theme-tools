@@ -57,7 +57,7 @@ submission, and warns if errors would block it. `--output <file>` to choose wher
 ### `queek-theme init [dir]`
 
 The same as `npm create @usequeek/theme [dir]`, with the same flags; see
-[create-theme's README](../create-theme#usage). In a terminal, anything you leave out is
+[create-theme's README](https://github.com/usequeek/theme-tools/tree/main/packages/create-theme#usage). In a terminal, anything you leave out is
 asked; with `--yes` or without a terminal, nothing is, and `--templates` and `--tags` are
 required. With no `dir`, the folder is named after the theme in a terminal, `my-theme`
 otherwise.
