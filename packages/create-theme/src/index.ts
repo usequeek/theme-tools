@@ -24,7 +24,8 @@ export const HELP = `Create a Queek storefront theme.
   npm create @usequeek/theme@latest my-theme -- --templates laundry --tags minimal
   pnpm create @usequeek/theme my-theme --templates laundry --tags minimal
 
-npm needs -- before these flags. In a terminal, anything you leave out is asked.
+npm needs -- before these flags. In a terminal, anything you leave out is asked,
+and with no folder the folder is named after the theme (my-theme with --yes or no terminal).
 
   --name <text>          theme name (default: the folder name)
   --templates <keys>     businesses to make templates for, comma-separated (required with --yes)
