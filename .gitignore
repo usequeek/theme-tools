@@ -8,3 +8,5 @@ coverage/
 .queek/
 .next/
 packages/theme-cli/templates/
+# a crashed test run can leave its fixture copies behind (fixtures/.tmp-cli-passing-…)
+fixtures/.tmp-*
