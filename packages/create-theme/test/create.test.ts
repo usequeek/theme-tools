@@ -88,6 +88,11 @@ describe('runCreate', () => {
     await expect(runCreate(flags(dir, { templates: undefined, tags: undefined }), throwingPrompter, () => {})).rejects.toThrow(/not empty.*--force/);
   });
 
+  it('checks --pm before asking anything', async () => {
+    const dir = join(mkdtempSync(join(tmpdir(), 'create-')), 'my-theme');
+    await expect(runCreate(flags(dir, { templates: undefined, tags: undefined, pm: 'deno' }), throwingPrompter, () => {})).rejects.toThrow(/--pm must be npm, pnpm, yarn or bun/);
+  });
+
   // existsSync follows symlinks, so a dangling one used to read as "nothing here" right
   // up until cpSync tried to write through it and aborted the whole process.
   it.skipIf(process.platform === 'win32')('refuses --force when the target has a symlink where the starter writes a folder, and touches nothing', async () => {

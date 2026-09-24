@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { UsageError, equivalentCommand, resolveAnswers, type Flags } from '../src/options.js';
+import { UsageError, equivalentCommand, resolveAnswers, type Flags, type Prompter } from '../src/options.js';
+import type { Assistant, OptionalPage } from '../src/setup.js';
 
 const flags = (overrides: Partial<Flags> = {}): Flags => ({ install: false, git: false, yes: true, dryRun: false, force: false, ...overrides });
 
@@ -44,6 +45,77 @@ describe('resolveAnswers without a terminal', () => {
 
   it('--categories cannot be empty', async () => {
     await expect(resolveAnswers(flags({ dir: 'x-theme', templates: 'laundry', tags: 'minimal', categories: '' }), null)).rejects.toThrow(/at least one business category/);
+  });
+});
+
+interface Script { name?: string; templates?: string[]; primary?: string; categories?: string[]; tags?: string[]; pages?: OptionalPage[]; ai?: Assistant[] }
+
+/** A terminal with scripted answers. Records each question asked, and the checks the questions were given. */
+function scripted(script: Script) {
+  const asked: string[] = [];
+  const checks: { name?: (name: string) => string | undefined; tags?: (tags: string[]) => string | undefined } = {};
+  const reply = <T>(question: string, value: T | undefined): Promise<T> => {
+    asked.push(question);
+    if (value === undefined) throw new Error(`asked "${question}", which has no scripted answer`);
+    return Promise.resolve(value);
+  };
+  const prompter: Prompter = {
+    name: (_initial, problem) => { checks.name = problem; return reply('name', script.name); },
+    templates: () => reply('templates', script.templates),
+    primary: () => reply('primary', script.primary),
+    categories: () => reply('categories', script.categories),
+    tags: (problem) => { checks.tags = problem; return reply('tags', script.tags); },
+    pages: () => reply('pages', script.pages),
+    ai: () => reply('ai', script.ai),
+  };
+  return { prompter, asked, checks };
+}
+
+describe('resolveAnswers in a terminal', () => {
+  const everything: Script = { name: 'Mọ́ Laundry', templates: ['foods', 'laundry'], primary: 'laundry', categories: ['laundry'], tags: ['minimal', 'bold'], pages: ['faq'], ai: ['gemini'] };
+
+  it('asks for every answer no flag gives, in order', async () => {
+    const { prompter, asked } = scripted(everything);
+    const answers = await resolveAnswers({ install: false, git: false, yes: false, dryRun: false, force: false }, prompter);
+    expect(asked).toEqual(['name', 'templates', 'primary', 'categories', 'tags', 'pages', 'ai']);
+    expect(answers).toMatchObject({ name: 'Mọ́ Laundry', categories: ['laundry'], tags: ['minimal', 'bold'], pages: ['faq'], ai: ['gemini'] });
+    expect(answers.templates.map((t) => [t.id, t.key])).toEqual([['default', 'laundry'], ['foods', 'foods']]);
+  });
+
+  it('asks nothing a flag answers', async () => {
+    const { prompter, asked } = scripted({});
+    const answers = await resolveAnswers(flags({ yes: false, name: 'Mo', templates: 'foods,laundry', primary: 'laundry', categories: 'laundry', tags: 'minimal', pages: 'faq', ai: 'claude' }), prompter);
+    expect(asked).toEqual([]);
+    expect(answers).toMatchObject({ slug: 'mo', tags: ['minimal'], pages: ['faq'], ai: ['claude'] });
+  });
+
+  it('derives the slug and prefix from the answered name', async () => {
+    const answers = await resolveAnswers({ install: false, git: false, yes: false, dryRun: false, force: false }, scripted(everything).prompter);
+    expect(answers).toMatchObject({ slug: 'mo-laundry', prefix: 'ml' });
+  });
+
+  it('the name question refuses a name whose slug cannot be used, so no later answer is lost', async () => {
+    const { prompter, checks } = scripted(everything);
+    await resolveAnswers({ install: false, git: false, yes: false, dryRun: false, force: false }, prompter);
+    expect(checks.name?.('Nova')).toBe('"nova" is one of Queek\'s own themes. Choose another name.');
+    expect(checks.name?.('鮨店')).toMatch(/must be 2 to 31 characters/);
+    expect(checks.name?.('x')).toBe('At least 2 characters.');
+    expect(checks.name?.('My Shop')).toBeUndefined();
+  });
+
+  it('the tags question asks again until 1 to 6 are picked, naming no flag', async () => {
+    const { prompter, checks } = scripted(everything);
+    await resolveAnswers({ install: false, git: false, yes: false, dryRun: false, force: false }, prompter);
+    expect(checks.tags?.([])).toBe('Pick 1 to 6 tags.');
+    expect(checks.tags?.(['light', 'dark', 'warm', 'cool', 'bold', 'modern', 'classic'])).toBe('Pick 1 to 6 tags.');
+    expect(checks.tags?.(['minimal'])).toBeUndefined();
+  });
+
+  it('checks every flag before the first question', async () => {
+    const { prompter, asked } = scripted(everything);
+    await expect(resolveAnswers(flags({ yes: false, pages: 'about' }), prompter)).rejects.toThrow(/Unknown page "about"/);
+    await expect(resolveAnswers(flags({ yes: false, ai: 'copilot' }), prompter)).rejects.toThrow(/Unknown assistant "copilot"/);
+    expect(asked).toEqual([]);
   });
 });
 

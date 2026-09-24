@@ -183,8 +183,8 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
 export async function runCreate(flags: Flags, prompter: Prompter | null, log?: (line: string) => void): Promise<void> {
   const dir = flags.dir ?? 'my-theme';
   checkTarget(dir, flags.force); // before any question is asked, not just before any write
-  const answers = await resolveAnswers(flags, prompter);
   const pm = (flags.pm as PackageManager | undefined) ?? detectPackageManager();
   if (!['npm', 'pnpm', 'yarn', 'bun'].includes(pm)) throw new UsageError(`--pm must be npm, pnpm, yarn or bun, not "${pm}".`);
+  const answers = await resolveAnswers(flags, prompter);
   await createTheme(dir, answers, { install: flags.install, git: flags.git, pm, dryRun: flags.dryRun, force: flags.force, template: flags.template, log });
 }
