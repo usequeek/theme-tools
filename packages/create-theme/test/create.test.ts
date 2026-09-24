@@ -33,6 +33,17 @@ describe('runCreate', () => {
     expect(existsSync(join(dir, 'AGENTS.md'))).toBe(true);
   });
 
+  // Yarn 1 runs its own built-in `yarn check` ("success Folder in sync."), never the script.
+  it.each(['npm', 'pnpm', 'yarn', 'bun'])('prints `<pm> run dev` and `<pm> run check` for %s, never the bare form', async (pm) => {
+    const dir = join(mkdtempSync(join(tmpdir(), 'create-')), 'my-theme');
+    const lines: string[] = [];
+    await runCreate(flags(dir, { pm }), null, (line) => lines.push(line));
+    const out = lines.join('\n');
+    expect(out).toContain(`  ${pm} run dev `);
+    expect(out).toContain(`  ${pm} run check `);
+    expect(out).not.toMatch(new RegExp(`^\\s*${pm} (dev|check)\\b`, 'm'));
+  });
+
   it('writes nothing with --dry-run', async () => {
     const dir = join(mkdtempSync(join(tmpdir(), 'create-')), 'my-theme');
     const lines: string[] = [];

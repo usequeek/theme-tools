@@ -167,7 +167,8 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
     else if (!existsSync(join(target, '.git'))) spawnSync('git', ['init', '-q'], { cwd: target });
   }
 
-  const run = options.pm === 'npm' ? 'npm run' : options.pm;
+  // `run` for every package manager: Yarn 1's built-in `yarn check` shadows the script.
+  const run = `${options.pm} run`;
   log('');
   log(`Created ${answers.name} in ${shown}. Next:`);
   log(`  cd ${shown}`);
