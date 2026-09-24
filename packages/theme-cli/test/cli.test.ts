@@ -108,6 +108,13 @@ describe('queek-theme init', () => {
     expect(code, stderr).toBe(0);
     expect(existsSync(join(out, 'theme/theme.config.ts'))).toBe(true);
   }, 60_000);
+
+  it('writes my-theme when no folder is given and nothing is asked', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'init-'));
+    const { code, stderr } = runAt(cwd, 'init', '--yes', '--template', FIXTURE, '--templates', 'laundry', '--tags', 'minimal', '--no-install', '--no-git');
+    expect(code, stderr).toBe(0);
+    expect(existsSync(join(cwd, 'my-theme/theme/theme.config.ts'))).toBe(true);
+  }, 60_000);
 });
 
 describe('queek-theme package', () => {

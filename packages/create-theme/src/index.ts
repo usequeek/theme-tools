@@ -179,12 +179,28 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
   log(`To repeat this setup: ${equivalentCommand(options.pm, dir, answers)}`);
 }
 
-/** Flags → answers (prompting when a prompter is given) → the theme. Shared by the CLI and `queek-theme init`. */
+/** Why `dir` cannot take the theme (`checkTarget`'s message), or null. */
+function targetProblem(dir: string, force: boolean): string | null {
+  try {
+    checkTarget(dir, force);
+    return null;
+  } catch (error) {
+    if (error instanceof UsageError) return error.message;
+    throw error;
+  }
+}
+
+/**
+ * Flags → answers (prompting when a prompter is given) → the theme. Shared by the CLI and `queek-theme init`.
+ * With no folder argument, a person at the prompts gets a folder named after the theme's slug (checked
+ * with the name, before the next question); a script gets `my-theme`.
+ */
 export async function runCreate(flags: Flags, prompter: Prompter | null, log?: (line: string) => void): Promise<void> {
-  const dir = flags.dir ?? 'my-theme';
-  checkTarget(dir, flags.force); // before any question is asked, not just before any write
+  const named = flags.dir === undefined && prompter !== null;
+  if (!named) checkTarget(flags.dir ?? 'my-theme', flags.force); // before any question is asked, not just before any write
   const pm = (flags.pm as PackageManager | undefined) ?? detectPackageManager();
   if (!['npm', 'pnpm', 'yarn', 'bun'].includes(pm)) throw new UsageError(`--pm must be npm, pnpm, yarn or bun, not "${pm}".`);
-  const answers = await resolveAnswers(flags, prompter);
+  const answers = await resolveAnswers(flags, prompter, named ? (slug) => targetProblem(slug, flags.force) : undefined);
+  const dir = flags.dir ?? (named ? answers.slug : 'my-theme');
   await createTheme(dir, answers, { install: flags.install, git: flags.git, pm, dryRun: flags.dryRun, force: flags.force, template: flags.template, log });
 }

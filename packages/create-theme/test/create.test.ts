@@ -105,6 +105,59 @@ describe('runCreate', () => {
   });
 });
 
+describe('runCreate with no folder argument', () => {
+  const base = (overrides: Partial<Flags> = {}): Flags => ({ template: starterProject(), install: false, git: false, yes: false, dryRun: false, force: false, ...overrides });
+  const inFolder = async (cwd: string, run: () => Promise<void>): Promise<void> => {
+    const before = process.cwd();
+    process.chdir(cwd);
+    try { await run(); } finally { process.chdir(before); }
+  };
+  /** Answers `name` to the name question, and hands over the check the question was given. */
+  const answering = (name: string, seeCheck: (problem: (name: string) => string | undefined) => void = () => {}): Prompter => ({
+    name: async (_initial, problem) => { seeCheck(problem); return name; },
+    templates: async () => ['laundry'],
+    primary: async () => 'laundry',
+    categories: async (initial) => initial,
+    tags: async () => ['minimal'],
+    pages: async (initial) => initial,
+    ai: async (initial) => initial,
+  });
+
+  it('names the folder after the answered name in a terminal', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'create-'));
+    await inFolder(cwd, () => runCreate(base(), answering('My Shop'), () => {}));
+    expect(existsSync(join(cwd, 'my-shop/theme/theme.config.ts'))).toBe(true);
+    expect(existsSync(join(cwd, 'my-theme'))).toBe(false);
+  });
+
+  it('the name question refuses a name whose folder cannot be used, with the folder check\'s message', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'create-'));
+    mkdirSync(join(cwd, 'busy-shop'));
+    writeFileSync(join(cwd, 'busy-shop/notes.txt'), 'mine');
+    const checked: Record<string, string | undefined> = {};
+    await inFolder(cwd, () => runCreate(base(), answering('Fresh Shop', (problem) => {
+      for (const name of ['Busy Shop', 'Fresh Shop']) checked[name] = problem(name);
+    }), () => {}));
+    expect(checked['Busy Shop']).toBe('busy-shop is not empty. Choose another folder, or pass --force to write into it.');
+    expect(checked['Fresh Shop']).toBeUndefined();
+    expect(existsSync(join(cwd, 'fresh-shop/theme'))).toBe(true);
+    expect(readdirSync(join(cwd, 'busy-shop'))).toEqual(['notes.txt']);
+  });
+
+  it('checks the folder of a --name before the next question', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'create-'));
+    mkdirSync(join(cwd, 'busy-shop'));
+    writeFileSync(join(cwd, 'busy-shop/notes.txt'), 'mine');
+    await inFolder(cwd, () => expect(runCreate(base({ name: 'Busy Shop' }), throwingPrompter, () => {})).rejects.toThrow('busy-shop is not empty'));
+  });
+
+  it('keeps my-theme without a terminal', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'create-'));
+    await inFolder(cwd, () => runCreate(base({ name: 'My Shop', templates: 'laundry', tags: 'minimal', yes: true }), null, () => {}));
+    expect(existsSync(join(cwd, 'my-theme/theme/theme.config.ts'))).toBe(true);
+  });
+});
+
 describe('create-theme, as a command (pnpm build first)', () => {
   it('exits 2 naming the flag when a required answer is missing and there is no terminal', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'create-'));

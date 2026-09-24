@@ -11,7 +11,7 @@ export default class Init extends Command {
     '<%= config.bin %> <%= command.id %> my-theme --templates laundry,foods --primary laundry --tags minimal --yes',
   ];
 
-  static override args = { dir: Args.string({ description: 'Folder to create.', default: 'my-theme' }) };
+  static override args = { dir: Args.string({ description: 'Folder to create (default: named after the theme when asked in a terminal, otherwise my-theme).' }) };
 
   static override flags = {
     name: Flags.string({ summary: 'Theme name (default: the folder name).' }),
