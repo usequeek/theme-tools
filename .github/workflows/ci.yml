@@ -32,12 +32,13 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      # Build first: packages import each other's type declarations from dist.
+      - name: Build
+        run: pnpm build
       - name: Lint
         run: pnpm lint
       - name: Typecheck
         run: pnpm typecheck
-      - name: Build
-        run: pnpm build
       - name: Publint
         run: pnpm publint
 

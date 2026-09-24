@@ -21,7 +21,7 @@ Then verify everything works:
 pnpm build      # build every workspace package (tsc per package)
 pnpm test       # run the vitest suite
 pnpm lint       # eslint over the whole repo
-pnpm typecheck  # tsc --noEmit per package
+pnpm typecheck  # tsc --noEmit per package (after pnpm build: packages read each other's dist types)
 ```
 
 `pnpm publint` additionally checks that each built package packs correctly

@@ -26,7 +26,11 @@
   "oclif": {
     "bin": "queek-theme",
     "dirname": "queek-theme",
-    "commands": "./dist/commands",
+    "commands": {
+      "strategy": "explicit",
+      "target": "./dist/commands/index.js",
+      "identifier": "COMMANDS"
+    },
     "topicSeparator": " ",
     "plugins": [
       "@oclif/plugin-warn-if-update-available"
