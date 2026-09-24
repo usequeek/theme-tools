@@ -2,4 +2,4 @@
 '@usequeek/theme-cli': patch
 ---
 
-Commands now load on Windows. The CLI found its commands by scanning its own folder at runtime, which found none on Windows ("command check not found"); they are now listed explicitly.
+Commands load from an explicit list instead of a scan of the CLI's own folder at startup.
