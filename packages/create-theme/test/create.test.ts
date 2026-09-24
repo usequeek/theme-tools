@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -75,6 +75,17 @@ describe('runCreate', () => {
     const dir = mkdtempSync(join(tmpdir(), 'create-'));
     writeFileSync(join(dir, 'notes.txt'), 'mine');
     await expect(runCreate(flags(dir, { templates: undefined, tags: undefined }), throwingPrompter, () => {})).rejects.toThrow(/not empty.*--force/);
+  });
+
+  // existsSync follows symlinks, so a dangling one used to read as "nothing here" right
+  // up until cpSync tried to write through it and aborted the whole process.
+  it.skipIf(process.platform === 'win32')('refuses --force when the target has a symlink where the starter writes a folder, and touches nothing', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'create-'));
+    writeFileSync(join(dir, 'notes.txt'), 'mine');
+    symlinkSync('/no/such/target/xyz', join(dir, 'docs')); // the starter fixture ships docs/ as a folder
+    const before = readdirSync(dir);
+    await expect(runCreate(flags(dir, { force: true }), null, () => {})).rejects.toThrow(/cannot write into/);
+    expect(readdirSync(dir)).toEqual(before);
   });
 });
 

@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { downloadTemplate } from 'giget';
@@ -54,16 +54,37 @@ function checkTarget(dir: string, force: boolean): { target: string; state: 'mis
   return { target, state };
 }
 
-/** Paths (relative to `stage`) where `target` already has the other type — a file where the stage has a folder, or the reverse. cpSync cannot merge these. */
+/** `lstatSync`, or null if nothing is there — never follows a symlink, unlike `existsSync`/`statSync`. */
+function lstatOrNull(path: string): ReturnType<typeof lstatSync> | null {
+  try {
+    return lstatSync(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
+/**
+ * Paths (relative to `stage`) where writing the starter into `target` is unsafe: the
+ * target already has the other type (a file where the stage has a folder, or the
+ * reverse) — cpSync cannot merge these — or the target is a symlink, dangling or not:
+ * `existsSync` follows symlinks, so a dangling one reads as "nothing here" right up
+ * until Node's native cpSync tries to write through it and aborts the whole process.
+ */
 function conflictingPaths(stage: string, target: string, root = ''): string[] {
   const conflicts: string[] = [];
   for (const name of readdirSync(stage)) {
     const stagePath = join(stage, name);
     const targetPath = join(target, name);
     const relPath = root ? `${root}/${name}` : name;
-    if (!existsSync(targetPath)) continue;
+    const targetStat = lstatOrNull(targetPath);
+    if (!targetStat) continue;
+    if (targetStat.isSymbolicLink()) {
+      conflicts.push(`${relPath} (a link)`);
+      continue;
+    }
     const stageIsDir = statSync(stagePath).isDirectory();
-    const targetIsDir = statSync(targetPath).isDirectory();
+    const targetIsDir = targetStat.isDirectory();
     if (stageIsDir !== targetIsDir) conflicts.push(relPath);
     else if (stageIsDir) conflicts.push(...conflictingPaths(stagePath, targetPath, relPath));
   }
@@ -108,7 +129,11 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
       if (conflicts.length > 0) {
         throw new UsageError(`--force cannot write into ${dir}: these would replace a file with a folder or the reverse: ${conflicts.join(', ')}. Move them first.`);
       }
-      cpSync(stage, target, { recursive: true });
+      try {
+        cpSync(stage, target, { recursive: true });
+      } catch (error) {
+        throw new Error(`Could not finish writing ${dir} (${(error as Error).message}). Some files may already be written there.`);
+      }
     } else {
       const existedBefore = existsSync(target);
       const before = new Set(existedBefore ? readdirSync(target) : []);
