@@ -12,7 +12,7 @@ import type { DemoStore, ThemeContext } from '../src/types.js';
  * fault it exists for, not only staying quiet on a healthy theme.
  */
 
-function context(parts: Partial<Pick<ThemeContext, 'demos' | 'declaredDemos' | 'defaultDescription' | 'defaultFor' | 'pageBased' | 'manifest'>>): ThemeContext {
+function context(parts: Partial<Pick<ThemeContext, 'demos' | 'declaredDemos' | 'defaultDescription' | 'defaultFor' | 'themeDescription' | 'pageBased' | 'manifest'>>): ThemeContext {
   const demos: DemoStore[] = parts.demos ?? [{ id: 'default', file: 'demo.json', data: { pages: {} } }];
   return {
     env: { root: 'theme/', docs: 'https://example.test/THEME.md', vocabulary: 'the vocabulary', scaffold: 'npm create @usequeek/theme', preview: (id) => `http://localhost:3000/${id}`, submission: false },
@@ -24,6 +24,7 @@ function context(parts: Partial<Pick<ThemeContext, 'demos' | 'declaredDemos' | '
     declaredDemos: parts.declaredDemos ?? [],
     defaultDescription: parts.defaultDescription ?? null,
     defaultFor: parts.defaultFor ?? null,
+    themeDescription: parts.themeDescription ?? null,
     manifest: parts.manifest ?? { slug: 'x', variants: {} },
     pageBased: parts.pageBased ?? true,
     file: (path) => `/nowhere/theme/${path}`,
@@ -178,6 +179,20 @@ describe('theme/placeholder-content', () => {
 
   it("passes a store with the developer's own products", async () => {
     expect(await placeholderContentRule.run(context({ demos: [store([{ slug: 'real-dress', media: { image: 'https://example.test/dress.jpg' } }])] }))).toEqual([]);
+  });
+
+  it("rejects a theme description that is still the starter's placeholder", async () => {
+    const found = await placeholderContentRule.run(context({ demos: [store([{ slug: 'real-dress' }])], themeDescription: 'Replace before publishing. What this theme is, in one sentence.' }));
+    expect(found.map((f) => [f.where, f.found, f.severity])).toEqual([
+      ['theme/theme.config.ts → description', "the theme's description is still the starter's placeholder", 'reject'],
+    ]);
+    expect(found[0].docs).toBe('https://example.test/THEME.md#placeholder-content');
+  });
+
+  it("passes the theme's own description, the skeleton's included", async () => {
+    for (const themeDescription of ['A dark, photo-led theme for restaurants.', 'The starting skeleton for a new theme — the contract with no design opinions. Never published.', null]) {
+      expect(await placeholderContentRule.run(context({ demos: [store([{ slug: 'real-dress' }])], themeDescription }))).toEqual([]);
+    }
   });
 
   it("passes a store using lumiere's original photos", async () => {

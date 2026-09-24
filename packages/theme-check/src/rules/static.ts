@@ -1227,7 +1227,7 @@ export const STARTER_PLACEHOLDER_IMAGES: readonly string[] = [
 
 export const placeholderContentRule: Rule = {
   id: 'theme/placeholder-content',
-  summary: "No demo store still carries the starter's placeholder products or photos",
+  summary: "No demo store still carries the starter's placeholder products or photos, and the theme's description is its own",
   kind: 'static',
   run(context) {
     if (context.retired) return [];
@@ -1242,7 +1242,16 @@ export const placeholderContentRule: Rule = {
         where: `${context.env.root}${store.file}`,
         found: [placeholders ? `${placeholders} placeholder product(s)` : '', photos ? `${photos} of the starter's photos` : ''].filter(Boolean).join(' and '),
         fix: "Replace the starter's products and photos with your own for this business. Every theme's preview must look like itself; shared placeholder photos would make every theme's store look the same.",
-        docs: `${context.env.docs}#templates`,
+        docs: `${context.env.docs}#placeholder-content`,
+      }));
+    }
+    // The starter writes a placeholder theme description too; no template rule reads it.
+    if ((context.themeDescription?.trim() ?? '').startsWith(TEMPLATE_DESCRIPTION_PLACEHOLDER)) {
+      findings.push(finding(context, 'theme/placeholder-content', 'reject', {
+        where: `${context.env.root}theme.config.ts → description`,
+        found: "the theme's description is still the starter's placeholder",
+        fix: 'Write what this theme is, in one sentence. It is the first thing a merchant, and the AI choosing on their behalf, reads about it.',
+        docs: `${context.env.docs}#placeholder-content`,
       }));
     }
     return findings;

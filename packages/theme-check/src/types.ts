@@ -110,6 +110,8 @@ export interface ThemeContext {
   defaultDescription: string | null;
   /** `default_demo.for` from theme.config.ts, unvalidated — the primary template's business. */
   defaultFor: unknown;
+  /** `description` from theme.config.ts — the theme's own, not a template's. */
+  themeDescription: string | null;
   manifest: ThemeManifest | null;
   /** Declares page-block variants, so the page-based structure applies. */
   pageBased: boolean;

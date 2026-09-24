@@ -27,7 +27,7 @@ export function localEnv(dir: string, cwd = process.cwd()): CheckEnv {
   };
 }
 
-type ThemeConfig = { slug?: unknown; active?: unknown; demos?: unknown; default_demo?: { description?: unknown; for?: unknown } };
+type ThemeConfig = { slug?: unknown; active?: unknown; description?: unknown; demos?: unknown; default_demo?: { description?: unknown; for?: unknown } };
 
 /**
  * Everything the rules read about one theme folder. Its TypeScript modules
@@ -80,6 +80,7 @@ export async function loadContext(themeDir: string, env: Partial<CheckEnv> = {})
     declaredDemos: config === null ? null : Array.isArray(declared) ? (declared as DeclaredDemo[]) : [],
     defaultDescription: typeof primary?.description === 'string' ? primary.description : null,
     defaultFor: primary?.for ?? null,
+    themeDescription: typeof config?.description === 'string' ? config.description : null,
     manifest,
     pageBased: PAGE_BLOCK_SCOPES.some((scope) => (variants[scope] ?? []).length > 0),
     file,

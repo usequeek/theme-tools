@@ -40,6 +40,14 @@ describe('checkTheme on a real theme folder', () => {
     expect(rejects(findings).map((f) => f.rule).sort()).toEqual(['theme/placeholder-content', 'theme/template-description']);
   }, 60_000);
 
+  it("rejects a theme description that is still create's placeholder", async () => {
+    const dir = passingCopy();
+    const config = join(dir, 'theme.config.ts');
+    writeFileSync(config, readFileSync(config, 'utf8').replace(/description: 'The starting skeleton[^']*'/, "description: 'Replace before publishing. What this theme is, in one sentence.'"));
+    const { findings } = await checkTheme(dir, { env: { root: 'theme/' } });
+    expect(rejects(findings).map((f) => [f.rule, f.where])).toEqual([['theme/placeholder-content', 'theme/theme.config.ts → description']]);
+  }, 60_000);
+
   it('catches a demo store whose products belong to another shop', async () => {
     const dir = copy();
     const demo = JSON.parse(readFileSync(join(dir, 'demo.json'), 'utf8'));
