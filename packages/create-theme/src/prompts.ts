@@ -1,5 +1,5 @@
 import * as p from '@clack/prompts';
-import { BUSINESS_KEYS, SERVICES, TAGS, labelOf } from './lists.js';
+import { NICHES, SERVICES, TAGS, categoryOf, labelOf } from './lists.js';
 import { slugify } from './naming.js';
 import { CancelledError, type Prompter } from './options.js';
 import type { Assistant, OptionalPage } from './setup.js';
@@ -24,7 +24,14 @@ export async function askUntil<T>(ask: (previous: T | undefined) => Promise<T>, 
   }
 }
 
-const businessOption = (key: string) => ({ value: key, label: labelOf(key), hint: SERVICES.includes(key) ? 'whole business' : 'one kind of product' });
+const businessOption = (key: string) => ({
+  value: key,
+  label: labelOf(key),
+  hint: SERVICES.includes(key) ? 'business category' : `niche · ${labelOf(categoryOf(key))}`,
+});
+
+/** Business categories first, then niches: clack 1.8 has no grouped autocomplete, so each hint names its group. */
+export const templateOptions = () => [...SERVICES, ...NICHES].map(businessOption);
 
 export function clackPrompter(): Prompter {
   return {
@@ -35,7 +42,7 @@ export function clackPrompter(): Prompter {
       return name;
     },
     async templates() {
-      return answer<string[]>(await p.autocompleteMultiselect({ message: 'Businesses to make templates for (type to search)', options: BUSINESS_KEYS.map(businessOption), required: true }));
+      return answer<string[]>(await p.autocompleteMultiselect({ message: 'Businesses to make templates for (type to search)', options: templateOptions(), required: true }));
     },
     async primary(keys) {
       return answer<string>(await p.select({ message: 'Which is the primary template (the theme\'s first impression)?', options: keys.map(businessOption) }));
