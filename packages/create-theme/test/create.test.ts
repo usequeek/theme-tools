@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { delimiter, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { UsageError, runCreate } from '../src/index.js';
 import type { Flags, Prompter } from '../src/options.js';
@@ -229,6 +229,35 @@ describe('the closing lines', () => {
     await runCreate(flags(dir, { template }), null, (line) => lines.push(line));
     const repeat = lines.find((line) => line.startsWith('To repeat this setup: '));
     expect(repeat).toContain(` --template ${template} --no-install --no-git`);
+  });
+});
+
+// Fake `git` and package-manager commands on PATH, so their failures can be staged.
+describe.skipIf(process.platform === 'win32')('when install or git fails afterwards', () => {
+  const withCommands = async (commands: Record<string, string>, run: () => Promise<void>): Promise<void> => {
+    const bin = mkdtempSync(join(tmpdir(), 'create-bin-'));
+    for (const [name, script] of Object.entries(commands)) {
+      writeFileSync(join(bin, name), `#!/bin/sh\n${script}\n`);
+      chmodSync(join(bin, name), 0o755);
+    }
+    const [path, cwd] = [process.env.PATH, process.cwd()];
+    process.env.PATH = `${bin}${delimiter}${path}`;
+    process.chdir(mkdtempSync(join(tmpdir(), 'create-')));
+    try { await run(); } finally { process.env.PATH = path; process.chdir(cwd); }
+  };
+
+  it('says so when git init fails', async () => {
+    const lines: string[] = [];
+    await withCommands({ git: 'case "$1" in rev-parse) exit 128 ;; init) exit 1 ;; esac' }, () =>
+      runCreate(flags('my-theme', { git: true }), null, (line) => lines.push(line)));
+    expect(lines).toContain('git init failed; run it yourself in my-theme.');
+  });
+
+  it('says git init was skipped too when the install fails', async () => {
+    await withCommands({ yarn: 'exit 1' }, () =>
+      expect(runCreate(flags('my-theme', { pm: 'yarn', install: true, git: true }), null, () => {})).rejects.toThrow(
+        'yarn install failed. The theme is in my-theme; run `yarn install` there, then `git init` (skipped because the install failed).',
+      ));
   });
 });
 

@@ -114,6 +114,14 @@ function listFiles(dir: string, root = dir): string[] {
   }).sort();
 }
 
+/** What the git step does in `target`: nothing (it has .git), skip (no git, or inside a repo), or init. */
+function gitStep(target: string): 'present' | 'no-git' | 'inside' | 'init' {
+  if (existsSync(join(target, '.git'))) return 'present';
+  const inside = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: target, encoding: 'utf8' });
+  if (inside.error) return 'no-git';
+  return inside.status === 0 ? 'inside' : 'init';
+}
+
 export async function createTheme(dir: string, answers: Answers, options: { install: boolean; git: boolean; pm: PackageManager; dryRun: boolean; force: boolean; template?: string; log?: (line: string) => void }): Promise<void> {
   const log = options.log ?? ((line: string) => console.log(line));
   const { target, state } = checkTarget(dir, options.force);
@@ -164,13 +172,16 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
   if (options.install) {
     log(`Installing dependencies with ${options.pm}…`);
     const result = spawnSync(options.pm, ['install'], { cwd: target, stdio: 'inherit', shell: process.platform === 'win32' });
-    if (result.status !== 0) throw new Error(`${options.pm} install failed. The theme is in ${where}; run \`${options.pm} install\` there.`);
+    if (result.status !== 0) {
+      const gitSkipped = options.git && gitStep(target) === 'init';
+      throw new Error(`${options.pm} install failed. The theme is in ${where}; run \`${options.pm} install\` there${gitSkipped ? ', then `git init` (skipped because the install failed)' : ''}.`);
+    }
   }
   if (options.git) {
-    const inside = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: target, encoding: 'utf8' });
-    if (inside.error) log('git is not installed; skipped git init.');
-    else if (inside.status === 0 && !existsSync(join(target, '.git'))) log('Already inside a git repository; skipped git init.');
-    else if (!existsSync(join(target, '.git'))) spawnSync('git', ['init', '-q'], { cwd: target });
+    const step = gitStep(target);
+    if (step === 'no-git') log('git is not installed; skipped git init.');
+    else if (step === 'inside') log('Already inside a git repository; skipped git init.');
+    else if (step === 'init' && spawnSync('git', ['init', '-q'], { cwd: target }).status !== 0) log(`git init failed; run it yourself in ${where}.`);
   }
 
   // `run` for every package manager: Yarn 1's built-in `yarn check` shadows the script.
