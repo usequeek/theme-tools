@@ -56,6 +56,15 @@ describe('setupTheme', () => {
     expect(json(dir, 'package.json').name).toBe('mo-laundry');
   });
 
+  it('writes exactly GEMINI.md and AGENTS.md for --ai gemini: no CLAUDE.md, no .claude/', () => {
+    const project = starterProject();
+    setupTheme(project, answers({ ai: ['gemini'] }));
+    expect(existsSync(join(project, 'GEMINI.md'))).toBe(true);
+    expect(existsSync(join(project, 'AGENTS.md'))).toBe(true);
+    expect(existsSync(join(project, 'CLAUDE.md'))).toBe(false);
+    expect(existsSync(join(project, '.claude'))).toBe(false);
+  });
+
   it('removes every AI file with --no-ai', () => {
     const bare = starterProject();
     setupTheme(bare, answers({ ai: false }));
