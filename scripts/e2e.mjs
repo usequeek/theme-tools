@@ -27,15 +27,34 @@ try {
   const tarballs = readdirSync(packs).map((file) => join(packs, file));
   console.log(`e2e: packed ${tarballs.length} packages`);
 
-  cpSync(join(ROOT, 'fixtures/starter/theme'), join(project, 'theme'), { recursive: true });
-  writeFileSync(join(project, 'package.json'), JSON.stringify({ name: 'my-theme', private: true, type: 'module' }, null, 2));
+  // The journey a developer takes: create, then install, then check.
+  const tools = join(work, 'tools');
+  mkdirSync(tools);
+  writeFileSync(join(tools, 'package.json'), JSON.stringify({ name: 'tools', private: true, type: 'module' }));
+  sh(npm, ['install', '--no-audit', '--no-fund', ...tarballs], tools);
+  const starter = join(work, 'starter');
+  cpSync(join(ROOT, 'fixtures/starter'), starter, { recursive: true });
+  writeFileSync(join(starter, 'package.json'), JSON.stringify({ name: 'queek-theme-starter', private: true, type: 'module' }, null, 2));
+  for (const file of ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md']) writeFileSync(join(starter, file), file === 'AGENTS.md' ? '# Queek theme\n' : '@AGENTS.md\n');
+  sh(process.execPath, [join(tools, 'node_modules/@usequeek/create-theme/dist/cli.js'), project, '--yes', '--template', starter, '--name', 'My Theme', '--templates', 'laundry,foods', '--primary', 'laundry', '--tags', 'minimal', '--pages', 'contact', '--ai', 'claude', '--no-install', '--no-git'], work);
+  console.log('e2e: create ✓');
+
   sh(npm, ['install', '--no-audit', '--no-fund', '@usequeek/theme-kit@^0.1.8', '@queekai/client-sdk@^0.3.1', 'next@^16', 'react@^19', 'react-dom@^19', 'typescript@^5', ...tarballs], project);
   console.log('e2e: installed from the tarballs');
 
+  // A freshly created theme is not clean — it still carries the starter's
+  // placeholder products/photos/descriptions, two templates with the same
+  // home layout (create clones one demo per template), and no screenshots
+  // (create deletes the skeleton's own theme.jpg: it would misrepresent
+  // whatever the developer ends up designing). `formatJson` in
+  // packages/theme-check/src/format.ts emits findings[].rule and
+  // findings[].level, 'error' for a reject.
   const check = sh(process.execPath, [join(project, 'node_modules/@usequeek/theme-cli/bin/run.js'), 'check', '--format', 'json'], project, true);
   const report = JSON.parse(check.stdout);
-  if (check.status !== 0 || report.summary.errors !== 0) throw new Error(`check: exit ${check.status}, ${report.summary.errors} error(s)`);
-  console.log(`e2e: check ✓ (${report.summary.warnings} warnings)`);
+  const rejects = [...new Set(report.findings.filter((f) => f.level === 'error').map((f) => f.rule))].sort();
+  const todo = ['theme/placeholder-content', 'theme/structure', 'theme/template-description', 'theme/template-screenshot', 'theme/template-versions'];
+  if (JSON.stringify(rejects) !== JSON.stringify(todo)) throw new Error(`check after create: expected exactly the to-do list ${todo.join(', ')}, got ${rejects.join(', ')}`);
+  console.log(`e2e: check ✓ (exactly the to-do list: ${todo.join(', ')})`);
 
   sh(process.execPath, [join(project, 'node_modules/@usequeek/theme-cli/bin/run.js'), 'package'], project);
   console.log('e2e: package ✓');
@@ -51,7 +70,7 @@ try {
       if (Date.now() > deadline) throw new Error(`dev did not start:\n${log}`);
       await new Promise((r) => setTimeout(r, 2000));
     }
-    for (const path of ['/', '/default', '/default/about', '/default/sales', '/default/landing', '/default/shop', '/default/products/placeholder-one', '/default/collections', '/default/blog']) {
+    for (const path of ['/', '/default', '/foods', '/default/about', '/default/sales', '/default/landing', '/default/contact', '/default/shop', '/default/products/placeholder-one']) {
       const response = await fetch(`http://127.0.0.1:${PORT}${path}`);
       const body = await response.text();
       if (response.status !== 200 || /Application error|Unhandled Runtime Error/.test(body)) throw new Error(`dev: ${path} → ${response.status}\n${log.slice(-2000)}`);

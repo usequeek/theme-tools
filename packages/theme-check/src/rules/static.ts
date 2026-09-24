@@ -1215,7 +1215,41 @@ export const fontsSelfHostedRule: Rule = {
   },
 };
 
+/** The starter's own demo photos, rehosted under themes/_bare — never a real theme's. */
+export const STARTER_PLACEHOLDER_IMAGES: readonly string[] = [
+  'https://media.usequeek.com/theme-assets/_bare/0e21e31030533d79.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/201b6247be904af4.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/377756cea202d263.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/57e4183c303aab31.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/67913acc7ef19523.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg',
+];
+
+export const placeholderContentRule: Rule = {
+  id: 'theme/placeholder-content',
+  summary: "No demo store still carries the starter's placeholder products or photos",
+  kind: 'static',
+  run(context) {
+    if (context.retired) return [];
+    const findings: Finding[] = [];
+    for (const store of context.demos) {
+      const products = (Array.isArray(store.data?.products) ? store.data.products : []) as Array<{ slug?: unknown }>;
+      const placeholders = products.filter((product) => typeof product.slug === 'string' && product.slug.startsWith('placeholder-')).length;
+      const text = JSON.stringify(store.data ?? {});
+      const photos = STARTER_PLACEHOLDER_IMAGES.filter((url) => text.includes(url)).length;
+      if (placeholders === 0 && photos === 0) continue;
+      findings.push(finding(context, 'theme/placeholder-content', 'reject', {
+        where: `${context.env.root}${store.file}`,
+        found: [placeholders ? `${placeholders} placeholder product(s)` : '', photos ? `${photos} of the starter's photos` : ''].filter(Boolean).join(' and '),
+        fix: "Replace the starter's products and photos with your own for this business. Every theme's preview must look like itself; shared placeholder photos would make every theme's store look the same.",
+        docs: `${context.env.docs}#templates`,
+      }));
+    }
+    return findings;
+  },
+};
+
 export const STATIC_RULES: Rule[] = [moduleContractRule, structureRule, demoStoreRule, demoStoresRule, demoArtRule, codeQualityRule, sdkBoundaryRule, selectionMetadataRule, demoCompletenessRule, subscribeScopeRule, demoBlockTypesRule, identityRule, productMetafieldsRule, poweredByRule, fontsSelfHostedRule,
   templateDescriptionRule, templateScreenshotRule, templateChromeRule, templateStyleRule,
-  templateBusinessRule, templateVersionsRule, templatePagesRule, templateCopyRule, vendorFactsRule,
+  templateBusinessRule, templateVersionsRule, templatePagesRule, templateCopyRule, vendorFactsRule, placeholderContentRule,
 ];

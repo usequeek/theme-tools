@@ -5,7 +5,7 @@
     "name": "Bare",
     "tagline": "A starting point, not a design.",
     "logo": null,
-    "banner": "https://media.usequeek.com/theme-assets/lumiere/cd48af92c911f8b6.jpg",
+    "banner": "https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg",
     "currency": "NGN",
     "rating": 5,
     "rating_count": 1,
@@ -54,6 +54,11 @@
           "label": "About",
           "type": "page",
           "ref": "about"
+        },
+        {
+          "label": "FAQ",
+          "type": "page",
+          "ref": "faq"
         }
       ]
     }
@@ -63,19 +68,19 @@
       "id": "bare-c1",
       "name": "First",
       "slug": "first",
-      "image": "https://media.usequeek.com/theme-assets/lumiere/201b6247be904af4.jpg"
+      "image": "https://media.usequeek.com/theme-assets/_bare/201b6247be904af4.jpg"
     },
     {
       "id": "bare-c2",
       "name": "Second",
       "slug": "second",
-      "image": "https://media.usequeek.com/theme-assets/lumiere/0e21e31030533d79.jpg"
+      "image": "https://media.usequeek.com/theme-assets/_bare/0e21e31030533d79.jpg"
     },
     {
       "id": "bare-c3",
       "name": "Third",
       "slug": "third",
-      "image": "https://media.usequeek.com/theme-assets/lumiere/57e4183c303aab31.jpg"
+      "image": "https://media.usequeek.com/theme-assets/_bare/57e4183c303aab31.jpg"
     }
   ],
   "products": [
@@ -112,9 +117,9 @@
         "rating_count": 1
       },
       "media": {
-        "thumbnail": "https://media.usequeek.com/theme-assets/lumiere/cd48af92c911f8b6.jpg",
-        "image": "https://media.usequeek.com/theme-assets/lumiere/cd48af92c911f8b6.jpg",
-        "original": "https://media.usequeek.com/theme-assets/lumiere/cd48af92c911f8b6.jpg",
+        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg",
+        "image": "https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg",
+        "original": "https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg",
         "gallery": []
       },
       "inventory": {
@@ -180,9 +185,9 @@
         "rating_count": 1
       },
       "media": {
-        "thumbnail": "https://media.usequeek.com/theme-assets/lumiere/201b6247be904af4.jpg",
-        "image": "https://media.usequeek.com/theme-assets/lumiere/201b6247be904af4.jpg",
-        "original": "https://media.usequeek.com/theme-assets/lumiere/201b6247be904af4.jpg",
+        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/201b6247be904af4.jpg",
+        "image": "https://media.usequeek.com/theme-assets/_bare/201b6247be904af4.jpg",
+        "original": "https://media.usequeek.com/theme-assets/_bare/201b6247be904af4.jpg",
         "gallery": []
       },
       "inventory": {
@@ -248,9 +253,9 @@
         "rating_count": 1
       },
       "media": {
-        "thumbnail": "https://media.usequeek.com/theme-assets/lumiere/0e21e31030533d79.jpg",
-        "image": "https://media.usequeek.com/theme-assets/lumiere/0e21e31030533d79.jpg",
-        "original": "https://media.usequeek.com/theme-assets/lumiere/0e21e31030533d79.jpg",
+        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/0e21e31030533d79.jpg",
+        "image": "https://media.usequeek.com/theme-assets/_bare/0e21e31030533d79.jpg",
+        "original": "https://media.usequeek.com/theme-assets/_bare/0e21e31030533d79.jpg",
         "gallery": []
       },
       "inventory": {
@@ -316,9 +321,9 @@
         "rating_count": 1
       },
       "media": {
-        "thumbnail": "https://media.usequeek.com/theme-assets/lumiere/57e4183c303aab31.jpg",
-        "image": "https://media.usequeek.com/theme-assets/lumiere/57e4183c303aab31.jpg",
-        "original": "https://media.usequeek.com/theme-assets/lumiere/57e4183c303aab31.jpg",
+        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/57e4183c303aab31.jpg",
+        "image": "https://media.usequeek.com/theme-assets/_bare/57e4183c303aab31.jpg",
+        "original": "https://media.usequeek.com/theme-assets/_bare/57e4183c303aab31.jpg",
         "gallery": []
       },
       "inventory": {
@@ -384,9 +389,9 @@
         "rating_count": 1
       },
       "media": {
-        "thumbnail": "https://media.usequeek.com/theme-assets/lumiere/67913acc7ef19523.jpg",
-        "image": "https://media.usequeek.com/theme-assets/lumiere/67913acc7ef19523.jpg",
-        "original": "https://media.usequeek.com/theme-assets/lumiere/67913acc7ef19523.jpg",
+        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/67913acc7ef19523.jpg",
+        "image": "https://media.usequeek.com/theme-assets/_bare/67913acc7ef19523.jpg",
+        "original": "https://media.usequeek.com/theme-assets/_bare/67913acc7ef19523.jpg",
         "gallery": []
       },
       "inventory": {
@@ -452,9 +457,9 @@
         "rating_count": 1
       },
       "media": {
-        "thumbnail": "https://media.usequeek.com/theme-assets/lumiere/377756cea202d263.jpg",
-        "image": "https://media.usequeek.com/theme-assets/lumiere/377756cea202d263.jpg",
-        "original": "https://media.usequeek.com/theme-assets/lumiere/377756cea202d263.jpg",
+        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/377756cea202d263.jpg",
+        "image": "https://media.usequeek.com/theme-assets/_bare/377756cea202d263.jpg",
+        "original": "https://media.usequeek.com/theme-assets/_bare/377756cea202d263.jpg",
         "gallery": []
       },
       "inventory": {
@@ -495,7 +500,7 @@
       "type": "post",
       "title": "Hello",
       "excerpt": "A placeholder journal entry.",
-      "cover_image_url": "https://media.usequeek.com/theme-assets/lumiere/67913acc7ef19523.jpg",
+      "cover_image_url": "https://media.usequeek.com/theme-assets/_bare/67913acc7ef19523.jpg",
       "tags": [],
       "seo": {
         "title": "Hello — Bare",
@@ -521,7 +526,7 @@
           "data": {
             "images": [
               {
-                "url": "https://media.usequeek.com/theme-assets/lumiere/cd48af92c911f8b6.jpg",
+                "url": "https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg",
                 "alt": "",
                 "title": "A starting point",
                 "subtitle": "Structure and token wiring, no design opinions.",
@@ -609,9 +614,15 @@
       "editor_mode": "sections",
       "content": [
         {
-          "type": "content",
+          "type": "contact",
+          "variant": "default",
           "data": {
-            "markdown": "## Contact\n\nhello@example.com"
+            "heading": "Contact",
+            "description": "Questions about an order or a product? Write to us.",
+            "email": "hello@example.com",
+            "phone": "",
+            "address": "",
+            "hours": ""
           }
         }
       ],
@@ -633,7 +644,7 @@
           "data": {
             "images": [
               {
-                "url": "https://media.usequeek.com/theme-assets/lumiere/cd48af92c911f8b6.jpg",
+                "url": "https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg",
                 "alt": "",
                 "title": "One product, the whole page",
                 "subtitle": "A sales page sells one to three products. The backend binds the merchant’s own to every products section here.",
@@ -664,6 +675,18 @@
           "data": {
             "markdown": "## Questions?\n\nhello@example.com. A sales page closes on a way to ask; give your theme a contact section and end on it."
           }
+        },
+        {
+          "type": "contact",
+          "variant": "default",
+          "data": {
+            "heading": "Contact",
+            "description": "Questions about an order or a product? Write to us.",
+            "email": "hello@example.com",
+            "phone": "",
+            "address": "",
+            "hours": ""
+          }
         }
       ],
       "seo": {
@@ -684,7 +707,7 @@
           "data": {
             "images": [
               {
-                "url": "https://media.usequeek.com/theme-assets/lumiere/201b6247be904af4.jpg",
+                "url": "https://media.usequeek.com/theme-assets/_bare/201b6247be904af4.jpg",
                 "alt": "",
                 "title": "A campaign page",
                 "subtitle": "A season, a launch or an offer: a hero, the products in it, and why now.",
@@ -719,11 +742,42 @@
           "data": {
             "markdown": "## Get in touch\n\nhello@example.com"
           }
+        },
+        {
+          "type": "contact",
+          "variant": "default",
+          "data": {
+            "heading": "Contact",
+            "description": "Questions about an order or a product? Write to us.",
+            "email": "hello@example.com",
+            "phone": "",
+            "address": "",
+            "hours": ""
+          }
         }
       ],
       "seo": {
         "title": "Landing — Bare",
         "description": "A campaign page."
+      }
+    },
+    "faq": {
+      "id": "demo-bare-faq",
+      "slug": "faq",
+      "type": "page",
+      "title": "FAQ",
+      "editor_mode": "sections",
+      "content": [
+        {
+          "type": "content",
+          "data": {
+            "markdown": "## How do I order?\n\nAdd what you want to your cart and check out. Delivery options and fees show at checkout.\n\n## Can I change my order?\n\nMessage us as soon as you can, and we will see what can still be changed."
+          }
+        }
+      ],
+      "seo": {
+        "title": "FAQ — Bare",
+        "description": "Answers to common questions."
       }
     }
   }

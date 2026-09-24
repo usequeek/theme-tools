@@ -15,12 +15,29 @@ function copy(): string {
 }
 afterEach(() => { for (const dir of copies.splice(0)) rmSync(dir, { recursive: true, force: true }); });
 
+/** The skeleton with its placeholders replaced — the starter carries them by
+ *  design (theme/placeholder-content, theme/template-description), so a
+ *  finished-theme assertion needs its own copy with those swapped out. */
+function passingCopy(): string {
+  const dir = copy();
+  const demo = join(dir, 'demo.json');
+  writeFileSync(demo, readFileSync(demo, 'utf8').replaceAll('placeholder-', 'sample-').replaceAll('/theme-assets/_bare/', '/theme-assets/test-fixture/'));
+  const config = join(dir, 'theme.config.ts');
+  writeFileSync(config, readFileSync(config, 'utf8').replace(/description: 'Replace before publishing\.[^']*'/, "description: 'A plain test store: a banner, a product grid and category tiles. Needs a few product photos.'"));
+  return dir;
+}
+
 describe('checkTheme on a real theme folder', () => {
   it('passes the skeleton, naming files relative to where it runs', async () => {
-    const { context, findings } = await checkTheme(FIXTURE, { env: { root: 'theme/' } });
+    const { context, findings } = await checkTheme(passingCopy(), { env: { root: 'theme/' } });
     expect(context.slug).toBe('bare');
     expect(rejects(findings)).toEqual([]);
     expect(findings.every((f) => !f.where || f.where.startsWith('theme/'))).toBe(true);
+  }, 60_000);
+
+  it("rejects the unmodified skeleton for the placeholders it ships by design", async () => {
+    const { findings } = await checkTheme(FIXTURE, { env: { root: 'theme/' } });
+    expect(rejects(findings).map((f) => f.rule).sort()).toEqual(['theme/placeholder-content', 'theme/template-description']);
   }, 60_000);
 
   it('catches a demo store whose products belong to another shop', async () => {

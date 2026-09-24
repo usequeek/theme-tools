@@ -1,16 +1,40 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 /** The built CLI, run as a user runs it — `pnpm build` first. */
 const BIN = resolve(import.meta.dirname, '../bin/run.js');
 const FIXTURE = resolve(import.meta.dirname, '../../../fixtures/starter');
 
-function run(...args: string[]) {
-  const result = spawnSync(process.execPath, [BIN, ...args], { cwd: FIXTURE, encoding: 'utf8', env: { ...process.env, NO_COLOR: '1', QUEEK_THEME_SKIP_NEW_VERSION_CHECK: 'true' } });
+/**
+ * The starter with its placeholders replaced — a theme that should pass.
+ * Copied inside the repo's fixtures/ (like theme-check's own copy()) rather
+ * than the OS tmpdir: theme.config.ts loads through jiti, which resolves
+ * @usequeek/theme-kit by walking up from the file's own directory, and a
+ * folder outside this workspace has no node_modules chain to find it in.
+ */
+function passingTheme(): string {
+  const dir = mkdtempSync(join(resolve(import.meta.dirname, '../../../fixtures'), '.tmp-cli-passing-'));
+  cpSync(FIXTURE, dir, { recursive: true });
+  const demo = join(dir, 'theme/demo.json');
+  writeFileSync(demo, readFileSync(demo, 'utf8').replaceAll('placeholder-', 'sample-').replaceAll('/theme-assets/_bare/', '/theme-assets/test-fixture/'));
+  const config = join(dir, 'theme/theme.config.ts');
+  writeFileSync(config, readFileSync(config, 'utf8').replace(/description: 'Replace before publishing\.[^']*'/, "description: 'A plain test store: a banner, a product grid and category tiles. Needs a few product photos.'"));
+  return dir;
+}
+
+const PASSING = passingTheme();
+afterAll(() => rmSync(PASSING, { recursive: true, force: true }));
+
+function runAt(cwd: string, ...args: string[]) {
+  const result = spawnSync(process.execPath, [BIN, ...args], { cwd, encoding: 'utf8', env: { ...process.env, NO_COLOR: '1', QUEEK_THEME_SKIP_NEW_VERSION_CHECK: 'true' } });
   return { code: result.status, stdout: result.stdout, stderr: result.stderr };
+}
+
+function run(...args: string[]) {
+  return runAt(PASSING, ...args);
 }
 
 describe('queek-theme check', () => {
@@ -20,8 +44,11 @@ describe('queek-theme check', () => {
     expect(stdout).toContain('Also checked when you submit');
   }, 60_000);
 
-  it('exits 1 at --fail-level warning when there are warnings', () => {
-    const { code, stderr } = run('check', '--fail-level', 'warning');
+  it('exits 1 at --fail-level warning when there are findings', () => {
+    // The unmodified skeleton carries the starter's placeholders by design
+    // (theme/placeholder-content, theme/template-description) — a fixture
+    // guaranteed to have at least one finding, unlike the passing copy above.
+    const { code, stderr } = runAt(FIXTURE, 'check', '--fail-level', 'warning');
     expect(code, stderr).toBe(1);
   }, 60_000);
 
@@ -41,7 +68,7 @@ describe('queek-theme check', () => {
   }, 60_000);
 
   it('--format github-actions emits workflow annotations with the file', () => {
-    const { stdout, stderr } = run('check', '--format', 'github-actions');
+    const { stdout, stderr } = runAt(FIXTURE, 'check', '--format', 'github-actions');
     const lines = stdout.trim().split('\n').filter(Boolean);
     expect(lines.length, stderr).toBeGreaterThan(0);
     for (const line of lines) expect(line).toMatch(/^::(error|warning) file=theme\/[^,]+,title=theme\/[a-z-]+::/);

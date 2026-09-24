@@ -1,5 +1,5 @@
 /**
- * Bare theme styles.
+ * Skeleton theme styles.
  *
  * Every value here comes from a design token. That is the point: a vendor's
  * colour, spacing, radius, type-scale and motion dials only reach the page if
@@ -156,4 +156,15 @@
   font-weight: var(--fw-heading);
   letter-spacing: var(--tracking-heading);
   transition: opacity var(--duration-base) var(--ease-standard, ease);
+}
+
+.bare-contact__facts {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.bare-contact__facts dt {
+  font-size: var(--fs-sm);
+  color: var(--brand-text-muted);
 }

@@ -13,6 +13,7 @@ import { Footer } from './footer';
 import { GalleryBlock } from './blocks/gallery';
 import { ProductsBlock } from './blocks/products';
 import { CategoriesBlock } from './blocks/categories';
+import { ContactBlock } from './blocks/contact';
 import { ModalLayer } from './modal-layer';
 import { Home } from './pages/home';
 import { PageView } from './pages/page';
@@ -40,6 +41,7 @@ export const variantImplementations = {
   gallery: { banner: GalleryBlock },
   products: { grid: ProductsBlock },
   categories: { grid: CategoriesBlock },
+  contact: { default: ContactBlock },
 } satisfies ThemeVariantImplementations;
 
 /** How each variant lays out, for the backend's section picker. */
@@ -56,7 +58,7 @@ const blockMap: ThemeBlocks = {
   categories: CategoriesBlock,
   // Declared so a page authored for another theme cannot crash this one. Give
   // them real renderers (and manifest variants) when your design covers them.
-  contact: () => null,
+  contact: ContactBlock,
   blog: () => null,
 };
 

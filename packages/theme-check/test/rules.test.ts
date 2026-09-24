@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUSINESS_KEYS, businessRoot, isBusinessKey } from '../src/utils/business-vocabulary.js';
-import { vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
+import { placeholderContentRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
 import { copyViolations } from '../src/utils/template-copy.js';
 import type { DemoStore, ThemeContext } from '../src/types.js';
 
@@ -161,5 +161,22 @@ describe('theme/vendor-facts', () => {
     expect(found.map((f) => f.found)).toEqual(['vendor.address falls back to "Lagos, Nigeria"']);
     writeFileSync(join(dir, 'footer.tsx'), "<span>{vendor.address ?? ''}</span>");
     expect(await vendorFactsRule.run({ ...context({}), dir })).toEqual([]);
+  });
+});
+
+describe('theme/placeholder-content', () => {
+  const store = (products: Array<{ slug: string; media?: unknown }>): DemoStore => ({ id: 'default', file: 'demo.json', data: { profile: { id: 'demo-x' }, products, pages: {} } });
+
+  it("rejects the starter's placeholder products and photos", async () => {
+    const found = await placeholderContentRule.run(context({ demos: [store([
+      { slug: 'placeholder-one', media: { image: 'https://media.usequeek.com/theme-assets/_bare/0e21e31030533d79.jpg' } },
+      { slug: 'real-dress' },
+    ])] }));
+    expect(found).toHaveLength(1);
+    expect(found[0].found).toBe("1 placeholder product(s) and 1 of the starter's photos");
+  });
+
+  it("passes a store with the developer's own products", async () => {
+    expect(await placeholderContentRule.run(context({ demos: [store([{ slug: 'real-dress', media: { image: 'https://example.test/dress.jpg' } }])] }))).toEqual([]);
   });
 });

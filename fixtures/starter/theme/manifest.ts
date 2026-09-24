@@ -53,6 +53,11 @@ const manifest: ThemeManifest = {
       fields: { title: { type: 'string' }, limit: { type: 'int' } },
       editable: ['space.density', 'image.radius'], best_for: ['product'], auto_pick: true,
     }],
+    contact: [{
+      id: 'default', label: 'Contact', default: true, purpose: 'How to reach the store: a heading, a line and its details',
+      fields: { heading: { type: 'string' }, description: { type: 'text' }, email: { type: 'string' }, phone: { type: 'string' }, address: { type: 'text' }, hours: { type: 'string' } },
+      editable: ['space.density'],
+    }],
   },
 };
 

@@ -7,7 +7,7 @@ import { CartPanel } from './components/cart-panel';
 /**
  * The theme's modal surface. Core owns the auth modal separately (CoreModalLayer).
  *
- * A bare theme mounts only the cart panel. Add a search modal, a product
+ * The skeleton mounts only the cart panel. Add a search modal, a product
  * quick-view or an orders sheet when your design calls for them — the stores
  * that open them (useSearchModalStore, useProductModalStore,
  * useOrdersSheetStore) are core's, so you supply only the presentation.
