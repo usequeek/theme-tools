@@ -66,6 +66,19 @@ describe('runCreate', () => {
     expect(existsSync(join(dir, 'theme/theme.config.ts'))).toBe(true);
   });
 
+  it('names the files --force overwrites before writing, and keeps the rest', async () => {
+    const starter = starterProject();
+    writeFileSync(join(starter, 'README.md'), '# Starter\n');
+    const dir = mkdtempSync(join(tmpdir(), 'create-'));
+    writeFileSync(join(dir, 'README.md'), '# Mine\n');
+    writeFileSync(join(dir, 'notes.txt'), 'mine');
+    const lines: string[] = [];
+    await runCreate(flags(dir, { template: starter, force: true }), null, (line) => lines.push(line));
+    expect(lines).toContain('Overwriting: README.md');
+    expect(lines.indexOf('Overwriting: README.md')).toBeLessThan(lines.findIndex((line) => line.startsWith('Created ')));
+    expect(readFileSync(join(dir, 'notes.txt'), 'utf8')).toBe('mine');
+  });
+
   it('refuses a target that is a file, even with --force, and leaves it untouched', async () => {
     const parent = mkdtempSync(join(tmpdir(), 'create-'));
     const filePath = join(parent, 'my-theme');

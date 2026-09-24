@@ -101,6 +101,7 @@ export async function resolveAnswers(flags: Flags, prompter: Prompter | null, fo
     throw new UsageError('--pages none cannot be combined with other pages.');
   }
   const pageAnswer = pageFlag?.[0] === 'none' ? [] : pageFlag ? checkAll('page', '--pages', pageFlag, PAGES) : undefined;
+  if (flags.noAi && flags.ai !== undefined) throw new UsageError('Use --ai or --no-ai, not both.');
   const aiFlag = csv(flags.ai);
   const aiAnswer = flags.noAi ? false : aiFlag ? checkAll('assistant', '--ai', aiFlag, ASSISTANTS) : undefined;
 

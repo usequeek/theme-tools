@@ -37,6 +37,12 @@ describe('resolveAnswers without a terminal', () => {
     expect(answers).toMatchObject({ pages: [], ai: false });
   });
 
+  it('refuses --ai together with --no-ai', async () => {
+    const error = await resolveAnswers(flags({ dir: 'x-theme', templates: 'laundry', tags: 'minimal', ai: 'claude', noAi: true }), null).catch((e) => e);
+    expect(error).toBeInstanceOf(UsageError);
+    expect(error.message).toBe('Use --ai or --no-ai, not both.');
+  });
+
   it('--pages none must be the only value', async () => {
     const answers = await resolveAnswers(flags({ dir: 'x-theme', templates: 'laundry', tags: 'minimal', pages: 'none' }), null);
     expect(answers.pages).toEqual([]);

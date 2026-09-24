@@ -132,6 +132,8 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
       if (conflicts.length > 0) {
         throw new UsageError(`--force cannot write into ${dir}: these would replace a file with a folder or the reverse: ${conflicts.join(', ')}. Move them first.`);
       }
+      const overwritten = listFiles(stage).filter((file) => lstatOrNull(join(target, file)) !== null);
+      if (overwritten.length > 0) log(`Overwriting: ${overwritten.join(', ')}`);
       try {
         cpSync(stage, target, { recursive: true });
       } catch (error) {
