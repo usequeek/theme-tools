@@ -1,0 +1,28 @@
+{
+  "slugs": [
+    "allure",
+    "atelier",
+    "bare",
+    "beaurify",
+    "carat",
+    "default",
+    "deluxr",
+    "glow",
+    "lumiere",
+    "medley",
+    "nova",
+    "roast"
+  ],
+  "prefixes": [
+    "bare",
+    "br",
+    "ct",
+    "gl",
+    "md",
+    "qa",
+    "ql",
+    "qn",
+    "rs",
+    "td"
+  ]
+}

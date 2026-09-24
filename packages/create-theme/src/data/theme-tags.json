@@ -1,0 +1,4 @@
+{
+  "$comment": "PROVISIONAL tag list for npm create @usequeek/theme (spec create-setup, release 1). Release 3 makes it a contract agreed with queek_backend (tags are published in the registry for their picker); until then theme-check does not enforce it. US spelling, like the business vocabulary. Business words (fashion, food) are not tags: categories carry the business.",
+  "tags": ["light", "dark", "colorful", "monochrome", "warm", "cool", "minimal", "bold", "elegant", "playful", "luxury", "classic", "modern", "editorial", "photo-led", "type-led", "catalog-first", "story-led"]
+}

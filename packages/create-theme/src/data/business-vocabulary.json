@@ -1,0 +1,24 @@
+{
+  "$comment": "The only keys a template's `for` may use (theme.config.ts default_demo.for / demos[].for). `services` are the slugs a vendor registers as; `catalogue` is the marketplace product taxonomy, root -> branches, and `subcategories` a branch -> its own children; each key is the Str::slug of the category name. The backend reads a vendor's business from what they actually sell and ranks a specific (branch) match above a broad one. Agreed with queek_backend 24/9/26 (storefront-theme-templates-contract.md, R2.1; jewelry and beverages R2.5); change it only together with the backend.",
+  "services": [
+    "foods", "local-meals", "shawarma-pizza-snacks", "suya", "boli", "fruits-fresh-natural",
+    "meat-fish", "supermarket", "groceries", "shop-groceries", "local-market", "pharmacy",
+    "health-wellness-store", "fashion", "beauty-cosmetics", "electronics", "phones-accessories",
+    "home-living", "baby-kids", "office-school", "shop", "laundry", "gas-refill", "home-cleaning",
+    "car-wash"
+  ],
+  "catalogue": {
+    "fashion": ["womens-fashion", "mens-fashion", "kids-fashion", "shoes", "bags-accessories", "modest-occasion-wear"],
+    "beauty-personal-care": ["makeup", "skincare", "hair-care-styling", "fragrance", "wigs-extensions-hair-accessories", "personal-care", "beauty-tools-devices"],
+    "electronics": ["computers-laptops", "tv-home-entertainment", "gaming-consoles", "cameras-drones", "smart-home-security", "power-solar"],
+    "phones-tablets": ["smartphones", "tablets-e-readers", "smartwatches-wearables", "chargers-power-banks", "earbuds-headsets", "cases-screen-protection", "phone-repair-replacement"],
+    "home-living": ["furniture", "home-decor", "kitchen-dining", "bedding-bath", "lighting-electrical", "storage-organization"],
+    "baby-kids": ["baby-gear", "feeding-nursing", "diapering-potty", "baby-clothing", "kids-clothing", "toys-games", "school-essentials", "nursery-safety"],
+    "health-wellness": ["vitamins-supplements", "personal-care-hygiene", "fitness-recovery", "sexual-wellness", "medical-supplies", "health-devices", "healthy-living"],
+    "office-school": ["stationery-writing", "office-supplies", "school-supplies", "bags-lunch-gear", "office-furniture", "printers-accessories", "tech-for-school-office"],
+    "supermarket": ["beverages"]
+  },
+  "subcategories": {
+    "bags-accessories": ["jewelry"]
+  }
+}
