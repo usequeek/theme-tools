@@ -42,4 +42,8 @@ describe('renameContent', () => {
   it('treats $& and $$ in slug and prefix as literals, not replacement sequences', () => {
     expect(renameContent('theme-bare bare-main bare', '.css', SKELETON, { slug: 'a$&b', prefix: 'p$$', name: 'N' })).toBe('theme-a$&b p$$-main a$&b');
   });
+
+  it('escapes line terminators in display names for TypeScript', () => {
+    expect(renameContent("name: 'Bare',", '.ts', SKELETON, { ...TO, name: 'A\nB' })).toBe("name: 'A\\nB',");
+  });
 });

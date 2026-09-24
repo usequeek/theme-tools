@@ -22,7 +22,16 @@ const REQUIRED_PAGES = ['home', 'shop', 'about', 'sales', 'landing'];
 /** Must start with the text the check rejects, so no template ships with it. */
 const DESCRIPTION = 'Replace before publishing. Who this template fits, the look, its signature sections and the photos it needs, in at most 300 characters.';
 
-const ts = (text: string): string => `'${text.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+const ts = (text: string): string => {
+  const escaped = text
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(new RegExp(String.fromCharCode(0x2028), 'g'), '\\u2028')
+    .replace(new RegExp(String.fromCharCode(0x2029), 'g'), '\\u2029');
+  return `'${escaped}'`;
+};
 const list = (items: string[]): string => `[${items.map(ts).join(', ')}]`;
 
 export function themeConfigSource(answers: Answers): string {

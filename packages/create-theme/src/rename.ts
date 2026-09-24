@@ -17,7 +17,15 @@ const token = (text: string): RegExp => new RegExp(`(?<![\\w-])${escape(text)}(?
 /** The display name as a literal of the file it is written into. */
 function literal(ext: string, text: string): string {
   if (ext === '.json') return JSON.stringify(text).slice(1, -1);
-  if (ext === '.ts' || ext === '.tsx') return text.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  if (ext === '.ts' || ext === '.tsx') {
+    return text
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(new RegExp(String.fromCharCode(0x2028), 'g'), '\\u2028')
+      .replace(new RegExp(String.fromCharCode(0x2029), 'g'), '\\u2029');
+  }
   return text;
 }
 

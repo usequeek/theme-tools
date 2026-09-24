@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { planTemplates } from '../src/naming.js';
-import { setupTheme, type Answers } from '../src/setup.js';
+import { setupTheme, themeConfigSource, type Answers } from '../src/setup.js';
 import { starterProject } from './helpers.js';
 
 const answers = (overrides: Partial<Answers> = {}): Answers => ({
@@ -60,5 +60,10 @@ describe('setupTheme', () => {
     const bare = starterProject();
     setupTheme(bare, answers({ ai: false }));
     for (const file of ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', '.claude']) expect(existsSync(join(bare, file)), file).toBe(false);
+  });
+
+  it('escapes line terminators in display names', () => {
+    const config = themeConfigSource({ ...answers(), name: 'Mo\nLaundry' });
+    expect(config).toContain("name: 'Mo\\nLaundry'");
   });
 });
