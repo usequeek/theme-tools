@@ -8,7 +8,7 @@ const config = {
   categories: [],
   rank: 0,
   // Every demo store is a template (themes/THEME.md#templates). demo.json is
-  // the primary: name its business, most specific first, in the vocabulary of
+  // the primary: name its business (its business category first), in the vocabulary of
   // lib/storefront/business-vocabulary.json. Its description is what an AI
   // reads to choose it for a merchant — write your own.
   default_demo: {

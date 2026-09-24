@@ -4,7 +4,7 @@ import { foreignImageRefs } from '../utils/theme-demo-images.js';
 import { DEMO_ID_FORMAT, PRIMARY_DEMO_ID } from '../utils/theme-demos.js';
 import { SCREENSHOT_LOCK, TEMPLATE_DESCRIPTION_MAX, TEMPLATE_DESCRIPTION_PLACEHOLDER, declaredFieldsByVariant, isPresentationalField, screenshotFile, screenshotUrl, sectionCopy } from '../utils/theme-templates.js';
 import { copyViolations, isTestimonialSection } from '../utils/template-copy.js';
-import { BUSINESS_KEYS, isBusinessKey } from '../utils/business-vocabulary.js';
+import { BUSINESS_KEYS, SERVICE_SLUGS, isBusinessKey } from '../utils/business-vocabulary.js';
 import { themeSourceFiles } from '../context.js';
 import { finding, type DemoStore, type Finding, type Rule, type ThemeContext } from '../types.js';
 
@@ -173,7 +173,7 @@ export const demoStoresRule: Rule = {
         add(at, `demos[] "${id}" has no label`, 'Give it the name a merchant sees, e.g. "Restaurant & takeaway".');
       }
       if (!Array.isArray(demo.for) || demo.for.length === 0 || demo.for.some((v) => typeof v !== 'string' || v.trim() === '')) {
-        add(at, `demos[] "${id}" has no \`for\` business list`, `List the businesses this store is for, most specific first, from ${context.env.vocabulary} (service slugs like "foods", catalogue keys like "wigs-extensions-hair-accessories"). The backend offers it to matching vendors.`);
+        add(at, `demos[] "${id}" has no \`for\` business list`, `List the businesses this store is for — its business category first (or, for a niche, only catalogue keys) — from ${context.env.vocabulary} (service slugs like "foods", catalogue keys like "wigs-extensions-hair-accessories"). The backend offers it to matching vendors.`);
       }
     }
 
@@ -883,11 +883,26 @@ export const templateBusinessRule: Rule = {
         continue;
       }
       const unknown = keys.filter((key) => typeof key !== 'string' || !isBusinessKey(key));
-      if (unknown.length === 0) continue;
+      if (unknown.length === 0) {
+        // R2.7: the backend matches the business category a merchant picked at setup
+        // first. A general template leads with its category; a niche one (hair, shoes,
+        // jewellery) names none, or it competes as a general template.
+        const named = (keys as string[]).filter((key) => SERVICE_SLUGS.includes(key));
+        if (named.length > 0 && !SERVICE_SLUGS.includes(keys[0] as string)) {
+          const general = [...named, ...(keys as string[]).filter((key) => !named.includes(key))];
+          findings.push(finding(context, 'theme/template-business', 'reject', {
+            where,
+            found: `template "${id}" names the business category ${named.map((key) => JSON.stringify(key)).join(', ')} but leads with ${JSON.stringify(keys[0])}`,
+            fix: `A template for a whole business leads with its category: ${JSON.stringify(general)}. A template for one kind of product (hair, shoes, jewellery, coffee) names only its catalogue keys — drop ${named.map((key) => JSON.stringify(key)).join(', ')}.`,
+            docs: `${context.env.docs}#templates`,
+          }));
+        }
+        continue;
+      }
       findings.push(finding(context, 'theme/template-business', 'reject', {
         where,
         found: `template "${id}" is for ${unknown.map((key) => JSON.stringify(key)).join(', ')}, not in the business vocabulary`,
-        fix: `Use service slugs or catalogue keys from ${context.env.vocabulary} (${BUSINESS_KEYS.size} keys), most specific first. The backend matches vendors on these keys only; any other key matches no one.`,
+        fix: `Use service slugs or catalogue keys from ${context.env.vocabulary} (${BUSINESS_KEYS.size} keys): a whole business leads with its category, a niche names only catalogue keys. The backend matches vendors on these keys only; any other key matches no one.`,
         docs: `${context.env.docs}#templates`,
       }));
     }

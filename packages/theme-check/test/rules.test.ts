@@ -49,6 +49,16 @@ describe('business vocabulary', () => {
   });
 });
 
+describe('theme/template-business order (R2.7)', () => {
+  it('rejects a named business category behind a catalogue key; passes general and niche', async () => {
+    const found = await templateBusinessRule.run(context({
+      defaultFor: ['makeup', 'beauty-cosmetics'],
+      declaredDemos: [{ id: 'hair', label: 'Hair', for: ['wigs-extensions-hair-accessories'] }, { id: 'food', label: 'Food', for: ['foods', 'local-meals'] }],
+    }));
+    expect(found.map((f) => f.found)).toEqual(['template "default" names the business category "beauty-cosmetics" but leads with "makeup"']);
+  });
+});
+
 describe('theme/template-copy', () => {
   const variants = {
     content: [
