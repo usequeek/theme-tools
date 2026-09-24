@@ -77,6 +77,7 @@ describe('theme/template-copy', () => {
     expect(found).toEqual([]);
     expect(copyViolations('Sourdough fermented for 36 hours', null)).toEqual([]);
     expect(copyViolations('Cooked over open flame since 2014', null)).toEqual(['dates the store ("since 2014")']);
+    expect(copyViolations('Email hello@zuri.ng to see what we hold.', null)).toEqual(['gives the store’s contact details ("hello@zuri.ng")']);
   });
 });
 

@@ -5,7 +5,8 @@
  * without rewriting it, so its copy must be true of ANY store in that business:
  * no demo store name ("…at Mama Tee's"), no place ("delivered across Lekki"),
  * no naira amount ("free delivery over ₦5,000"), no promise only the vendor can
- * make (a delivery window, a return period, a guarantee) and no founding date.
+ * make (a delivery window, a return period, a guarantee), no founding date and
+ * no email or phone number.
  * Testimonials and reviews are exempt; the backend never places their copy on a
  * real store.
  */
@@ -87,6 +88,9 @@ const PROMISE = new RegExp([
 /** A founding date is the demo store's history, not the business's: "since 2014", "started in 2019". */
 const STORE_HISTORY = /\b(?:since|est\.?|established) (?:19|20)\d\d\b|\b(?:founded|started|opened)\b[^.!?]{0,40}?\b(?:19|20)\d\d\b/i;
 
+/** The demo store's email or phone number, written into the words ("Email hello@zuri.ng"). */
+const CONTACT = /[\w.+-]+@[\w-]+\.[a-z]{2,}|\+234[\s\d]{6,}|\b0[789][01]\d[\s-]?\d{3}[\s-]?\d{4}\b/i;
+
 /** Why one copy string could not go live on another store unchanged; empty when it can. */
 export function copyViolations(text: string, storeName: string | null | undefined): string[] {
   const found: string[] = [];
@@ -99,6 +103,8 @@ export function copyViolations(text: string, storeName: string | null | undefine
   if (promise) found.push(`makes a promise ("${promise[0]}")`);
   const history = STORE_HISTORY.exec(text);
   if (history) found.push(`dates the store ("${history[0]}")`);
+  const contact = CONTACT.exec(text);
+  if (contact) found.push(`gives the store’s contact details ("${contact[0]}")`);
   return found;
 }
 
