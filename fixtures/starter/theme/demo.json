@@ -671,12 +671,6 @@
           }
         },
         {
-          "type": "content",
-          "data": {
-            "markdown": "## Questions?\n\nhello@example.com. A sales page closes on a way to ask; give your theme a contact section and end on it."
-          }
-        },
-        {
           "type": "contact",
           "variant": "default",
           "data": {
@@ -735,12 +729,6 @@
           "data": {
             "title": "Shop by category",
             "limit": 3
-          }
-        },
-        {
-          "type": "content",
-          "data": {
-            "markdown": "## Get in touch\n\nhello@example.com"
           }
         },
         {
