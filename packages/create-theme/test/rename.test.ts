@@ -38,4 +38,8 @@ describe('renameContent', () => {
     expect(renameContent("name: 'Bare',", '.ts', SKELETON, TO)).toBe("name: 'Mọ́ Laundry\\'s',");
     expect(renameContent('{"name": "Bare"}', '.json', SKELETON, { ...TO, name: 'Say "hi"' })).toBe('{"name": "Say \\"hi\\""}');
   });
+
+  it('treats $& and $$ in slug and prefix as literals, not replacement sequences', () => {
+    expect(renameContent('theme-bare bare-main bare', '.css', SKELETON, { slug: 'a$&b', prefix: 'p$$', name: 'N' })).toBe('theme-a$&b p$$-main a$&b');
+  });
 });

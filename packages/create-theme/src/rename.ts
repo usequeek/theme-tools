@@ -30,11 +30,11 @@ function literal(ext: string, text: string): string {
  */
 export function renameContent(content: string, ext: string, from: Identity, to: Identity): string {
   return content
-    .replace(new RegExp(`(?<![\\w-])theme-${escape(from.slug)}(?![\\w-])`, 'g'), `theme-${to.slug}`)
-    .replace(new RegExp(`(?<![\\w-])demo-${escape(from.slug)}(?![\\w])`, 'g'), `demo-${to.slug}`)
-    .replace(new RegExp(`(?<![\\w-])${escape(from.prefix)}-(?=[\\w$])`, 'g'), `${to.prefix}-`)
+    .replace(new RegExp(`(?<![\\w-])theme-${escape(from.slug)}(?![\\w-])`, 'g'), () => `theme-${to.slug}`)
+    .replace(new RegExp(`(?<![\\w-])demo-${escape(from.slug)}(?![\\w])`, 'g'), () => `demo-${to.slug}`)
+    .replace(new RegExp(`(?<![\\w-])${escape(from.prefix)}-(?=[\\w$])`, 'g'), () => `${to.prefix}-`)
     .replace(token(from.name), () => literal(ext, to.name))
-    .replace(token(from.slug), to.slug);
+    .replace(token(from.slug), () => to.slug);
 }
 
 function walk(dir: string): string[] {
