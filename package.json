@@ -14,7 +14,7 @@
     "publint": "pnpm -r exec publint --strict",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "pnpm build && changeset publish",
+    "release": "node scripts/check-starter-tag.mjs && pnpm build && changeset publish",
     "e2e": "node scripts/e2e.mjs"
   },
   "devDependencies": {
