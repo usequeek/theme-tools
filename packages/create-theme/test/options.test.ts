@@ -35,6 +35,16 @@ describe('resolveAnswers without a terminal', () => {
     const answers = await resolveAnswers(flags({ dir: 'x-theme', templates: 'laundry', tags: 'minimal', pages: 'none', noAi: true }), null);
     expect(answers).toMatchObject({ pages: [], ai: false });
   });
+
+  it('--pages none must be the only value', async () => {
+    const answers = await resolveAnswers(flags({ dir: 'x-theme', templates: 'laundry', tags: 'minimal', pages: 'none' }), null);
+    expect(answers.pages).toEqual([]);
+    await expect(resolveAnswers(flags({ dir: 'x-theme', templates: 'laundry', tags: 'minimal', pages: 'none,faq' }), null)).rejects.toThrow(/--pages none cannot be combined/);
+  });
+
+  it('--categories cannot be empty', async () => {
+    await expect(resolveAnswers(flags({ dir: 'x-theme', templates: 'laundry', tags: 'minimal', categories: '' }), null)).rejects.toThrow(/at least one business category/);
+  });
 });
 
 describe('equivalentCommand', () => {
@@ -42,5 +52,10 @@ describe('equivalentCommand', () => {
     const answers = await resolveAnswers(flags({ dir: 'mo', name: 'Mo', templates: 'laundry', tags: 'minimal' }), null);
     expect(equivalentCommand('npm', 'mo', answers)).toBe("npm create @usequeek/theme@latest mo -- --name 'Mo' --templates laundry --primary laundry --categories laundry --tags minimal --pages contact,faq --ai claude,gemini");
     expect(equivalentCommand('pnpm', 'mo', answers)).toMatch(/^pnpm create @usequeek\/theme mo --name/);
+  });
+
+  it('quotes dir when it contains special characters', async () => {
+    const answers = await resolveAnswers(flags({ dir: 'New Theme', name: 'New', templates: 'laundry', tags: 'minimal' }), null);
+    expect(equivalentCommand('npm', 'New Theme', answers)).toMatch(/^npm create @usequeek\/theme@latest 'New Theme' -- /);
   });
 });

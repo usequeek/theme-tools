@@ -80,6 +80,7 @@ export async function resolveAnswers(flags: Flags, prompter: Prompter | null): P
 
   const categories = csv(flags.categories)
     ?? (prompter ? await prompter.categories(defaultCategories(templates.map((t) => t.key))) : defaultCategories(templates.map((t) => t.key)));
+  if (categories.length === 0) throw new UsageError('Pick at least one business category for --categories.');
   checkAll('category', '--categories', categories, SERVICES);
 
   const tags = csv(flags.tags) ?? (prompter ? await prompter.tags() : required('--tags', TAGS));
@@ -87,6 +88,9 @@ export async function resolveAnswers(flags: Flags, prompter: Prompter | null): P
   checkAll('tag', '--tags', tags, TAGS);
 
   const pageFlag = csv(flags.pages);
+  if (pageFlag && pageFlag.includes('none') && pageFlag.length > 1) {
+    throw new UsageError('--pages none cannot be combined with other pages.');
+  }
   const pages = pageFlag?.[0] === 'none' ? [] : pageFlag
     ? checkAll('page', '--pages', pageFlag, PAGES)
     : (prompter ? await prompter.pages([...PAGES]) : [...PAGES]);
@@ -100,8 +104,11 @@ export async function resolveAnswers(flags: Flags, prompter: Prompter | null): P
 
 const quote = (text: string): string => `'${text.replace(/'/g, "'\\''")}'`;
 
+const needsQuoting = (text: string): boolean => !/^[A-Za-z0-9._/-]+$/.test(text);
+
 /** The command that repeats this setup without a single prompt. npm needs `--` before create's flags. */
 export function equivalentCommand(pm: PackageManager, dir: string, answers: Answers): string {
+  const quotedDir = needsQuoting(dir) ? quote(dir) : dir;
   const flags = [
     `--name ${quote(answers.name)}`,
     `--templates ${answers.templates.map((t) => t.key).join(',')}`,
@@ -111,5 +118,5 @@ export function equivalentCommand(pm: PackageManager, dir: string, answers: Answ
     `--pages ${answers.pages.length ? answers.pages.join(',') : 'none'}`,
     answers.ai === false ? '--no-ai' : `--ai ${answers.ai.join(',')}`,
   ].join(' ');
-  return pm === 'npm' ? `npm create @usequeek/theme@latest ${dir} -- ${flags}` : `${pm} create @usequeek/theme ${dir} ${flags}`;
+  return pm === 'npm' ? `npm create @usequeek/theme@latest ${quotedDir} -- ${flags}` : `${pm} create @usequeek/theme ${quotedDir} ${flags}`;
 }
