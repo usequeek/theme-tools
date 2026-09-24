@@ -1067,13 +1067,86 @@ export const templateCopyRule: Rule = {
 
 /* ── BE8: a vendor's facts never fall back to the theme author's words ── */
 
+const VENDOR_FACTS = ['tagline', 'address', 'phone', 'email', 'description'];
+/** `vendor.tagline`, `store?.address`, `profile.phone`… */
+const FACT_REF = new RegExp(`\\b(?:vendor|store|profile)\\??\\.(${VENDOR_FACTS.join('|')})\\b`, 'g');
+
 /**
- * `vendor.tagline ?? 'Editorial fashion house'`: a store without a tagline
- * (address, phone, email, description) then shows the theme author's words
- * as its own — "Lagos, Nigeria" under every atelier store with no address.
- * An empty fallback is fine; a worded one is not.
+ * The rest of the expression that starts at `from`: up to the `}`, `)` or `]`
+ * that closes it, or a `;`/`,` at its own depth — across lines, skipping
+ * strings. So `{vendor.tagline ?? ''}…{label || 'Visit us'}` stops at the
+ * first `}` and never reads the second expression as the first's fallback.
  */
-const VENDOR_FACT_FALLBACK = /vendor\??\.(tagline|address|phone|email|description)\b[^;\n]{0,40}?(?:\?\?|\|\|)\s*['"`]([^'"`\n]*[^'"`\s][^'"`\n]*)['"`]/;
+function expressionAfter(source: string, from: number): string {
+  let depth = 0;
+  let quote: string | null = null;
+  const end = Math.min(source.length, from + 400);
+  for (let i = from; i < end; i++) {
+    const ch = source[i];
+    if (quote) {
+      if (ch === '\\') i++;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') quote = ch;
+    else if ('([{'.includes(ch)) depth++;
+    else if (')]}'.includes(ch)) {
+      if (depth === 0) return source.slice(from, i);
+      depth--;
+    } else if ((ch === ';' || ch === ',') && depth === 0) return source.slice(from, i);
+  }
+  return source.slice(from, end);
+}
+
+const WORDS = String.raw`([^'"\x60\n]*[^'"\x60\s][^'"\x60\n]*)`;
+/** `?? 'words'`, `|| 'words'` */
+const OR_WORDS = new RegExp(String.raw`(?:\?\?|\|\|)\s*(['"\x60])${WORDS}\1`);
+/** A ternary's other branch: `: 'words'` or `: <p>Words` */
+const ELSE_WORDS = new RegExp(String.raw`:\s*(?:(['"\x60])${WORDS}\1|<[a-z][\w.-]*[^>]*>\s*([A-Za-z][^<{]{2,}))`);
+/** A ternary `?` — not `?.` or `??`. */
+const TERNARY = /(?:^|[^?.])\?(?![?.])/;
+
+/**
+ * Where a vendor's own fact is shown with words of the theme's for when the
+ * vendor has none — `vendor.address ?? 'Lagos, Nigeria'`, `tagline || 'Quiet
+ * luxury…'`, `brandTagline ? … : <p>Refined wardrobe…</p>` (through a variable
+ * assigned from the fact). A store without one would show those words as its own.
+ */
+export function vendorFactFallbacks(source: string): Array<{ fact: string; words: string }> {
+  const code = stripComments(source);
+  const found = new Map<string, { fact: string; words: string }>();
+  const check = (fact: string, rest: string): void => {
+    const or = OR_WORDS.exec(rest);
+    const other = TERNARY.test(rest) ? ELSE_WORDS.exec(rest) : null;
+    const hit = or ?? other;
+    if (!hit) return;
+    // `… ?? vendor.name ?? 'Our story'` never shows: every vendor has a name (backend, BE9).
+    if (/\b(?:vendor|store|profile)\??\.name\b/.test(rest.slice(0, hit.index))) return;
+    const words = (hit[2] ?? hit[3] ?? '').trim();
+    if (words) found.set(`${fact}:${words}`, { fact, words });
+  };
+  for (const match of code.matchAll(FACT_REF)) check(match[1], expressionAfter(code, match.index! + match[0].length));
+  // Facts held in a variable: `const t = stripMarkdown(vendor.tagline ?? '') || 'Quiet luxury';`
+  // (the declaration itself), then every later `t ?? …` / `t ? … : …`.
+  const locals: Array<{ name: string; fact: string }> = [];
+  for (const match of code.matchAll(/\b(?:const|let)\s+(\w+)\s*=\s*([^;\n]*)/g)) {
+    const fact = VENDOR_FACTS.find((name) => new RegExp(`\\b(?:vendor|store|profile)\\??\\.${name}\\b`).test(match[2]));
+    if (!fact) continue;
+    check(fact, match[2].slice(match[2].search(new RegExp(`\\.${fact}\\b`)) + fact.length + 1));
+    locals.push({ name: match[1], fact });
+  }
+  // `const { tagline, address: where } = vendor;`
+  for (const match of code.matchAll(/\b(?:const|let)\s*\{([^}]*)\}\s*=\s*(?:vendor|store|profile)\b/g)) {
+    for (const part of match[1].split(',')) {
+      const [key, alias] = part.split(':').map((text) => text.trim().split(/\s*=/)[0]);
+      if (VENDOR_FACTS.includes(key)) locals.push({ name: alias || key, fact: key });
+    }
+  }
+  for (const { name, fact } of locals) {
+    for (const use of code.matchAll(new RegExp(`(?<![.\\w])${name}\\b(?!\\s*[=:](?!=))`, 'g'))) check(fact, expressionAfter(code, use.index! + use[0].length));
+  }
+  return [...found.values()];
+}
 
 export const vendorFactsRule: Rule = {
   id: 'theme/vendor-facts',
@@ -1083,20 +1156,66 @@ export const vendorFactsRule: Rule = {
     if (context.retired) return [];
     const findings: Finding[] = [];
     for (const path of themeSourceFiles(context.dir)) {
-      const match = VENDOR_FACT_FALLBACK.exec(stripComments(readFileSync(path, 'utf8')));
-      if (!match) continue;
-      findings.push(finding(context, 'theme/vendor-facts', 'reject', {
-        where: relative(context.dir, path),
-        found: `vendor.${match[1]} falls back to "${match[2]}"`,
-        fix: `A store with no ${match[1]} would show these words as its own. Render nothing when it is empty (\`vendor.${match[1]} ?? ''\`, or leave the element out).`,
-        docs: `${context.env.docs}#component-rules`,
-      }));
+      for (const { fact, words } of vendorFactFallbacks(readFileSync(path, 'utf8'))) {
+        findings.push(finding(context, 'theme/vendor-facts', 'reject', {
+          where: relative(context.dir, path),
+          found: `vendor.${fact} falls back to "${words}"`,
+          fix: `A store with no ${fact} would show these words as its own. Render nothing when it is empty (\`vendor.${fact} ?? ''\`, or leave the element out).`,
+          docs: `${context.env.docs}#component-rules`,
+        }));
+      }
     }
     return findings;
   },
 };
 
-export const STATIC_RULES: Rule[] = [moduleContractRule, structureRule, demoStoreRule, demoStoresRule, demoArtRule, codeQualityRule, sdkBoundaryRule, selectionMetadataRule, demoCompletenessRule, subscribeScopeRule, demoBlockTypesRule, identityRule, productMetafieldsRule, poweredByRule,
+/* ── Fonts ship as files in the theme (storefront 0d66ed0) ─────────────── */
+
+function themeCssFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return entry.name === 'node_modules' ? [] : themeCssFiles(full);
+    return entry.name.endsWith('.css') ? [full] : [];
+  });
+}
+
+export const fontsSelfHostedRule: Rule = {
+  id: 'theme/fonts-self-hosted',
+  summary: 'Theme fonts ship as files in the theme: next/font/google is rejected (it fails builds), a Google Fonts @import is flagged',
+  kind: 'static',
+  run(context) {
+    const findings: Finding[] = [];
+    const fix = `Put the font's .woff2 files in ${context.env.root}fonts/ and declare them in fonts/fonts.css with @font-face (font-display: swap), imported from layout.tsx — or use next/font/local, which reads a file in the repo. next/font/google downloads fonts DURING THE BUILD, and Google intermittently serves URLs Turbopack cannot parse, failing the build ("next/font/google queries have exactly one entry", vercel/next.js#99114).`;
+
+    for (const path of themeSourceFiles(context.dir)) {
+      const source = stripComments(readFileSync(path, 'utf8'));
+      if (/from\s+['"]next\/font\/google['"]/.test(source)) {
+        findings.push(finding(context, 'theme/fonts-self-hosted', 'reject', {
+          where: relative(context.dir, path),
+          found: 'imports next/font/google',
+          fix,
+          docs: `${context.env.docs}#fonts`,
+        }));
+      }
+    }
+
+    for (const path of themeCssFiles(context.dir)) {
+      const css = readFileSync(path, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+      if (/@import\s+(?:url\()?['"]?https?:\/\/fonts\.googleapis\.com/.test(css)) {
+        findings.push(finding(context, 'theme/fonts-self-hosted', 'warn', {
+          where: relative(context.dir, path),
+          found: 'loads a font with @import from fonts.googleapis.com',
+          fix: `Either the bundler drops it (it only survives as the very first rule of the compiled stylesheet), so the font never loads, or it survives and every page load waits on an extra render-blocking request to Google before the text can paint. ${fix}`,
+          docs: `${context.env.docs}#fonts`,
+        }));
+      }
+    }
+
+    return findings;
+  },
+};
+
+export const STATIC_RULES: Rule[] = [moduleContractRule, structureRule, demoStoreRule, demoStoresRule, demoArtRule, codeQualityRule, sdkBoundaryRule, selectionMetadataRule, demoCompletenessRule, subscribeScopeRule, demoBlockTypesRule, identityRule, productMetafieldsRule, poweredByRule, fontsSelfHostedRule,
   templateDescriptionRule, templateScreenshotRule, templateChromeRule, templateStyleRule,
   templateBusinessRule, templateVersionsRule, templatePagesRule, templateCopyRule, vendorFactsRule,
 ];
