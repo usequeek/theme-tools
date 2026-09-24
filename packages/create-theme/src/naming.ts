@@ -17,6 +17,7 @@ export function slugProblem(slug: string): string | null {
 
 /** The CSS class prefix: the slug's initials, 2–4 characters, never a Queek theme's own. */
 export function prefixFor(slug: string): string {
+  if (!/^[a-z][a-z0-9-]*$/.test(slug)) throw new Error(`prefixFor needs a valid slug, got "${slug}"`);
   const words = slug.split('-').filter(Boolean);
   const initials = words.map((word) => word[0]).join('');
   const candidates = [initials.slice(0, 3), initials.slice(0, 2), slug.replace(/-/g, '').slice(0, 2), slug.replace(/-/g, '').slice(0, 3)];
@@ -40,6 +41,7 @@ export interface TemplatePlan {
  */
 export function planTemplates(keys: string[], primary?: string): TemplatePlan[] {
   const unique = [...new Set(keys)];
+  if (unique.length === 0) return [];
   const first = primary && unique.includes(primary) ? primary : unique[0];
   const ordered = [first, ...unique.filter((key) => key !== first)];
   return ordered.map((key, index) => ({ id: index === 0 ? 'default' : key, key, label: labelOf(key), for: [key], primary: index === 0 }));
