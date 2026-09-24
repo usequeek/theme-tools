@@ -1,6 +1,6 @@
 {
   "name": "@usequeek/theme-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "queek-theme \u2014 preview, check and package Queek storefront themes.",
   "license": "MIT",
   "type": "module",
