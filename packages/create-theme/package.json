@@ -25,9 +25,16 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@clack/prompts": "^1.8.1",
     "giget": "^3.3.1"
   },
-  "keywords": ["queek", "theme", "storefront", "create", "starter"],
+  "keywords": [
+    "queek",
+    "theme",
+    "storefront",
+    "create",
+    "starter"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/usequeek/theme-tools.git",

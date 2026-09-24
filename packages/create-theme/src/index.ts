@@ -1,62 +1,117 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, join, relative, resolve } from 'node:path';
+import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, relative, resolve } from 'node:path';
 import { downloadTemplate } from 'giget';
+import { UsageError, equivalentCommand, resolveAnswers, type Flags, type PackageManager, type Prompter } from './options.js';
+import { setupTheme, type Answers } from './setup.js';
 
-/** The official starter: theme files only, the tools come from npm. */
-export const STARTER = 'github:usequeek/theme-starter';
+export { UsageError, CancelledError, type Flags, type Prompter, type PackageManager } from './options.js';
+export { setupTheme, type Answers } from './setup.js';
 
-export interface CreateThemeOptions {
-  /** Folder to create. Must be empty or missing. */
-  dir: string;
-  /** Run the package manager's install afterwards. */
-  install?: boolean;
-  /** Where progress goes; stdout by default. */
-  log?: (line: string) => void;
-  /** giget source — overridable for tests and forks. */
-  template?: string;
-}
+const VERSION = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
+/** The starter this release was tested with: its tag matches this package's version (`yarn starter:publish --tag`). */
+export const STARTER = `github:usequeek/theme-starter#v${VERSION}`;
 
-type PackageManager = 'npm' | 'pnpm' | 'yarn' | 'bun';
-
-/** The package manager that ran us (`npm create`, `pnpm create`…), from the user agent it sets. */
 export function detectPackageManager(userAgent = process.env.npm_config_user_agent ?? ''): PackageManager {
   const name = userAgent.split('/')[0];
   return name === 'pnpm' || name === 'yarn' || name === 'bun' ? name : 'npm';
 }
 
-/** Copy the starter into `dir`, name the package after the folder, and install. */
-export async function createTheme(options: CreateThemeOptions): Promise<void> {
+export const HELP = `Create a Queek storefront theme.
+
+  npm create @usequeek/theme@latest my-theme -- --templates laundry --tags minimal
+  pnpm create @usequeek/theme my-theme --templates laundry --tags minimal
+
+npm needs -- before these flags. In a terminal, anything you leave out is asked.
+
+  --name <text>          theme name (default: the folder name)
+  --templates <keys>     businesses to make templates for, comma-separated
+  --primary <key>        the primary template (default: the first)
+  --categories <keys>    business categories (default: the templates')
+  --tags <tags>          1–6 tags for the look
+  --pages <list|none>    extra pages: contact, faq (default: both)
+  --ai <list>, --no-ai   AI assistants: claude, gemini (default: both; AGENTS.md always)
+  --pm <npm|pnpm|yarn|bun>, --no-install, --no-git
+  --yes, -y              accept every default, never prompt
+  --dry-run              print what would be written; write nothing
+  --force                allow a folder that is not empty
+  --template <source>    another starter: a giget source or a local folder`;
+
+function targetState(dir: string): 'missing' | 'usable' | 'busy' {
+  if (!existsSync(dir)) return 'missing';
+  if (!statSync(dir).isDirectory()) return 'busy';
+  const entries = readdirSync(dir).filter((entry) => entry !== '.git');
+  return entries.length === 0 ? 'usable' : 'busy';
+}
+
+async function fetchStarter(source: string, into: string): Promise<void> {
+  const local = resolve(source);
+  if (existsSync(local) && statSync(local).isDirectory()) {
+    cpSync(local, into, { recursive: true, filter: (path) => !/[\\/](node_modules|\.git)([\\/]|$)/.test(path) });
+    return;
+  }
+  try {
+    await downloadTemplate(source, { dir: into, force: true });
+  } catch (error) {
+    throw new Error(`Could not download the starter from ${source} (${(error as Error).message}). Check your connection, or pass --template github:usequeek/theme-starter for the latest.`);
+  }
+}
+
+function listFiles(dir: string, root = dir): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    return statSync(path).isDirectory() ? listFiles(path, root) : [relative(root, path).replace(/\\/g, '/')];
+  }).sort();
+}
+
+export async function createTheme(dir: string, answers: Answers, options: { install: boolean; git: boolean; pm: PackageManager; dryRun: boolean; force: boolean; template?: string; log?: (line: string) => void }): Promise<void> {
   const log = options.log ?? ((line: string) => console.log(line));
-  const dir = resolve(options.dir);
-  if (existsSync(dir) && readdirSync(dir).length > 0) {
-    throw new Error(`${options.dir} already exists and is not empty. Choose a new folder.`);
+  const target = resolve(dir);
+  if (targetState(target) === 'busy' && !options.force) throw new UsageError(`${dir} is not empty. Choose another folder, or pass --force to write into it.`);
+
+  const stage = mkdtempSync(join(tmpdir(), 'queek-theme-'));
+  try {
+    await fetchStarter(options.template ?? STARTER, stage);
+    setupTheme(stage, answers);
+    if (options.dryRun) {
+      log(`Would create ${dir}:`);
+      for (const file of listFiles(stage)) log(`  ${file}`);
+      return;
+    }
+    cpSync(stage, target, { recursive: true });
+  } finally {
+    rmSync(stage, { recursive: true, force: true });
   }
 
-  log(`Creating a Queek theme in ${relative(process.cwd(), dir) || '.'}…`);
-  await downloadTemplate(options.template ?? STARTER, { dir, force: true });
-
-  const manifest = join(dir, 'package.json');
-  if (existsSync(manifest)) {
-    const pkg = JSON.parse(readFileSync(manifest, 'utf8')) as Record<string, unknown>;
-    pkg.name = basename(dir).toLowerCase().replace(/[^a-z0-9-]+/g, '-');
-    writeFileSync(manifest, `${JSON.stringify(pkg, null, 2)}\n`);
+  const shown = relative(process.cwd(), target) || '.';
+  if (options.install) {
+    log(`Installing dependencies with ${options.pm}…`);
+    const result = spawnSync(options.pm, ['install'], { cwd: target, stdio: 'inherit', shell: process.platform === 'win32' });
+    if (result.status !== 0) throw new Error(`${options.pm} install failed. The theme is in ${shown}; run \`${options.pm} install\` there.`);
+  }
+  if (options.git) {
+    const inside = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: target, encoding: 'utf8' });
+    if (inside.error) log('git is not installed; skipped git init.');
+    else if (inside.status === 0 && !existsSync(join(target, '.git'))) log('Already inside a git repository; skipped git init.');
+    else if (!existsSync(join(target, '.git'))) spawnSync('git', ['init', '-q'], { cwd: target });
   }
 
-  const pm = detectPackageManager();
-  if (options.install !== false) {
-    log(`Installing dependencies with ${pm}…`);
-    const result = spawnSync(pm, ['install'], { cwd: dir, stdio: 'inherit', shell: process.platform === 'win32' });
-    if (result.status !== 0) throw new Error(`${pm} install failed. Run it yourself in ${options.dir}.`);
-  }
-
-  const run = pm === 'npm' ? 'npm run' : pm;
+  const run = options.pm === 'npm' ? 'npm run' : options.pm;
   log('');
-  log('Done. Next:');
-  log(`  cd ${relative(process.cwd(), dir) || '.'}`);
-  if (options.install === false) log(`  ${pm} install`);
-  log(`  ${run} dev       # preview every page at http://localhost:3000`);
-  log(`  ${run} check     # check it against the Queek theme contract`);
+  log(`Created ${answers.name} in ${shown}. Next:`);
+  log(`  cd ${shown}`);
+  if (!options.install) log(`  ${options.pm} install`);
+  log(`  ${run} dev     # preview every template`);
+  log(`  ${run} check   # your to-do list: descriptions, each template's own home, your products and photos`);
   log('');
-  log('Build the theme in theme/. The contract is docs/THEME.md.');
+  log(`To repeat this setup: ${equivalentCommand(options.pm, dir, answers)}`);
+}
+
+/** Flags → answers (prompting when a prompter is given) → the theme. Shared by the CLI and `queek-theme init`. */
+export async function runCreate(flags: Flags, prompter: Prompter | null, log?: (line: string) => void): Promise<void> {
+  const answers = await resolveAnswers(flags, prompter);
+  const pm = (flags.pm as PackageManager | undefined) ?? detectPackageManager();
+  if (!['npm', 'pnpm', 'yarn', 'bun'].includes(pm)) throw new UsageError(`--pm must be npm, pnpm, yarn or bun, not "${pm}".`);
+  await createTheme(flags.dir ?? 'my-theme', answers, { install: flags.install, git: flags.git, pm, dryRun: flags.dryRun, force: flags.force, template: flags.template, log });
 }
