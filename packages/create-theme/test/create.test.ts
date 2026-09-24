@@ -1,9 +1,9 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCreate } from '../src/index.js';
+import { UsageError, runCreate } from '../src/index.js';
 import type { Flags, Prompter } from '../src/options.js';
 import { starterProject } from './helpers.js';
 
@@ -91,6 +91,35 @@ describe('runCreate', () => {
   it('checks --pm before asking anything', async () => {
     const dir = join(mkdtempSync(join(tmpdir(), 'create-')), 'my-theme');
     await expect(runCreate(flags(dir, { templates: undefined, tags: undefined, pm: 'deno' }), throwingPrompter, () => {})).rejects.toThrow(/--pm must be npm, pnpm, yarn or bun/);
+  });
+
+  it('copies a local --template that sits under a node_modules folder', async () => {
+    const starter = join(mkdtempSync(join(tmpdir(), 'create-')), 'node_modules', 'starter');
+    cpSync(starterProject(), starter, { recursive: true });
+    const dir = join(mkdtempSync(join(tmpdir(), 'create-')), 'my-theme');
+    await runCreate(flags(dir, { template: starter }), null, () => {});
+    expect(existsSync(join(dir, 'theme/theme.config.ts'))).toBe(true);
+  });
+
+  it("leaves out a local --template's own node_modules and .git", async () => {
+    const starter = starterProject();
+    mkdirSync(join(starter, 'node_modules/some-dep'), { recursive: true });
+    writeFileSync(join(starter, 'node_modules/some-dep/index.js'), '');
+    mkdirSync(join(starter, '.git'));
+    writeFileSync(join(starter, '.git/HEAD'), 'ref: refs/heads/main\n');
+    const dir = join(mkdtempSync(join(tmpdir(), 'create-')), 'my-theme');
+    await runCreate(flags(dir, { template: starter }), null, () => {});
+    expect(existsSync(join(dir, 'node_modules'))).toBe(false);
+    expect(existsSync(join(dir, '.git'))).toBe(false);
+  });
+
+  it('refuses a --template that is not a Queek theme starter (exit 2), leaving no folder', async () => {
+    const empty = mkdtempSync(join(tmpdir(), 'create-empty-'));
+    const dir = join(mkdtempSync(join(tmpdir(), 'create-')), 'my-theme');
+    const error = await runCreate(flags(dir, { template: empty }), null, () => {}).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(UsageError);
+    expect((error as Error).message).toBe(`${empty} is not a Queek theme starter (no theme/theme.config.ts).`);
+    expect(existsSync(dir)).toBe(false);
   });
 
   // existsSync follows symlinks, so a dangling one used to read as "nothing here" right

@@ -95,14 +95,16 @@ function conflictingPaths(stage: string, target: string, root = ''): string[] {
 async function fetchStarter(source: string, into: string): Promise<void> {
   const local = resolve(source);
   if (existsSync(local) && statSync(local).isDirectory()) {
-    cpSync(local, into, { recursive: true, filter: (path) => !/[\\/](node_modules|\.git)([\\/]|$)/.test(path) });
-    return;
+    // Relative to the starter: a starter that itself sits under a node_modules folder still copies.
+    cpSync(local, into, { recursive: true, filter: (path) => !/(^|[\\/])(node_modules|\.git)([\\/]|$)/.test(relative(local, path)) });
+  } else {
+    try {
+      await downloadTemplate(source, { dir: into, force: true });
+    } catch (error) {
+      throw new Error(`Could not download the starter from ${source} (${(error as Error).message}). Check your connection, or pass --template github:usequeek/theme-starter for the latest.`);
+    }
   }
-  try {
-    await downloadTemplate(source, { dir: into, force: true });
-  } catch (error) {
-    throw new Error(`Could not download the starter from ${source} (${(error as Error).message}). Check your connection, or pass --template github:usequeek/theme-starter for the latest.`);
-  }
+  if (!existsSync(join(into, 'theme/theme.config.ts'))) throw new UsageError(`${source} is not a Queek theme starter (no theme/theme.config.ts).`);
 }
 
 function listFiles(dir: string, root = dir): string[] {
