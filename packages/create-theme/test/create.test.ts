@@ -1,11 +1,22 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCreate } from '../src/index.js';
-import type { Flags } from '../src/options.js';
+import type { Flags, Prompter } from '../src/options.js';
 import { starterProject } from './helpers.js';
+
+/** Every method throws — proves a check ran before any question was asked. */
+const throwingPrompter: Prompter = {
+  name: () => { throw new Error('should not prompt'); },
+  templates: () => { throw new Error('should not prompt'); },
+  primary: () => { throw new Error('should not prompt'); },
+  categories: () => { throw new Error('should not prompt'); },
+  tags: () => { throw new Error('should not prompt'); },
+  pages: () => { throw new Error('should not prompt'); },
+  ai: () => { throw new Error('should not prompt'); },
+};
 
 const BIN = resolve(import.meta.dirname, '../dist/cli.js');
 const flags = (dir: string, overrides: Partial<Flags> = {}): Flags => ({
@@ -42,6 +53,28 @@ describe('runCreate', () => {
     mkdirSync(join(dir, '.git'));
     await runCreate(flags(dir, { name: 'Git Theme' }), null, () => {});
     expect(existsSync(join(dir, 'theme/theme.config.ts'))).toBe(true);
+  });
+
+  it('refuses a target that is a file, even with --force, and leaves it untouched', async () => {
+    const parent = mkdtempSync(join(tmpdir(), 'create-'));
+    const filePath = join(parent, 'my-theme');
+    writeFileSync(filePath, 'do not touch');
+    await expect(runCreate(flags(filePath, { force: true }), null, () => {})).rejects.toThrow(/is a file, not a folder/);
+    expect(readFileSync(filePath, 'utf8')).toBe('do not touch');
+  });
+
+  it('refuses --force when a starter file would replace a folder in the target, and touches nothing', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'create-'));
+    mkdirSync(join(dir, 'AGENTS.md')); // the starter ships AGENTS.md as a file
+    const before = readdirSync(dir);
+    await expect(runCreate(flags(dir, { force: true }), null, () => {})).rejects.toThrow(/cannot write into/);
+    expect(readdirSync(dir)).toEqual(before);
+  });
+
+  it('checks the target folder before asking anything', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'create-'));
+    writeFileSync(join(dir, 'notes.txt'), 'mine');
+    await expect(runCreate(flags(dir, { templates: undefined, tags: undefined }), throwingPrompter, () => {})).rejects.toThrow(/not empty.*--force/);
   });
 });
 

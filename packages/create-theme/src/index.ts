@@ -38,11 +38,36 @@ npm needs -- before these flags. In a terminal, anything you leave out is asked.
   --force                allow a folder that is not empty
   --template <source>    another starter: a giget source or a local folder`;
 
-function targetState(dir: string): 'missing' | 'usable' | 'busy' {
+function targetState(dir: string): 'missing' | 'usable' | 'busy' | 'file' {
   if (!existsSync(dir)) return 'missing';
-  if (!statSync(dir).isDirectory()) return 'busy';
+  if (!statSync(dir).isDirectory()) return 'file';
   const entries = readdirSync(dir).filter((entry) => entry !== '.git');
   return entries.length === 0 ? 'usable' : 'busy';
+}
+
+/** Resolves `dir`, and throws before anything is asked or written when it cannot be used. */
+function checkTarget(dir: string, force: boolean): { target: string; state: 'missing' | 'usable' | 'busy' } {
+  const target = resolve(dir);
+  const state = targetState(target);
+  if (state === 'file') throw new UsageError(`${dir} is a file, not a folder. Choose another name.`);
+  if (state === 'busy' && !force) throw new UsageError(`${dir} is not empty. Choose another folder, or pass --force to write into it.`);
+  return { target, state };
+}
+
+/** Paths (relative to `stage`) where `target` already has the other type — a file where the stage has a folder, or the reverse. cpSync cannot merge these. */
+function conflictingPaths(stage: string, target: string, root = ''): string[] {
+  const conflicts: string[] = [];
+  for (const name of readdirSync(stage)) {
+    const stagePath = join(stage, name);
+    const targetPath = join(target, name);
+    const relPath = root ? `${root}/${name}` : name;
+    if (!existsSync(targetPath)) continue;
+    const stageIsDir = statSync(stagePath).isDirectory();
+    const targetIsDir = statSync(targetPath).isDirectory();
+    if (stageIsDir !== targetIsDir) conflicts.push(relPath);
+    else if (stageIsDir) conflicts.push(...conflictingPaths(stagePath, targetPath, relPath));
+  }
+  return conflicts;
 }
 
 async function fetchStarter(source: string, into: string): Promise<void> {
@@ -67,8 +92,7 @@ function listFiles(dir: string, root = dir): string[] {
 
 export async function createTheme(dir: string, answers: Answers, options: { install: boolean; git: boolean; pm: PackageManager; dryRun: boolean; force: boolean; template?: string; log?: (line: string) => void }): Promise<void> {
   const log = options.log ?? ((line: string) => console.log(line));
-  const target = resolve(dir);
-  if (targetState(target) === 'busy' && !options.force) throw new UsageError(`${dir} is not empty. Choose another folder, or pass --force to write into it.`);
+  const { target, state } = checkTarget(dir, options.force);
 
   const stage = mkdtempSync(join(tmpdir(), 'queek-theme-'));
   try {
@@ -79,7 +103,27 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
       for (const file of listFiles(stage)) log(`  ${file}`);
       return;
     }
-    cpSync(stage, target, { recursive: true });
+    if (state === 'busy') {
+      const conflicts = conflictingPaths(stage, target);
+      if (conflicts.length > 0) {
+        throw new UsageError(`--force cannot write into ${dir}: these would replace a file with a folder or the reverse: ${conflicts.join(', ')}. Move them first.`);
+      }
+      cpSync(stage, target, { recursive: true });
+    } else {
+      const existedBefore = existsSync(target);
+      const before = new Set(existedBefore ? readdirSync(target) : []);
+      try {
+        cpSync(stage, target, { recursive: true });
+      } catch (error) {
+        if (existsSync(target)) {
+          for (const entry of readdirSync(target)) {
+            if (!before.has(entry)) rmSync(join(target, entry), { recursive: true, force: true });
+          }
+          if (!existedBefore) rmSync(target, { recursive: true, force: true });
+        }
+        throw new Error(`Could not write ${dir} (${(error as Error).message}); nothing was left behind.`);
+      }
+    }
   } finally {
     rmSync(stage, { recursive: true, force: true });
   }
@@ -110,8 +154,10 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
 
 /** Flags → answers (prompting when a prompter is given) → the theme. Shared by the CLI and `queek-theme init`. */
 export async function runCreate(flags: Flags, prompter: Prompter | null, log?: (line: string) => void): Promise<void> {
+  const dir = flags.dir ?? 'my-theme';
+  checkTarget(dir, flags.force); // before any question is asked, not just before any write
   const answers = await resolveAnswers(flags, prompter);
   const pm = (flags.pm as PackageManager | undefined) ?? detectPackageManager();
   if (!['npm', 'pnpm', 'yarn', 'bun'].includes(pm)) throw new UsageError(`--pm must be npm, pnpm, yarn or bun, not "${pm}".`);
-  await createTheme(flags.dir ?? 'my-theme', answers, { install: flags.install, git: flags.git, pm, dryRun: flags.dryRun, force: flags.force, template: flags.template, log });
+  await createTheme(dir, answers, { install: flags.install, git: flags.git, pm, dryRun: flags.dryRun, force: flags.force, template: flags.template, log });
 }
