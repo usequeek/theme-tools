@@ -24,9 +24,10 @@ const config = {
   // and `/<slug>~<id>` once published. Another business is another template;
   // its first design's id is its key:
   // demos: [{ id: 'food', template: 'food', label: 'Restaurant & takeaway', for: ['foods', 'local-meals'], description: '…' }],
-  // A second design of the same template repeats its label and `for`, and says
-  // what tells it apart in `design_label`:
-  //   { id: 'food-2', template: 'food', label: 'Restaurant & takeaway', design_label: 'Night market', for: ['foods', 'local-meals'], description: '…' }
+  // A second design of the same template declares only `id`, `template`,
+  // `design_label` and `description` — it inherits the template's `label` and
+  // `for`:
+  //   { id: 'food-2', template: 'food', design_label: 'Night market', description: '…' }
 };
 
 export default config;
