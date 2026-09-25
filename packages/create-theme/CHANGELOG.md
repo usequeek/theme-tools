@@ -1,5 +1,11 @@
 # @usequeek/create-theme
 
+## 0.3.7
+
+### Patch Changes
+
+- `shop-4-me` leaves the business vocabulary again: it is not a storefront business.
+
 ## 0.3.6
 
 ### Patch Changes
