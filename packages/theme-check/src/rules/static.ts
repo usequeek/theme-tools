@@ -8,6 +8,11 @@ import { BUSINESS_KEYS, SERVICE_SLUGS, isBusinessKey } from '../utils/business-v
 import { themeSourceFiles } from '../context.js';
 import { finding, type DemoStore, type Finding, type Rule, type ThemeContext } from '../types.js';
 
+/** A theme file as a finding names it: relative to the theme, with `/` on every OS (Windows gave `styles\type.css`). */
+function themePath(context: ThemeContext, path: string): string {
+  return relative(context.dir, path).replace(/\\/g, '/');
+}
+
 
 const REQUIRED_FILES = [
   'index.ts', 'manifest.ts', 'theme.config.ts',
@@ -280,7 +285,7 @@ export const codeQualityRule: Rule = {
       // mention in a docblock, and three themes do.
       if (path.endsWith('.tsx') && /<img[\s>]/.test(stripComments(source))) {
         findings.push(finding(context, 'theme/code-quality', 'reject', {
-          where: relative(context.dir, path),
+          where: themePath(context, path),
           found: 'renders a raw <img>',
           fix: "Use <Image /> from @usequeek/theme-kit/components/image. It carries the broken-image fallback, the Smart Placeholder for empty slots, and the srcset the backend ships as image_variants — a raw <img> silently gives up all three.",
           docs: `${context.env.docs}#what-themes-must-not-do`,
@@ -290,7 +295,7 @@ export const codeQualityRule: Rule = {
       const match = source.match(/from '(?:@\/)?themes\/(?!.*\/)?([\w-]+)/);
       if (match && match[1] !== context.slug) {
         findings.push(finding(context, 'theme/code-quality', 'reject', {
-          where: relative(context.dir, path),
+          where: themePath(context, path),
           found: `imports from the "${match[1]}" theme`,
           fix: 'A theme is self-contained. Copy what you need into your own folder, or ask for it to be promoted into @usequeek/theme-kit if every theme needs it.',
           docs: `${context.env.docs}#what-themes-must-not-do`,
@@ -321,7 +326,7 @@ export const sdkBoundaryRule: Rule = {
 
     for (const path of themeSourceFiles(context.dir)) {
       const source = readFileSync(path, 'utf8');
-      const where = relative(context.dir, path);
+      const where = themePath(context, path);
 
       if (/from '@queekai\/client-sdk'|from '@\/lib\/core\/sdk\//.test(source)) {
         findings.push(finding(context, 'theme/core-boundary', 'reject', {
@@ -1178,7 +1183,7 @@ export const vendorFactsRule: Rule = {
     for (const path of themeSourceFiles(context.dir)) {
       for (const { fact, words } of vendorFactFallbacks(readFileSync(path, 'utf8'))) {
         findings.push(finding(context, 'theme/vendor-facts', 'reject', {
-          where: relative(context.dir, path),
+          where: themePath(context, path),
           found: `vendor.${fact} falls back to "${words}"`,
           fix: `A store with no ${fact} would show these words as its own. Render nothing when it is empty (\`vendor.${fact} ?? ''\`, or leave the element out).`,
           docs: `${context.env.docs}#component-rules`,
@@ -1211,7 +1216,7 @@ export const fontsSelfHostedRule: Rule = {
       const source = stripComments(readFileSync(path, 'utf8'));
       if (/from\s+['"]next\/font\/google['"]/.test(source)) {
         findings.push(finding(context, 'theme/fonts-self-hosted', 'reject', {
-          where: relative(context.dir, path),
+          where: themePath(context, path),
           found: 'imports next/font/google',
           fix,
           docs: `${context.env.docs}#fonts`,
@@ -1223,7 +1228,7 @@ export const fontsSelfHostedRule: Rule = {
       const css = readFileSync(path, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
       if (/@import\s+(?:url\()?['"]?https?:\/\/fonts\.googleapis\.com/.test(css)) {
         findings.push(finding(context, 'theme/fonts-self-hosted', 'reject', {
-          where: relative(context.dir, path),
+          where: themePath(context, path),
           found: 'loads a font with @import from fonts.googleapis.com',
           fix: `Either the bundler drops it (it only survives as the very first rule of the compiled stylesheet), so the font never loads — atelier, deluxr and lumiere shipped that way until 24/9/26 — or it survives and every page load waits on an extra render-blocking request to Google before the text can paint. ${fix}`,
           docs: `${context.env.docs}#fonts`,

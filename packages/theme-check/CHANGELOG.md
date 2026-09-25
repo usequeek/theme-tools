@@ -1,5 +1,11 @@
 # @usequeek/theme-check
 
+## 0.3.5
+
+### Patch Changes
+
+- Findings name theme files with `/` on Windows too (`styles/type.css`, not `styles\type.css`), the same on every OS.
+
 ## 0.3.3
 
 ### Patch Changes
