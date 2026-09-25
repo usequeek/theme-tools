@@ -95,6 +95,42 @@ describe('theme/template-copy', () => {
     expect(copyViolations('Cooked over open flame since 2014', null)).toEqual(['dates the store ("since 2014")']);
     expect(copyViolations('Email hello@zuri.ng to see what we hold.', null)).toEqual(['gives the store’s contact details ("hello@zuri.ng")']);
   });
+
+  it('flags offer words — half-price, a bare sale, discount and coupon — but not wholesale, salesperson or for sale by the kilo', () => {
+    for (const text of [
+      'Half-Price Luxury', 'Half price Friday', 'Shop the sale', 'The clearance sale is on', 'Sale ends Sunday midnight',
+      'Free shipping on orders over ₦200,000', 'Free delivery on orders over ₦15,000',
+      'Bring the jar back for a refill at a discount', 'Clip the coupon below',
+      'Complimentary delivery on every order', 'Free samples with every order', 'Free styling on every unit',
+      'Made to measure in ten days', 'New drop every Friday, 7pm', 'Easy returns, always', 'One inbox, answered fast',
+    ]) {
+      expect(copyViolations(text, null), text).not.toEqual([]);
+    }
+    for (const text of [
+      'Wholesale bags on request', 'Ask our salesperson for help', 'Beans sold for sale by the kilo',
+      'Gluten-free and sugar-free bakes', 'Free-range eggs', 'Hands-free cooking', 'Made to measure',
+      'Always in season: tomatoes and peppers', 'Open the box on Friday', 'Alterations on every trouser',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual([]);
+    }
+  });
+
+  it('rejects the header announcement like section copy, whether the bar is enabled or not', async () => {
+    const announced = (text: string, enabled: boolean): DemoStore => ({
+      id: 'food', file: 'demos/food.json',
+      data: { profile: { name: 'Ata Kitchen' }, config: { header: { announcement: { enabled, text } } }, pages: { home: { content: [] } } },
+    });
+    const withManifest = (demos: DemoStore[]): Parameters<typeof templateCopyRule.run>[0] =>
+      context({ manifest: { slug: 'x', variants } as unknown as ThemeContext['manifest'], demos });
+    const enabled = await templateCopyRule.run(withManifest([announced('Free shipping on orders over ₦5,000', true)]));
+    expect(enabled).toHaveLength(1);
+    expect(enabled[0].where).toBe('theme/demos/food.json → config.header.announcement.text');
+    expect(enabled[0].found).toContain('states a naira amount');
+    const disabled = await templateCopyRule.run(withManifest([announced('Free shipping on orders over ₦5,000', false)]));
+    expect(disabled).toHaveLength(1);
+    expect(disabled[0].where).toBe('theme/demos/food.json → config.header.announcement.text');
+    expect(await templateCopyRule.run(withManifest([announced('New arrivals are in', true)]))).toEqual([]);
+  });
 });
 
 describe('theme/template-description', () => {

@@ -1193,6 +1193,20 @@ export const templateCopyRule: Rule = {
     const findings: Finding[] = [];
     for (const store of context.demos) {
       const name = (store.data?.profile as { name?: unknown } | undefined)?.name;
+      // The header announcement is copied onto real stores like section copy,
+      // whether the bar is enabled or not — so it reads by the same rules.
+      const announcement = (store.data?.config as { header?: { announcement?: { text?: unknown } } } | undefined)?.header?.announcement?.text;
+      if (typeof announcement === 'string' && announcement !== '') {
+        const why = copyViolations(announcement, typeof name === 'string' ? name : null);
+        if (why.length > 0) {
+          findings.push(finding(context, 'theme/template-copy', 'reject', {
+            where: `${context.env.root}${store.file} → config.header.announcement.text`,
+            found: `text: ${why.join('; ')} — "${announcement.length > 80 ? `${announcement.slice(0, 77)}…` : announcement}"`,
+            fix: 'The setup wizard publishes this copy onto real stores unchanged. Write it for any store in the business: the store\'s name becomes a role ("our kitchen", "the studio"), a place becomes generic ("across the city") or goes, and prices, delivery windows, guarantees and founding dates go — they are the vendor’s to state. Testimonials and reviews are exempt.',
+            docs: `${context.env.docs}#templates`,
+          }));
+        }
+      }
       for (const [pageKey, page] of Object.entries(pagesOf(store))) {
         (page?.content ?? []).forEach((section, index) => {
           if (typeof section?.type !== 'string') return;

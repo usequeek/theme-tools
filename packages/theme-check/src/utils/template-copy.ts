@@ -96,10 +96,19 @@ const NAIRA_AMOUNT = [
   /\d[\d,.]*\s?k?\s?naira\b/i,
 ];
 
-/** A discount or a coupon code: "Save 20% with code RAINS20", "Up to 25% off". */
+/**
+ * A discount or a coupon code: "Save 20% with code RAINS20", "Up to 25% off".
+ * "Half-price" and a bare "sale" are offers too ("the clearance sale is on",
+ * "shop the sale", "sale ends Sunday") — but only as their own word, so
+ * "wholesale" and "salesperson" are not, and never the trade phrase "for sale
+ * by the kilo". "Discount" and "coupon" alone name an offer no store can keep.
+ */
 const OFFER = [
   /\b(?:code|coupon|promo(?: code)?)\s*:?\s*[A-Z][A-Z0-9]{3,}\b/,
   /\b\d{1,3}\s?%\s?(?:off|discount)\b|\bsave\s+(?:up to\s+)?\d{1,3}\s?%|\bup to\s+\d{1,3}\s?%/i,
+  /\bhalf[\s-]price\b/i,
+  /\b(?<!for )sale\b(?! by the kilo)/i,
+  /\b(?:coupon|discount)s?\b/i,
 ];
 
 /**
@@ -113,6 +122,8 @@ const HOURS = new RegExp([
   String.raw`\b\d{1,2}(?::\d{2})?\s?(?:am|pm)?\s?(?:–|-|to)\s?${TIME}`,
   String.raw`\b(?:opens?|opening|doors|from|till|until|last\s+orders|closes?|closing)\s+(?:at\s+)?${TIME}`,
   String.raw`\b(?:[01]?\d|2[0-3]):[0-5]\d\s?(?:–|-|to)\s?(?:[01]?\d|2[0-3]):[0-5]\d\b`,
+  // a weekday at a clock time is the store's schedule: "New drop every Friday, 7pm"
+  String.raw`\b(?:mon|tues|wednes|thurs|fri|satur|sun)days?\b,?\s+(?:at\s+)?${TIME}`,
 ].join('|'), 'i');
 
 /**
@@ -120,12 +131,15 @@ const HOURS = new RegExp([
  * to a service — delivered, ships, answered, fitted, returned — so a recipe's
  * or a process's time ("marinated 24–48 hours", "ready in 3 minutes") is not.
  */
-const SERVICE = String.raw`(?:deliver\w*|ship(?:s|ped|ping)?|dispatch\w*|arriv\w*|collect\w*|pick(?:ed|s)?[- ]?up|turnaround|answer\w*|repl(?:y|ies|ied)|respond\w*|install\w*|fit(?:ted|ting)?|resiz\w*|repair\w*|replace\w*|exchang\w*|return\w*|refund\w*)`;
-const WINDOW = String.raw`(?:(?:within|in|under)\s+(?:about\s+)?(?:\d+|an?|one|two|three|four)[\s-]?(?:min(?:ute)?s?|hours?|hrs?|days?|weeks?)|\d+\s*(?:–|-|to)\s*\d+[\s-]*(?:working\s+|business\s+)?(?:hours?|days?|weeks?)|(?:same|next)[- ](?:day|evening|morning))`;
+const SERVICE = String.raw`(?:deliver\w*|ship(?:s|ped|ping)?|dispatch\w*|arriv\w*|collect\w*|pick(?:ed|s)?[- ]?up|turnaround|answer\w*|repl(?:y|ies|ied)|respond\w*|install\w*|fit(?:ted|ting)?|resiz\w*|repair\w*|replace\w*|exchang\w*|return\w*|refund\w*|measur\w*|tailor\w*|alter(?:s|ed|ing|ations?)?)`;
+const WINDOW = String.raw`(?:(?:within|in|under)\s+(?:about\s+)?(?:\d+|an?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fourteen|fifteen|twenty)[\s-]?(?:min(?:ute)?s?|hours?|hrs?|days?|weeks?)|\d+\s*(?:–|-|to)\s*\d+[\s-]*(?:working\s+|business\s+)?(?:hours?|days?|weeks?)|(?:same|next)[- ](?:day|evening|morning))`;
 const PROMISE = [
   new RegExp(String.raw`\b${SERVICE}\b[^.!?\n]{0,40}?${WINDOW}\b|${WINDOW}\b[^.!?\n]{0,40}?\b${SERVICE}\b`, 'i'),
   /\b\d+[\s-](?:minute|min|hour|hr|day|week)s?\s+(?:delivery|dispatch|shipping|turnaround|returns?|exchanges?|refunds?|adjustments?|service)\b/i,
-  /\bfree\s+(?:\w+\s+)?(?:delivery|shipping|returns?|pick[- ]?up|collection|alterations?|installation|install|resizing|exchanges?)\b/i,
+  /\b(?:free|complimentary)\s+(?:\w+\s+)?(?:delivery|shipping|returns?|pick[- ]?up|collection|alterations?|installation|install|resizing|exchanges?|samples?|styling|gifts?|consultations?|fittings?|refills?)\b/i,
+  // a service promised without end, or a reply promised fast
+  /\b(?:returns?|exchanges?|refunds?|delivery|shipping)\b[^.!?\n|]{0,20}\balways\b/i,
+  /\b(?:answer\w*|repl(?:y|ies|ied)|respond\w*)\s+(?:fast|quickly|promptly|right away)\b|\b(?:fast|quick|prompt)\s+(?:repl(?:y|ies)|answers?|responses?)\b/i,
   /\b(?:guarantee[ds]?|money[- ]back|warrant(?:y|ies)|no questions asked)\b/i,
 ];
 
