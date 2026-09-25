@@ -1,5 +1,17 @@
 # @usequeek/theme-cli
 
+## 0.3.0
+
+### Minor Changes
+
+- A theme never imports Next.js. `theme/core-boundary` now rejects any import of `next` or `next/*` (static, side-effect, dynamic or `require`): link and navigate with `import { Link, useRouter, usePathname } from '@usequeek/theme-kit/navigation'` (theme-kit 0.1.10). Which framework runs the storefront is Queek's to change; a theme written against the kit keeps working when it does. The starter uses the kit's navigation and needs `@usequeek/theme-kit` 0.1.10 or later.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @usequeek/theme-check@0.3.0
+  - @usequeek/create-theme@0.3.0
+
 ## 0.2.1
 
 ### Patch Changes

@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import Link from 'next/link';
+import { Link } from '@usequeek/theme-kit/navigation';
 import type { BlogPageProps } from '@usequeek/theme-kit/types/theme';
 import { Image } from '@usequeek/theme-kit/components/image';
 import { useHref } from '@usequeek/theme-kit/hooks/use-href';

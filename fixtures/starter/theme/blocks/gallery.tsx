@@ -1,7 +1,7 @@
 'use client';
 
 import type { JSX } from 'react';
-import Link from 'next/link';
+import { Link } from '@usequeek/theme-kit/navigation';
 import type { GalleryBlockData } from '@usequeek/theme-kit/types/block';
 import { Image } from '@usequeek/theme-kit/components/image';
 import { useHref } from '@usequeek/theme-kit/hooks/use-href';

@@ -302,9 +302,19 @@ export const codeQualityRule: Rule = {
   },
 };
 
+/**
+ * The first module a theme imports from Next.js (`next`, `next/link`, …), or null.
+ * Static, side-effect and dynamic imports and `require` all count; the kit may
+ * import Next, a theme may not.
+ */
+export function frameworkImport(source: string): string | null {
+  const match = source.match(/(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)['"](next(?:\/[\w./-]+)?)['"]/);
+  return match ? match[1] : null;
+}
+
 export const sdkBoundaryRule: Rule = {
   id: 'theme/core-boundary',
-  summary: 'No SDK imports, no direct API calls, no store mutations',
+  summary: 'No SDK or framework imports, no direct API calls, no store mutations',
   kind: 'static',
   run(context) {
     const findings: Finding[] = [];
@@ -318,6 +328,16 @@ export const sdkBoundaryRule: Rule = {
           where,
           found: 'imports the SDK directly',
           fix: 'Themes are presentation. Go through a core hook (useProducts, useCategories, useCart) — core owns transport, auth and retries.',
+          docs: `${context.env.docs}#what-themes-must-not-do`,
+        }));
+      }
+
+      const framework = frameworkImport(source);
+      if (framework) {
+        findings.push(finding(context, 'theme/core-boundary', 'reject', {
+          where,
+          found: `imports the storefront's framework directly ('${framework}')`,
+          fix: "Import Link, useRouter and usePathname from '@usequeek/theme-kit/navigation'. Which framework runs the storefront is Queek's to change; a theme that imports it would break when it does.",
           docs: `${context.env.docs}#what-themes-must-not-do`,
         }));
       }

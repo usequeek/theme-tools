@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUSINESS_KEYS, businessRoot, isBusinessKey } from '../src/utils/business-vocabulary.js';
-import { placeholderContentRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
+import { frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
 import { copyViolations } from '../src/utils/template-copy.js';
 import type { DemoStore, ThemeContext } from '../src/types.js';
 
@@ -197,5 +197,38 @@ describe('theme/placeholder-content', () => {
 
   it("passes a store using lumiere's original photos", async () => {
     expect(await placeholderContentRule.run(context({ demos: [store([{ slug: 'real-dress', media: { image: 'https://media.usequeek.com/theme-assets/lumiere/0e21e31030533d79.jpg' } }])] }))).toEqual([]);
+  });
+});
+
+describe('theme/core-boundary: the framework stays behind the kit', () => {
+  it('finds every way a theme can import Next', () => {
+    expect(frameworkImport("import Link from 'next/link';")).toBe('next/link');
+    expect(frameworkImport('import { useRouter } from "next/navigation";')).toBe('next/navigation');
+    expect(frameworkImport("import Image from 'next/image';")).toBe('next/image');
+    expect(frameworkImport("import { headers } from 'next/headers';")).toBe('next/headers');
+    expect(frameworkImport("import type { Metadata } from 'next';")).toBe('next');
+    expect(frameworkImport("import 'next/font';")).toBe('next/font');
+    expect(frameworkImport("const Map = dynamic(() => import('next/dynamic'));")).toBe('next/dynamic');
+    expect(frameworkImport("const link = require('next/link');")).toBe('next/link');
+  });
+
+  it("leaves the kit's navigation and look-alike packages alone", () => {
+    expect(frameworkImport("import { Link, useRouter } from '@usequeek/theme-kit/navigation';")).toBeNull();
+    expect(frameworkImport("import { useTranslations } from 'next-intl';")).toBeNull();
+    expect(frameworkImport("import x from './next/link';")).toBeNull();
+    expect(frameworkImport('// the next step is the cart')).toBeNull();
+  });
+
+  it('rejects a theme file that imports next/link, naming the file and the fix', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'boundary-'));
+    writeFileSync(join(dir, 'header.tsx'), "'use client';\nimport Link from 'next/link';\nexport const Header = () => <Link href=\"/\">Home</Link>;\n");
+    writeFileSync(join(dir, 'footer.tsx'), "import { Link } from '@usequeek/theme-kit/navigation';\nexport const Footer = () => <Link href=\"/\">Home</Link>;\n");
+
+    const findings = await sdkBoundaryRule.run({ ...context({}), dir });
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({ rule: 'theme/core-boundary', severity: 'reject', where: 'header.tsx' });
+    expect(findings[0].found).toContain("'next/link'");
+    expect(findings[0].fix).toContain('@usequeek/theme-kit/navigation');
   });
 });
