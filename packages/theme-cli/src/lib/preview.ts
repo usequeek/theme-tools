@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { join, relative } from 'node:path';
@@ -7,6 +7,16 @@ import type { Project } from './project.js';
 
 /** The preview app, compiled to JavaScript at build time from ../../preview (see its tsconfig). */
 const TEMPLATE = fileURLToPath(new URL('../../templates/preview', import.meta.url));
+
+/**
+ * The design resolver the preview groups stores with (contract R2.8), as the
+ * theme-check this CLI installed publishes it. It imports nothing, so it is
+ * copied into the preview rather than imported there: the developer's project
+ * need not resolve @usequeek/theme-check itself (under pnpm it cannot).
+ */
+export function designsModule(): string {
+  return readFileSync(createRequire(import.meta.url).resolve('@usequeek/theme-check/designs'), 'utf8');
+}
 
 /** A module specifier from `fromDir` to `target`, always relative and forward-slashed. */
 function specifier(fromDir: string, target: string): string {
@@ -35,6 +45,7 @@ export function writePreview(project: Project): string {
   // developer's project otherwise — and still compiles the theme's .ts/.tsx.
   writeFileSync(join(dir, 'theme-entry.js'), `${banner}export { default } from '${theme}/index';\nexport { default as config } from '${theme}/theme.config';\nexport const THEME_DIR = ${JSON.stringify(project.themeDir)};\n`);
   writeFileSync(join(dir, 'theme-styles.js'), `${banner}import '${theme}/theme.css';\n`);
+  writeFileSync(join(dir, 'designs.js'), `${banner}${designsModule()}`);
   writeFileSync(join(dir, 'next.config.mjs'), `${banner}/** @type {import('next').NextConfig} */
 export default {
   // The kit ships TypeScript source so its 'use client' directives reach the bundler.

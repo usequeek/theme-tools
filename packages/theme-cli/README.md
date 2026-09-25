@@ -15,9 +15,11 @@ Requires Node.js 22.12 or later, and in your project: `@usequeek/theme-kit`, `ne
 
 ### `queek-theme dev`
 
-Previews the theme as a whole store: every page of every demo store — `theme/demo.json` at
-`/default`, each `theme/demos/<id>.json` at `/<id>` — rendered by real Next.js with the
-composition a live storefront uses. Edits reload the page.
+Previews the theme as a whole store: every page of every design (demo store) — `theme/demo.json`,
+the main template's first design, at `/default`, each `theme/demos/<id>.json` at `/<id>` —
+rendered by real Next.js with the composition a live storefront uses. The index page lists them by
+template, the way `theme.config.ts` groups them (its `template` key on every design), each with
+its `design_label`. Edits reload the page.
 
 | Flag | Default | |
 |---|---|---|
@@ -66,7 +68,7 @@ otherwise.
 |---|---|
 | `--name <text>` | Theme name (default: the folder name). |
 | `--templates <keys>` | Businesses to make templates for, comma-separated (required with `--yes`). |
-| `--primary <key>` | The primary template (default: the first). |
+| `--primary <key>` | The main template (default: the first). |
 | `--categories <keys>` | Business categories (default: the templates'). |
 | `--tags <tags>` | 1–6 tags for the look (required with `--yes`). |
 | `--pages <list\|none>` | Extra pages: `contact`, `faq` (default: both). |

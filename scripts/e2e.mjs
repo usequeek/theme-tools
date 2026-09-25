@@ -78,7 +78,11 @@ try {
       if (response.status !== 200 || /Application error|Unhandled Runtime Error/.test(body)) throw new Error(`dev: ${path} → ${response.status}\n${log.slice(-2000)}`);
     }
     if ((await fetch(`http://127.0.0.1:${PORT}/no-such-store`)).status !== 404) throw new Error('dev: an unknown store should 404');
-    console.log('e2e: dev ✓ (9 pages render, unknown store 404s)');
+    // The index groups designs by the template each declares (R2.8), through
+    // the resolver the CLI copies into the preview.
+    const index = await (await fetch(`http://127.0.0.1:${PORT}/`)).text();
+    for (const key of ['laundry', 'foods']) if (!index.includes(`· template ${key}`)) throw new Error(`dev: the index does not list the ${key} template\n${index.slice(0, 2000)}`);
+    console.log('e2e: dev ✓ (9 pages render, unknown store 404s, the index lists both templates)');
   } finally {
     dev.kill('SIGTERM');
   }

@@ -16,7 +16,7 @@ export default class Init extends Command {
   static override flags = {
     name: Flags.string({ summary: 'Theme name (default: the folder name).' }),
     templates: Flags.string({ summary: 'Businesses to make templates for, comma-separated (required with --yes).' }),
-    primary: Flags.string({ summary: 'The primary template (default: the first).' }),
+    primary: Flags.string({ summary: 'The main template (default: the first).' }),
     categories: Flags.string({ summary: "Business categories (default: the templates')." }),
     tags: Flags.string({ summary: '1–6 tags for the look (required with --yes).' }),
     pages: Flags.string({ summary: 'Extra pages: contact, faq, or none.' }),

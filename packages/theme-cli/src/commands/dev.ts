@@ -3,9 +3,9 @@ import { resolveProject } from '../lib/project.js';
 import { startPreview, writePreview } from '../lib/preview.js';
 
 export default class Dev extends Command {
-  static override summary = 'Preview your theme as a whole store, every page of every demo store.';
+  static override summary = 'Preview your theme as a whole store: every design of every template, every page of each.';
 
-  static override description = `Renders the theme with real Next.js against its demo stores — theme/demo.json at /default, each theme/demos/<id>.json at /<id> — with the same composition a live Queek storefront uses. Edits reload the page.
+  static override description = `Renders the theme with real Next.js against its designs (its demo stores) — theme/demo.json, the main template's first design, at /default, each theme/demos/<id>.json at /<id> — with the same composition a live Queek storefront uses. The index lists them by template, as theme.config.ts declares them. Edits reload the page.
 
 The preview app is written to .queek/preview in your project and regenerated on every run; it ignores itself for git.`;
 
@@ -31,7 +31,7 @@ The preview app is written to .queek/preview in your project and regenerated on 
     const server = await startPreview(project, dir, flags.host, flags.port).catch((error: Error & { code?: string }) =>
       this.error(error.code === 'EADDRINUSE' ? `Port ${flags.port} is in use. Pass --port with a free one.` : error.message, { exit: 2 }));
 
-    this.log(`\n  Preview: ${server.url}\n  Stores and pages are listed there. Ctrl+C to stop.\n`);
+    this.log(`\n  Preview: ${server.url}\n  Templates, designs and pages are listed there. Ctrl+C to stop.\n`);
 
     const stop = async (): Promise<void> => {
       await server.close();
