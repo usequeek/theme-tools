@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { UsageError, runCreate } from '../src/index.js';
-import type { Flags, Prompter } from '../src/options.js';
+import { shellWord, type Flags, type Prompter } from '../src/options.js';
 import { starterProject } from './helpers.js';
 
 /** Every method throws — proves a check ran before any question was asked. */
@@ -228,7 +228,8 @@ describe('the closing lines', () => {
     const lines: string[] = [];
     await runCreate(flags(dir, { template }), null, (line) => lines.push(line));
     const repeat = lines.find((line) => line.startsWith('To repeat this setup: '));
-    expect(repeat).toContain(` --template ${template} --no-install --no-git`);
+    // A Windows temp path has backslashes, so it is quoted there; on POSIX it stays a bare word.
+    expect(repeat).toContain(` --template ${shellWord(template)} --no-install --no-git`);
   });
 });
 
