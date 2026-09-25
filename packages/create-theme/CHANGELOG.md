@@ -1,5 +1,11 @@
 # @usequeek/create-theme
 
+## 0.3.6
+
+### Patch Changes
+
+- The business vocabulary gains `shop-4-me` (Shop for me), a service key.
+
 ## 0.3.4
 
 ### Patch Changes
