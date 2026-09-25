@@ -556,7 +556,7 @@
         {
           "type": "content",
           "data": {
-            "markdown": "## Make this yours\n\nEvery section above is a variant declared in `manifest.ts`. Add your own, then run `yarn theme:check`."
+            "markdown": "## Make this yours\n\nEvery section above is a variant declared in `manifest.ts`. Add your own, then run `npm run check`."
           }
         }
       ],

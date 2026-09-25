@@ -40,6 +40,8 @@ export default {
   // The kit ships TypeScript source so its 'use client' directives reach the bundler.
   transpilePackages: ['@usequeek/theme-kit'],
   images: { remotePatterns: [{ protocol: 'https', hostname: '**' }] },
+  // Next's corner badge is not part of your theme; keep it out of the preview and its screenshots.
+  devIndicators: false,
   // Your project is the root, so your theme folder — outside this one — resolves.
   turbopack: { root: ${JSON.stringify(project.root)} },
 };

@@ -4,7 +4,7 @@ import type { ThemeManifest } from '@usequeek/theme-kit/types/theme';
  * ONE variant per scope, and nothing decorative.
  *
  * This is a starting point, not a design. Add your own variants here and give
- * each a renderer in index.ts — `yarn theme:check` holds the two lists to each
+ * each a renderer in index.ts — the theme check (`npm run check`) holds the two lists to each
  * other, and holds every field you declare to what your component actually
  * reads, so the manifest cannot drift from the UI a merchant is offered.
  */

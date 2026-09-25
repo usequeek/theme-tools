@@ -31,7 +31,7 @@ import { AccountShell } from './shells/account-shell';
 
 /**
  * Every variant this theme declares, mapped to the component that renders it.
- * `yarn theme:check` holds this and manifest.ts to each other exactly — a
+ * The theme check (`npm run check`) holds this and manifest.ts to each other exactly — a
  * variant here with no manifest entry can never be chosen, and one in the
  * manifest with nothing here shows a merchant an option that does nothing.
  */

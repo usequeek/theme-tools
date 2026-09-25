@@ -1,5 +1,11 @@
 # @usequeek/create-theme
 
+## 0.2.1
+
+### Patch Changes
+
+- The starter's hero button shows its label (a link rule outranked the button's colour), and the starter points you at `npm run check`. `queek-theme dev` no longer shows Next's corner badge over your theme.
+
 ## 0.2.0
 
 ### Minor Changes
