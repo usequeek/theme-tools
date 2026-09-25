@@ -3,17 +3,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUSINESS_KEYS, businessRoot, isBusinessKey } from '../src/utils/business-vocabulary.js';
-import { fontsSelfHostedRule, frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
+import { demoStoresRule, fontsSelfHostedRule, frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templateDesignsRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
 import { copyViolations } from '../src/utils/template-copy.js';
-import type { DemoStore, ThemeContext } from '../src/types.js';
+import type { DeclaredDemo, DemoStore, ThemeContext } from '../src/types.js';
 
 /**
  * The template rules against hand-built contexts — each shown firing on the
  * fault it exists for, not only staying quiet on a healthy theme.
  */
 
-function context(parts: Partial<Pick<ThemeContext, 'demos' | 'declaredDemos' | 'defaultDescription' | 'defaultFor' | 'themeDescription' | 'pageBased' | 'manifest'>>): ThemeContext {
+function context(parts: Partial<Pick<ThemeContext, 'demos' | 'declaredDemos' | 'defaultDescription' | 'defaultFor' | 'themeDescription' | 'pageBased' | 'manifest' | 'themeConfig'>>): ThemeContext {
   const demos: DemoStore[] = parts.demos ?? [{ id: 'default', file: 'demo.json', data: { pages: {} } }];
+  const declaredDemos = parts.declaredDemos ?? [];
   return {
     env: { root: 'theme/', docs: 'https://example.test/THEME.md', vocabulary: 'the vocabulary', scaffold: 'npm create @usequeek/theme', preview: (id) => `http://localhost:3000/${id}`, submission: false },
     slug: 'x',
@@ -21,7 +22,8 @@ function context(parts: Partial<Pick<ThemeContext, 'demos' | 'declaredDemos' | '
     retired: false,
     demo: demos[0]?.data ?? null,
     demos,
-    declaredDemos: parts.declaredDemos ?? [],
+    themeConfig: parts.themeConfig ?? { default_demo: { for: parts.defaultFor ?? undefined, description: parts.defaultDescription ?? undefined }, demos: declaredDemos },
+    declaredDemos,
     defaultDescription: parts.defaultDescription ?? null,
     defaultFor: parts.defaultFor ?? null,
     themeDescription: parts.themeDescription ?? null,
@@ -126,18 +128,148 @@ describe('theme/template-business', () => {
 const home = (...slots: string[]) => ({ pages: { home: { content: slots.map((slot) => ({ type: slot.split('/')[0], variant: slot.split('/')[1] })) } } });
 
 describe('theme/template-versions', () => {
-  it('rejects two templates with the same home, and a version for another business', async () => {
+  it("rejects two designs with the same home, and no longer reads an id's -2 (R2.8: theme/template-designs groups)", async () => {
     const found = await templateVersionsRule.run(context({
       demos: [
         { id: 'default', file: 'demo.json', data: home('gallery/slider', 'products/grid') },
         { id: 'food', file: 'demos/food.json', data: home('gallery/slider', 'products/menu') },
         { id: 'food-2', file: 'demos/food-2.json', data: home('gallery/slider', 'products/grid') },
       ],
-      declaredDemos: [{ id: 'food', label: 'F', for: ['foods', 'local-meals'] }, { id: 'food-2', label: 'F2', for: ['foods'] }],
+      declaredDemos: [{ id: 'food', template: 'food', label: 'F', for: ['foods', 'local-meals'] }, { id: 'food-2', template: 'food', label: 'F2', for: ['foods'] }],
     }));
     expect(found.map((f) => f.found)).toEqual([
-      'template "food-2" has the same home sections, in the same order, as "default"',
-      'version "food-2" is for ["foods"], "food" for ["foods","local-meals"]',
+      'design "food-2" has the same home sections, in the same order, as "default"',
+    ]);
+  });
+});
+
+/* ── R2.8: theme → template → design ─────────────────────────────────── */
+
+type Design = Record<string, unknown>;
+/** Medley-shaped (contract R2.8): a main template and a two-design Food template. */
+const MAIN: Design = { template: 'beauty', label: 'Skincare & make-up', design_label: 'Photo collage', for: ['beauty-cosmetics', 'makeup'] };
+const FOOD: Design = { id: 'food', template: 'food', label: 'Restaurant & kitchen', design_label: 'Dining room', for: ['foods', 'local-meals'] };
+const FOOD_2: Design = { id: 'food-2', template: 'food', design_label: 'Neighbourhood buka' };
+
+/** A context declaring these designs, each with its own store on disk named `names[id]` (default "Ata Kitchen"). */
+function declaring(main: Design, demos: Design[], names: Record<string, string> = {}): ThemeContext {
+  const store = (id: string, file: string): DemoStore => ({ id, file, data: { profile: { name: names[id] ?? 'Ata Kitchen' } } });
+  return context({
+    themeConfig: { name: 'Medley', default_demo: main, demos },
+    declaredDemos: demos as unknown as DeclaredDemo[],
+    defaultFor: main.for ?? null,
+    demos: [store('default', 'demo.json'), ...demos.map((demo) => store(String(demo.id), `demos/${String(demo.id)}.json`))],
+  });
+}
+const designFindings = async (main: Design, demos: Design[], names?: Record<string, string>): Promise<string[]> =>
+  (await templateDesignsRule.run(declaring(main, demos, names))).map((f) => f.found);
+const without = (design: Design, key: string): Design => Object.fromEntries(Object.entries(design).filter(([name]) => name !== key));
+
+describe('theme/template-designs', () => {
+  it('passes a medley-shaped theme, whose later design leaves out label and for', async () => {
+    expect(await designFindings(MAIN, [FOOD, FOOD_2])).toEqual([]);
+  });
+
+  it("passes a later design that repeats its template's label and for unchanged (Queek's themes today)", async () => {
+    expect(await designFindings(MAIN, [FOOD, { ...FOOD_2, label: FOOD.label, for: FOOD.for }])).toEqual([]);
+  });
+
+  it('passes a one-design template without a design_label', async () => {
+    expect(await designFindings(without(MAIN, 'design_label'), [{ id: 'hair', template: 'hair', label: 'Wigs & hair', for: ['wigs-extensions-hair-accessories'] }])).toEqual([]);
+  });
+
+  it('rejects a main template with no key', async () => {
+    const found = await templateDesignsRule.run(declaring(without(MAIN, 'template'), [FOOD, FOOD_2]));
+    expect(found.map((f) => f.found)).toEqual(['the main template has no key (default_demo.template)']);
+    expect(found[0]).toMatchObject({ rule: 'theme/template-designs', severity: 'reject', where: 'theme/theme.config.ts → default_demo.template', docs: 'https://example.test/THEME.md#templates' });
+  });
+
+  it('rejects a design that names no template', async () => {
+    const found = await templateDesignsRule.run(declaring(MAIN, [without(FOOD, 'template'), FOOD_2]));
+    expect(found.map((f) => f.found)).toEqual(['design "food" names no template']);
+    expect(found[0].where).toBe('theme/theme.config.ts → demos[food].template');
+  });
+
+  it('rejects a template key that is not a slug, or is "default"', async () => {
+    expect(await designFindings(MAIN, [FOOD, { ...FOOD_2, template: 'Food' }])).toEqual(['template key "Food" is not a slug']);
+    expect(await designFindings(MAIN, [FOOD, { ...FOOD_2, template: 'default' }])).toEqual(['template key "default" is reserved']);
+    expect(await designFindings({ ...MAIN, template: 'default' }, [FOOD, FOOD_2])).toEqual(['template key "default" is reserved']);
+  });
+
+  it('rejects a main template key that is also a design id: keys and ids share one namespace', async () => {
+    const main = { ...MAIN, template: 'clothes', label: 'Clothing & menswear', for: ['fashion'] };
+    expect(await designFindings(main, [{ id: 'clothes', template: 'clothes', design_label: 'Tailoring house' }])).toEqual([
+      'the main template\'s key "clothes" is also a design id',
+    ]);
+  });
+
+  it('rejects a template with no design 1 (no design whose id is its key)', async () => {
+    expect(await designFindings(MAIN, [FOOD_2])).toEqual(['template "food" has no design 1 (a design whose id is "food")']);
+  });
+
+  it("rejects a later design for another business than its template's", async () => {
+    expect(await designFindings(MAIN, [FOOD, { ...FOOD_2, for: ['foods'] }])).toEqual([
+      'design "food-2" is for ["foods"], its template "food" for ["foods","local-meals"]',
+    ]);
+  });
+
+  it('rejects a later design that relabels its template (a legacy composite label)', async () => {
+    const found = await templateDesignsRule.run(declaring(MAIN, [FOOD, { ...FOOD_2, label: 'Restaurant & kitchen — neighbourhood buka' }]));
+    expect(found.map((f) => f.found)).toEqual([
+      'design "food-2" relabels its template ("Restaurant & kitchen — neighbourhood buka"); a design is named by design_label',
+    ]);
+    expect(found[0].where).toBe('theme/theme.config.ts → demos[food-2].label');
+  });
+
+  it('rejects a design of a 2+ design template with no design_label', async () => {
+    expect(await designFindings(MAIN, [FOOD, without(FOOD_2, 'design_label')])).toEqual(['design "food-2" has no design_label (template "food" has 2 designs)']);
+  });
+
+  it('rejects two designs of a template with one design_label', async () => {
+    expect(await designFindings(MAIN, [FOOD, { ...FOOD_2, design_label: 'Dining room' }])).toEqual([
+      'designs "food" and "food-2" share the design_label "Dining room"',
+    ]);
+  });
+
+  it('rejects a design_label that is not true of any store (R2.6 copy rules)', async () => {
+    expect(await designFindings(MAIN, [FOOD, { ...FOOD_2, design_label: 'Lekki kitchen' }])).toEqual(['design "food-2" design_label: names a place (Lekki)']);
+    expect(await designFindings(MAIN, [FOOD, { ...FOOD_2, design_label: "Mama Tee's buka" }], { 'food-2': "Mama Tee's" })).toEqual([
+      'design "food-2" design_label: names the store ("Mama Tee\'s")',
+    ]);
+    expect(await designFindings(MAIN, [FOOD, { ...FOOD_2, design_label: '₦5,000 trays' }])).toEqual(['design "food-2" design_label: states a naira amount']);
+  });
+
+  it('rejects a 4th design of one template (R2.2 allows three)', async () => {
+    const third: Design = { id: 'food-3', template: 'food', design_label: 'Grill house' };
+    const found = await templateDesignsRule.run(declaring(MAIN, [FOOD, FOOD_2, third, { id: 'food-4', template: 'food', design_label: 'Night market' }]));
+    expect(found.map((f) => f.found)).toEqual(['template "food" has 4 designs; a template has at most 3']);
+    expect(found[0].where).toBe('theme/theme.config.ts → demos[food-4].template');
+    expect(await designFindings(MAIN, [FOOD, FOOD_2, third])).toEqual([]);
+  });
+
+  it('exempts a retired theme', async () => {
+    expect(await templateDesignsRule.run({ ...declaring(without(MAIN, 'template'), [FOOD_2]), retired: true })).toEqual([]);
+  });
+});
+
+describe('theme/demo-stores (R2.8)', () => {
+  it("asks label and for of a template's design 1 only; a later design inherits them", async () => {
+    const found = await demoStoresRule.run(declaring(MAIN, [without(FOOD, 'label'), FOOD_2]));
+    expect(found.map((f) => f.found)).toEqual(['demos[] "food" has no label']);
+  });
+
+  it('shows the whole declaration, template included, for an undeclared file', async () => {
+    const ctx = declaring(MAIN, [FOOD]);
+    const found = await demoStoresRule.run({ ...ctx, demos: [...ctx.demos, { id: 'food-2', file: 'demos/food-2.json', data: {} }] });
+    expect(found.map((f) => f.fix)).toEqual([expect.stringContaining("`{ id: 'food-2', template, label, for, description }`")]);
+  });
+});
+
+describe('theme/template-business (R2.8)', () => {
+  it("checks each template's for once, by its design 1", async () => {
+    const found = await templateBusinessRule.run(declaring(MAIN, [{ ...FOOD, for: ['jewellery'] }, { ...FOOD_2, for: ['jewellery'] }]));
+    expect(found.map((f) => [f.found, f.where])).toEqual([
+      ['template "food" is for "jewellery", not in the business vocabulary', 'theme/theme.config.ts → demos[food].for'],
     ]);
   });
 });

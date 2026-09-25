@@ -2,6 +2,7 @@ import { join, relative } from 'node:path';
 import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { foreignImageRefs } from '../utils/theme-demo-images.js';
 import { DEMO_ID_FORMAT, PRIMARY_DEMO_ID } from '../utils/theme-demos.js';
+import { designsOf, groupTemplates, mainTemplateKey, type DesignDeclaration, type ThemeDesign, type ThemeDesignsConfig } from '../utils/theme-designs.js';
 import { SCREENSHOT_LOCK, TEMPLATE_DESCRIPTION_MAX, TEMPLATE_DESCRIPTION_PLACEHOLDER, declaredFieldsByVariant, isPresentationalField, screenshotFile, screenshotUrl, sectionCopy } from '../utils/theme-templates.js';
 import { copyViolations, isTestimonialSection } from '../utils/template-copy.js';
 import { BUSINESS_KEYS, SERVICE_SLUGS, isBusinessKey } from '../utils/business-vocabulary.js';
@@ -76,6 +77,28 @@ function storesOf(context: ThemeContext): DemoStore[] {
   const stores = [...context.demos];
   if (!stores.some((store) => store.id === PRIMARY_DEMO_ID)) stores.unshift({ id: PRIMARY_DEMO_ID, file: 'demo.json', data: null });
   return stores;
+}
+
+/**
+ * theme.config.ts as the design resolver reads it (contract R2.8): its own
+ * fields, with `demos` as the context declares them. Never null, so a config
+ * that did not load resolves to demo.json alone.
+ */
+function designsConfig(context: ThemeContext): ThemeDesignsConfig {
+  const config = context.themeConfig !== null && typeof context.themeConfig === 'object' ? (context.themeConfig as ThemeDesignsConfig) : {};
+  return { ...config, demos: (context.declaredDemos ?? []) as ThemeDesignsConfig['demos'] };
+}
+
+/** Every design, grouped by its explicit `template` exactly as the registry groups it, in declaration order. */
+function designsOfContext(context: ThemeContext): ThemeDesign[] {
+  return designsOf(designsConfig(context));
+}
+
+/** A design's declaration as written: `default_demo`, or its (first) `demos[]` entry. */
+function declarationOf(context: ThemeContext, id: string): DesignDeclaration {
+  const config = designsConfig(context);
+  if (id === PRIMARY_DEMO_ID) return config.default_demo ?? {};
+  return config.demos?.find((demo) => demo?.id === id) ?? {};
 }
 
 export const demoStoreRule: Rule = {
@@ -160,6 +183,9 @@ export const demoStoresRule: Rule = {
 
     const declared = context.declaredDemos ?? [];
     const secondaries = context.demos.filter((store) => store.id !== PRIMARY_DEMO_ID);
+    // `label` and `for` are the template's, declared once on its design 1; a
+    // later design inherits them (theme/template-designs checks a repeat).
+    const firsts = new Set(designsOfContext(context).filter((design) => design.designIndex === 1).map((design) => design.id));
 
     for (const demo of declared) {
       const id = String(demo?.id ?? '');
@@ -174,6 +200,7 @@ export const demoStoresRule: Rule = {
       if (!secondaries.some((store) => store.id === id)) {
         add(at, `demos[] declares "${id}" but there is no file ${context.env.root}demos/${id}.json`, 'Add the store, or drop the declaration. The registry advertises a preview URL for every declared store.');
       }
+      if (!firsts.has(id)) continue;
       if (typeof demo.label !== 'string' || demo.label.trim() === '') {
         add(at, `demos[] "${id}" has no label`, 'Give it the name a merchant sees, e.g. "Restaurant & takeaway".');
       }
@@ -192,7 +219,7 @@ export const demoStoresRule: Rule = {
         continue;
       }
       if (!declared.some((demo) => demo?.id === store.id)) {
-        add(`${context.env.root}${store.file}`, `demos/${store.id}.json is not declared in theme.config.ts`, `Add \`{ id: '${store.id}', label, for: [...] }\` to \`demos\` in theme.config.ts, or remove the file. An undeclared store is previewable but never offered to anyone.`);
+        add(`${context.env.root}${store.file}`, `demos/${store.id}.json is not declared in theme.config.ts`, `Add \`{ id: '${store.id}', template, label, for, description }\` to \`demos\` in theme.config.ts, or remove the file. An undeclared store is previewable but never offered to anyone.`);
       }
     }
 
@@ -890,9 +917,12 @@ export const templateBusinessRule: Rule = {
   run(context) {
     if (context.retired || context.declaredDemos === null) return [];
     const config = `${context.env.root}theme.config.ts`;
+    // Each template once, by its design 1: `for` is the template's, and a later
+    // design that repeats it is theme/template-designs' to compare.
+    const firsts = new Set(designsOfContext(context).filter((design) => design.designIndex === 1).map((design) => design.id));
     const templates: Array<{ id: string; keys: unknown; where: string }> = [
       { id: PRIMARY_DEMO_ID, keys: context.defaultFor, where: `${config} → default_demo.for` },
-      ...context.declaredDemos.map((demo) => ({ id: demo.id, keys: demo.for, where: `${config} → demos[${demo.id}].for` })),
+      ...context.declaredDemos.filter((demo) => firsts.has(demo.id)).map((demo) => ({ id: demo.id, keys: demo.for, where: `${config} → demos[${demo.id}].for` })),
     ];
     const findings: Finding[] = [];
     for (const { id, keys, where } of templates) {
@@ -935,15 +965,21 @@ export const templateBusinessRule: Rule = {
   },
 };
 
-/** `food-2` → `food`; null for an id that is not a numbered version. */
-function versionBase(id: string): string | null {
-  const match = /^(.+)-([2-9])$/.exec(id);
+/**
+ * A page slug's kind: `about-2` → `about`; null for a slug with no `-N`
+ * suffix. Only page slugs are numbered (R2.3). Designs are grouped by their
+ * explicit `template` (R2.8), never by an id's suffix.
+ */
+function pageBase(slug: string): string | null {
+  const match = /^(.+)-([2-9])$/.exec(slug);
   return match ? match[1] : null;
 }
 
+// Keeps its id (`theme/template-versions` is API: tools and to-do lists name
+// it); the R2.8 grouping checks are theme/template-designs'.
 export const templateVersionsRule: Rule = {
   id: 'theme/template-versions',
-  summary: 'Every template has its own home design, and a version serves its original\'s business',
+  summary: 'Every design has its own home: no two list the same sections in the same order',
   kind: 'static',
   run(context) {
     if (context.retired) return [];
@@ -953,7 +989,7 @@ export const templateVersionsRule: Rule = {
 
     const seen = new Map<string, string>();
     // The single-page default theme draws one fixed layout whatever its home
-    // lists, so its templates differ by business, not composition.
+    // lists, so its designs differ by business, not composition.
     for (const store of context.pageBased ? context.demos : []) {
       const home = sequence(store);
       if (!home) continue;
@@ -961,32 +997,122 @@ export const templateVersionsRule: Rule = {
       if (first) {
         findings.push(finding(context, 'theme/template-versions', 'reject', {
           where: `${context.env.root}${store.file} → pages.home`,
-          found: `template "${store.id}" has the same home sections, in the same order, as "${first}"`,
-          fix: 'A template must be its own design, not a recolour: change the order and the section variants (and the header, footer and palette where the theme allows). Vendors are spread across versions; two identical ones make that a coin toss between the same page.',
+          found: `design "${store.id}" has the same home sections, in the same order, as "${first}"`,
+          fix: 'Each design must be its own, not a recolour: change the order and the section variants (and the header, footer and palette where the theme allows). Vendors of one business are spread across its template\'s designs; two identical ones make that a coin toss between the same page.',
           docs: `${context.env.docs}#templates`,
         }));
       } else {
         seen.set(home, store.id);
       }
     }
-
-    const declared = context.declaredDemos ?? [];
-    const forOf = new Map(declared.map((demo) => [demo.id, JSON.stringify(demo.for ?? [])]));
-    for (const demo of declared) {
-      const base = versionBase(demo.id);
-      if (!base || !forOf.has(base) || forOf.get(base) === forOf.get(demo.id)) continue;
-      findings.push(finding(context, 'theme/template-versions', 'reject', {
-        where: `${context.env.root}theme.config.ts → demos[${demo.id}].for`,
-        found: `version "${demo.id}" is for ${forOf.get(demo.id)}, "${base}" for ${forOf.get(base)}`,
-        fix: `Give "${demo.id}" exactly the \`for\` of "${base}". Versions are the same business in different designs; the backend spreads matching vendors across them.`,
-        docs: `${context.env.docs}#templates`,
-      }));
-    }
     return findings;
   },
 };
 
-/** The designed pages every template ships (contract R2.3); versions `-2`… count. */
+/** A template has at most this many designs (contract R2.2). */
+export const TEMPLATE_DESIGNS_MAX = 3;
+
+/**
+ * Theme → template → design (contract R2.8). Designs are grouped by the
+ * `template` key each one declares, exactly as the registry and the preview
+ * group them (utils/theme-designs.ts). The resolver is lenient, so a config
+ * written before R2.8 still previews; this rule is where it is strict.
+ */
+export const templateDesignsRule: Rule = {
+  id: 'theme/template-designs',
+  summary: "Every design names its template; a template's designs share its label and business and are told apart by design_label",
+  kind: 'static',
+  run(context) {
+    if (context.retired || context.declaredDemos === null) return [];
+    const findings: Finding[] = [];
+    const config = designsConfig(context);
+    const where = (id: string, field: string): string =>
+      `${context.env.root}theme.config.ts → ${id === PRIMARY_DEMO_ID ? 'default_demo' : `demos[${id}]`}.${field}`;
+    const add = (at: string, found: string, fix: string): void => {
+      findings.push(finding(context, 'theme/template-designs', 'reject', { where: at, found, fix, docs: `${context.env.docs}#templates` }));
+    };
+
+    const designs = designsOfContext(context);
+
+    // Every design names its template, by a key that can be one.
+    for (const { id } of designs) {
+      const key: unknown = declarationOf(context, id).template;
+      if (key === undefined || key === null || key === '') {
+        if (id === PRIMARY_DEMO_ID) {
+          add(where(id, 'template'), 'the main template has no key (default_demo.template)', "Add `template` to `default_demo`: a lowercase slug naming its business (medley's main template is `beauty`). On a theme with two or more templates the main store moves to `/<slug>~<key>`, and `/<slug>` becomes the template gallery.");
+        } else {
+          add(where(id, 'template'), `design "${id}" names no template`, `Add \`template\` to it: \`template: '${id}'\` when it is the first design of its business, or the key of the template it is another design of. Designs are grouped by this key, never by an id's \`-2\`.`);
+        }
+      } else if (typeof key !== 'string' || !DEMO_ID_FORMAT.test(key)) {
+        add(where(id, 'template'), `template key "${String(key)}" is not a slug`, 'Use lowercase letters, digits and single hyphens: the key is a URL segment (`/<slug>~<key>`). Never rename a key once shipped; old links redirect by it.');
+      } else if (key === PRIMARY_DEMO_ID) {
+        add(where(id, 'template'), `template key "${key}" is reserved`, '"default" is demo.json\'s design id, never a template key. Name the business: `beauty`, `food`, `laundry`.');
+      }
+    }
+
+    // Template keys and design ids share one namespace: `/<slug>~<segment>` opens exactly one store.
+    const main = mainTemplateKey(config);
+    if (main !== null && designs.some((design) => design.id === main)) {
+      add(where(PRIMARY_DEMO_ID, 'template'), `the main template's key "${main}" is also a design id`, `\`/<slug>~${main}\` must open one store. Give the main template another key; design ids are never renamed once shipped, keys neither, so settle it before the theme ships.`);
+    }
+
+    for (const template of groupTemplates(designs)) {
+      const { key } = template;
+      if (key === null) continue; // a main template with no key: reported above
+      const count = template.designs.length;
+      const [first, ...later] = template.designs;
+
+      if (first.id !== PRIMARY_DEMO_ID && !template.designs.some((design) => design.id === key)) {
+        add(where(first.id, 'template'), `template "${key}" has no design 1 (a design whose id is "${key}")`, `Design 1 of a template is the design whose id is its key, so \`/<slug>~${key}\` opens the template. Declare \`{ id: '${key}', template: '${key}', label, for, description }\` with demos/${key}.json, or give "${first.id}" its own id as its \`template\`.`);
+      }
+      if (count > TEMPLATE_DESIGNS_MAX) {
+        add(where(template.designs[TEMPLATE_DESIGNS_MAX].id, 'template'), `template "${key}" has ${count} designs; a template has at most ${TEMPLATE_DESIGNS_MAX}`, `Keep ${TEMPLATE_DESIGNS_MAX} designs of "${key}" (contract R2.2): drop the rest, or make one a template of another business.`);
+      }
+
+      // `label` and `for` are the template's, declared once on design 1. A later
+      // design may repeat them unchanged, or leave them out and inherit them.
+      for (const design of later) {
+        const declared = declarationOf(context, design.id);
+        const label = typeof declared.label === 'string' ? declared.label.trim() : '';
+        if (label !== '' && label !== template.label) {
+          add(where(design.id, 'label'), `design "${design.id}" relabels its template ("${label}"); a design is named by design_label`, `\`label\` is the template's ("${template.label}"), declared once on "${first.id}". Drop \`label\` from "${design.id}" (it inherits it), and say what tells this design apart in \`design_label\`.`);
+        }
+        if (declared.for !== undefined && JSON.stringify(declared.for) !== JSON.stringify(template.for)) {
+          add(where(design.id, 'for'), `design "${design.id}" is for ${JSON.stringify(declared.for)}, its template "${key}" for ${JSON.stringify(template.for)}`, `Every design of a template is for the same business: drop \`for\` from "${design.id}" (it inherits "${first.id}"'s), or make it exactly ${JSON.stringify(template.for)}. The backend spreads a business's vendors across its template's designs.`);
+        }
+      }
+
+      if (count > 1) {
+        const named = new Map<string, string>();
+        for (const design of template.designs) {
+          if (design.designLabel === null) {
+            add(where(design.id, 'design_label'), `design "${design.id}" has no design_label (template "${key}" has ${count} designs)`, `Name what tells "${design.id}" from the template's other designs ("Dining room", "Neighbourhood buka"). The registry, the gallery and the Designs dropdown show it.`);
+            continue;
+          }
+          const other = named.get(design.designLabel.toLowerCase());
+          if (other) {
+            add(where(design.id, 'design_label'), `designs "${other}" and "${design.id}" share the design_label "${design.designLabel}"`, 'Give each design of a template its own `design_label`: it is how a merchant tells them apart.');
+          } else {
+            named.set(design.designLabel.toLowerCase(), design.id);
+          }
+        }
+      }
+    }
+
+    // A design_label is shown on every store built from the design (R2.6).
+    for (const design of designs) {
+      if (design.designLabel === null) continue;
+      const name = (context.demos.find((store) => store.id === design.id)?.data?.profile as { name?: unknown } | undefined)?.name;
+      const why = copyViolations(design.designLabel, typeof name === 'string' ? name : null);
+      if (why.length === 0) continue;
+      add(where(design.id, 'design_label'), `design "${design.id}" design_label: ${why.join('; ')}`, 'Write it true of any store in the business: no store name, place, naira amount, promise or date ("Neighbourhood buka", never "Lekki buka" or "Mama Tee\'s buka").');
+    }
+
+    return findings;
+  },
+};
+
+/** The designed pages every template ships (contract R2.3); page versions `-2`… count. */
 export const TEMPLATE_PAGES = ['about', 'sales', 'landing'] as const;
 
 export const templatePagesRule: Rule = {
@@ -1001,7 +1127,7 @@ export const templatePagesRule: Rule = {
       const pages = pagesOf(store);
       const where = `${context.env.root}${store.file} → pages`;
       for (const slug of TEMPLATE_PAGES) {
-        if (Object.keys(pages).some((key) => key === slug || versionBase(key) === slug)) continue;
+        if (Object.keys(pages).some((key) => key === slug || pageBase(key) === slug)) continue;
         findings.push(finding(context, 'theme/template-pages', 'reject', {
           where,
           found: `template "${store.id}" has no \`${slug}\` page`,
@@ -1012,7 +1138,7 @@ export const templatePagesRule: Rule = {
         }));
       }
       for (const [key, page] of Object.entries(pages)) {
-        const kind = TEMPLATE_PAGES.find((slug) => slug !== 'about' && (key === slug || versionBase(key) === slug));
+        const kind = TEMPLATE_PAGES.find((slug) => slug !== 'about' && (key === slug || pageBase(key) === slug));
         if (!kind) continue;
         const content = page?.content ?? [];
         const first = content.findIndex((section) => section?.type === 'products');
@@ -1289,5 +1415,5 @@ export const placeholderContentRule: Rule = {
 
 export const STATIC_RULES: Rule[] = [moduleContractRule, structureRule, demoStoreRule, demoStoresRule, demoArtRule, codeQualityRule, sdkBoundaryRule, selectionMetadataRule, demoCompletenessRule, subscribeScopeRule, demoBlockTypesRule, identityRule, productMetafieldsRule, poweredByRule, fontsSelfHostedRule,
   templateDescriptionRule, templateScreenshotRule, templateChromeRule, templateStyleRule,
-  templateBusinessRule, templateVersionsRule, templatePagesRule, templateCopyRule, vendorFactsRule, placeholderContentRule,
+  templateBusinessRule, templateVersionsRule, templateDesignsRule, templatePagesRule, templateCopyRule, vendorFactsRule, placeholderContentRule,
 ];

@@ -10,6 +10,18 @@ export type { CheckEnv, Finding, Rule, Severity, ThemeContext, DemoStore, Declar
 export { BUSINESS_KEYS, SERVICE_SLUGS, CATALOGUE, SUBCATEGORIES, isBusinessKey, businessRoot } from './utils/business-vocabulary.js';
 export { TEMPLATE_COPY_PLACES, copyViolations, isTestimonialSection, storeNameForms } from './utils/template-copy.js';
 export { PRIMARY_DEMO_ID, DEMO_ID_FORMAT, demoFilesOf } from './utils/theme-demos.js';
+// Theme → template → design (contract R2.8): the resolver the registry, the
+// preview and these rules share. Also published alone as `@usequeek/theme-check/designs`.
+export {
+  designsOf,
+  groupTemplates,
+  mainTemplateKey,
+  composeLabel,
+  type DesignDeclaration,
+  type ThemeDesignsConfig,
+  type ThemeDesign,
+  type ThemeTemplate,
+} from './utils/theme-designs.js';
 export { TEMPLATE_DESCRIPTION_MAX, screenshotFile, sectionStyle, sectionCopy, declaredFieldsByVariant } from './utils/theme-templates.js';
 
 // Per-kind rule arrays and the individual rule constants, for rule-level unit
@@ -38,6 +50,8 @@ export {
   templateStyleRule,
   templateBusinessRule,
   templateVersionsRule,
+  templateDesignsRule,
+  TEMPLATE_DESIGNS_MAX,
   templatePagesRule,
   templateCopyRule,
   vendorFactsRule,

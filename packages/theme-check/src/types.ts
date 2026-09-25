@@ -60,13 +60,23 @@ export interface DemoStore {
   data: Record<string, unknown> | null;
 }
 
-/** A `demos[]` entry in theme.config.ts. */
+/**
+ * A `demos[]` entry in theme.config.ts: one design (contract R2.8). A theme is
+ * the look, a template is a business it is dressed as, and a design is one
+ * concrete store of a template — one demo file.
+ */
 export interface DeclaredDemo {
+  /** The design id: demos/<id>.json. Never renamed once shipped. */
   id: string;
-  label: string;
-  /** Business slugs (the vendor's service_slug/service_type vocabulary). */
-  for: string[];
-  /** What an AI reads to choose this template for a merchant (≤ 300 chars). */
+  /** The key of the template this design belongs to: `food`. Explicit on every design. */
+  template?: string;
+  /** The template's label, the business as a merchant sees it. Declared on the template's design 1; a later design inherits it. */
+  label?: string;
+  /** What tells this design from its template's others: `Neighbourhood buka`. Required when a template has 2+ designs. */
+  design_label?: string;
+  /** The template's business slugs (the vendor's service_slug/service_type vocabulary). Declared on design 1; a later design inherits them. */
+  for?: string[];
+  /** What an AI reads to choose this design for a merchant (≤ 300 chars). */
   description?: string;
 }
 
@@ -104,6 +114,12 @@ export interface ThemeContext {
   demo: Record<string, unknown> | null;
   /** Every store on disk, the primary first. */
   demos: DemoStore[];
+  /**
+   * theme.config.ts's default export, as loaded; null when it could not be
+   * loaded. The template and design rules read it through the design resolver
+   * (`designsOf`), so they group designs exactly as the registry does.
+   */
+  themeConfig: unknown;
   /** `demos` from theme.config.ts; null when the config could not be loaded. */
   declaredDemos: DeclaredDemo[] | null;
   /** `default_demo.description` from theme.config.ts — the primary template's description. */

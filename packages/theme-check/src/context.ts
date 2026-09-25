@@ -77,6 +77,7 @@ export async function loadContext(themeDir: string, env: Partial<CheckEnv> = {})
     retired: config?.active === false,
     demo: demos.find((store) => store.id === 'default')?.data ?? null,
     demos,
+    themeConfig: config,
     declaredDemos: config === null ? null : Array.isArray(declared) ? (declared as DeclaredDemo[]) : [],
     defaultDescription: typeof primary?.description === 'string' ? primary.description : null,
     defaultFor: primary?.for ?? null,

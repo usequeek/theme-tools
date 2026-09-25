@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./designs": {
+      "types": "./dist/utils/theme-designs.d.ts",
+      "default": "./dist/utils/theme-designs.js"
     }
   },
   "files": [

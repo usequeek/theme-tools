@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import * as pkg from '../src/index.js';
 import { RULES } from '../src/run.js';
@@ -26,7 +27,7 @@ describe('package entry exports the rule-level surface', () => {
       pkg.subscribeScopeRule, pkg.demoBlockTypesRule, pkg.identityRule, pkg.productMetafieldsRule,
       pkg.poweredByRule, pkg.fontsSelfHostedRule, pkg.templateDescriptionRule, pkg.templateScreenshotRule,
       pkg.templateChromeRule, pkg.templateStyleRule, pkg.templateBusinessRule, pkg.templateVersionsRule,
-      pkg.templatePagesRule, pkg.templateCopyRule, pkg.vendorFactsRule, pkg.placeholderContentRule,
+      pkg.templateDesignsRule, pkg.templatePagesRule, pkg.templateCopyRule, pkg.vendorFactsRule, pkg.placeholderContentRule,
     ];
     expect(exported).toHaveLength(pkg.STATIC_RULES.length);
     exported.forEach((rule, i) => expect(rule).toBe(pkg.STATIC_RULES[i]));
@@ -36,6 +37,22 @@ describe('package entry exports the rule-level surface', () => {
     const exported = [pkg.variantParityRule, pkg.fieldParityRule, pkg.designTokensRule];
     expect(exported).toHaveLength(pkg.ANALYSIS_RULES.length);
     exported.forEach((rule, i) => expect(rule).toBe(pkg.ANALYSIS_RULES[i]));
+  });
+
+  it('exports the design resolver (R2.8) the rules group by, and publishes it alone as ./designs', async () => {
+    const designs = await import('../src/utils/theme-designs.js');
+    expect(pkg.designsOf).toBe(designs.designsOf);
+    expect(pkg.groupTemplates).toBe(designs.groupTemplates);
+    expect(pkg.mainTemplateKey).toBe(designs.mainTemplateKey);
+    expect(pkg.composeLabel).toBe(designs.composeLabel);
+    expect(pkg.TEMPLATE_DESIGNS_MAX).toBe(3);
+    const config = { default_demo: { template: 'beauty' }, demos: [{ id: 'food', template: 'food' }, { id: 'food-2', template: 'food' }] };
+    expect(pkg.groupTemplates(pkg.designsOf(config)).map((template) => [template.key, template.designs.map((design) => design.id)])).toEqual([
+      ['beauty', ['default']],
+      ['food', ['food', 'food-2']],
+    ]);
+    const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { exports: Record<string, { default: string }> };
+    expect(manifest.exports['./designs'].default).toBe('./dist/utils/theme-designs.js');
   });
 
   it('exports the frameworkImport helper and the starter placeholder image list used by the static rules', () => {

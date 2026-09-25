@@ -48,6 +48,16 @@ describe('checkTheme on a real theme folder', () => {
     expect(rejects(findings).map((f) => [f.rule, f.where])).toEqual([['theme/placeholder-content', 'theme/theme.config.ts → description']]);
   }, 60_000);
 
+  it('reads the template each design declares in theme.config.ts (theme/template-designs)', async () => {
+    const dir = passingCopy();
+    const config = join(dir, 'theme.config.ts');
+    const source = readFileSync(config, 'utf8');
+    expect(source).toContain("    template: 'shop',\n");
+    writeFileSync(config, source.replace("    template: 'shop',\n", ''));
+    const { findings } = await checkTheme(dir, { env: { root: 'theme/' } });
+    expect(rejects(findings).map((f) => [f.rule, f.found])).toEqual([['theme/template-designs', 'the main template has no key (default_demo.template)']]);
+  }, 60_000);
+
   it('catches a demo store whose products belong to another shop', async () => {
     const dir = copy();
     const demo = JSON.parse(readFileSync(join(dir, 'demo.json'), 'utf8'));

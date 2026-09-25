@@ -7,19 +7,26 @@ const config = {
   tags: ['minimal'],
   categories: ['shop'],
   rank: 0,
-  // Every demo store is a template (themes/THEME.md#templates). demo.json is
-  // the primary: name its business (its business category first), in the vocabulary of
-  // lib/storefront/business-vocabulary.json. Its description is what an AI
-  // reads to choose it for a merchant — write your own.
+  // Theme → template → design (themes/THEME.md#templates). Every demo store is
+  // a design; a template is the business a design is dressed as, and groups
+  // its designs. demo.json is the main template's first design. `template` is
+  // that template's key: a slug for its business, never renamed once shipped.
+  // `label` names the business and `for` lists it (its business category
+  // first) in the vocabulary of lib/storefront/business-vocabulary.json. Its
+  // description is what an AI reads to choose it for a merchant — write your own.
   default_demo: {
+    template: 'shop',
     label: 'General store',
     for: ['shop'],
     description: 'Replace before publishing. Any shop: a banner hero, a product grid and category tiles on plain white. Write who the template fits, the look, its signature sections and the photos it needs, in at most 300 characters.',
   },
-  // Alternative demo stores, one per `demos/<id>.json` — the same theme as a
-  // different business, previewed at `/?demo=<id>` here and `/<slug>~<id>`
-  // once published. `for` uses the same vocabulary.
-  // demos: [{ id: 'food', label: 'Restaurant & takeaway', for: ['foods', 'local-meals'], description: '…' }],
+  // More designs, one per `demos/<id>.json`, previewed at `/?demo=<id>` here
+  // and `/<slug>~<id>` once published. Another business is another template;
+  // its first design's id is its key:
+  // demos: [{ id: 'food', template: 'food', label: 'Restaurant & takeaway', for: ['foods', 'local-meals'], description: '…' }],
+  // A second design of the same template repeats its label and `for`, and says
+  // what tells it apart in `design_label`:
+  //   { id: 'food-2', template: 'food', label: 'Restaurant & takeaway', design_label: 'Night market', for: ['foods', 'local-meals'], description: '…' }
 };
 
 export default config;
