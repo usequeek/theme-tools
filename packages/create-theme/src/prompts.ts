@@ -45,7 +45,7 @@ export function clackPrompter(): Prompter {
       return answer<string[]>(await p.autocompleteMultiselect({ message: 'Businesses to make templates for (type to search)', options: templateOptions(), required: true }));
     },
     async primary(keys) {
-      return answer<string>(await p.select({ message: 'Which is the primary template (the theme\'s first impression)?', options: keys.map(businessOption) }));
+      return answer<string>(await p.select({ message: 'Which template is the main one (the theme\'s first impression)?', options: keys.map(businessOption) }));
     },
     async categories(initial) {
       return answer<string[]>(await p.multiselect({ message: 'Business categories the theme serves', options: SERVICES.map((key) => ({ value: key, label: labelOf(key) })), initialValues: initial, required: true }));

@@ -16,7 +16,7 @@ and with no folder the folder is named after the theme (my-theme with --yes or n
 
   --name <text>          theme name (default: the folder name)
   --templates <keys>     businesses to make templates for, comma-separated (required with --yes)
-  --primary <key>        the primary template (default: the first)
+  --primary <key>        the main template (default: the first)
   --categories <keys>    business categories (default: the templates')
   --tags <tags>          1–6 tags for the look (required with --yes)
   --pages <list|none>    extra pages: contact, faq (default: both)
@@ -32,7 +32,9 @@ The starter is pinned to the tag matching this package's version. Everything is 
 
 ## What you get
 
-Right after `create`, `npm run check` rejects exactly your to-do list. For a one-template theme that is four rules: `theme/placeholder-content` (the starter's placeholder products and photos, and the theme's placeholder description), `theme/structure` and `theme/template-screenshot` (each template's screenshot), and `theme/template-description` (each template's description). With two or more templates, `theme/template-versions` is added: each template must have its own home page.
+A theme is the look, a template is a business it is dressed as, and a design is one demo store of a template. Each business you pick becomes a template with one design. The main template's (`--primary`) is `theme/demo.json`; each other template's is `theme/demos/<key>.json`. `theme/theme.config.ts` declares every design with its `template` key, the business picked, so a template is never inferred from a design id. To give a template a second design later, add its demo file and declare `{ id, template, design_label, description }`; a template with two or more designs names each one by its own `design_label`.
+
+Right after `create`, `npm run check` rejects exactly your to-do list. For a one-template theme that is four rules: `theme/placeholder-content` (the starter's placeholder products and photos, and the theme's placeholder description), `theme/structure` and `theme/template-screenshot` (each design's screenshot), and `theme/template-description` (each design's description). With two or more templates, `theme/template-versions` is added: each design must have its own home page.
 
 The target folder must be missing, empty, or hold only `.git`. The `--force` flag allows writing into another folder but refuses file-or-folder clashes and symlinks at paths the starter writes. A regular file at the target path is always refused.
 

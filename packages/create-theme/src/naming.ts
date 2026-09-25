@@ -26,25 +26,33 @@ export function prefixFor(slug: string): string {
 }
 
 export interface TemplatePlan {
+  /** The design id: `default` (demo.json) for the main template, else the key (demos/<key>.json). */
   id: string;
+  /** The business picked. */
   key: string;
+  /** The template key theme.config.ts declares on the design (contract R2.8): the business picked. */
+  template: string;
   label: string;
   for: string[];
+  /** The main template, whose first design is demo.json. */
   primary: boolean;
 }
 
 /**
- * One demo store per business picked. The primary is `default`, the rest are
- * named by their key. A business category makes a general template, a niche a
- * niche one — either way `for` is just that key, so a niche never names a
- * category (R2.7).
+ * One template per business picked, each with one design (contract R2.8:
+ * theme → template → design). The main template's design is `default`
+ * (demo.json); every other design's id is its template's key, which makes it
+ * that template's design 1. The key is the business picked, so a template is
+ * never inferred from an id. A business category makes a general template, a
+ * niche a niche one — either way `for` is just that key, so a niche never
+ * names a category (R2.7).
  */
 export function planTemplates(keys: string[], primary?: string): TemplatePlan[] {
   const unique = [...new Set(keys)];
   if (unique.length === 0) return [];
   const first = primary && unique.includes(primary) ? primary : unique[0];
   const ordered = [first, ...unique.filter((key) => key !== first)];
-  return ordered.map((key, index) => ({ id: index === 0 ? 'default' : key, key, label: labelOf(key), for: [key], primary: index === 0 }));
+  return ordered.map((key, index) => ({ id: index === 0 ? 'default' : key, key, template: key, label: labelOf(key), for: [key], primary: index === 0 }));
 }
 
 /** The business categories the templates belong to, once each, in order. */

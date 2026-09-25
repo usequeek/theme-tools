@@ -43,10 +43,10 @@ describe('prefixFor', () => {
 });
 
 describe('planTemplates', () => {
-  it('puts the primary first as default, the rest under their key, without duplicates', () => {
+  it('puts the main template first as default, the rest under their key, without duplicates; each template keyed by its business (R2.8)', () => {
     expect(planTemplates(['foods', 'laundry', 'foods'], 'laundry')).toEqual([
-      { id: 'default', key: 'laundry', label: 'Laundry & dry cleaning', for: ['laundry'], primary: true },
-      { id: 'foods', key: 'foods', label: 'Food & restaurants', for: ['foods'], primary: false },
+      { id: 'default', key: 'laundry', template: 'laundry', label: 'Laundry & dry cleaning', for: ['laundry'], primary: true },
+      { id: 'foods', key: 'foods', template: 'foods', label: 'Food & restaurants', for: ['foods'], primary: false },
     ]);
   });
 

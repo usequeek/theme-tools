@@ -36,7 +36,7 @@ const list = (items: string[]): string => `[${items.map(ts).join(', ')}]`;
 
 export function themeConfigSource(answers: Answers): string {
   const [primary, ...others] = answers.templates;
-  const demos = others.map((plan) => `    {\n      id: ${ts(plan.id)}, label: ${ts(plan.label)}, for: ${list(plan.for)},\n      description: ${ts(DESCRIPTION)},\n    },`).join('\n');
+  const demos = others.map((plan) => `    {\n      id: ${ts(plan.id)}, template: ${ts(plan.template)}, label: ${ts(plan.label)}, for: ${list(plan.for)},\n      description: ${ts(DESCRIPTION)},\n    },`).join('\n');
   return `const config = {
   name: ${ts(answers.name)},
   slug: ${ts(answers.slug)},
@@ -46,10 +46,20 @@ export function themeConfigSource(answers: Answers): string {
   tags: ${list(answers.tags)},
   categories: ${list(answers.categories)},
   rank: 0,
-  // Every demo store is a template (docs/THEME.md#templates). demo.json is the
-  // primary. \`for\`: a whole business leads with its category, a niche names only
-  // its product keys (docs/business-vocabulary.json).
+  // Theme → template → design (docs/THEME.md#templates). A template is a
+  // business the theme is dressed as; a design is one demo store of it.
+  // demo.json is the main template's first design; each demos/<id>.json here
+  // is the first design of another template, so its id is its key.
+  // \`template\` is that key: a slug for the business, never renamed once
+  // shipped. \`label\` and \`for\` are the template's. \`for\`: a whole business
+  // leads with its category, a niche names only its product keys
+  // (docs/business-vocabulary.json).
+  // To give a template a second design, add a demos/<id>.json with any unused
+  // id and declare it \`{ id, template, design_label, description }\`: it
+  // inherits the template's label and for. A template with two or more
+  // designs (three at most) names each one by its own \`design_label\`.
   default_demo: {
+    template: ${ts(primary.template)},
     label: ${ts(primary.label)},
     for: ${list(primary.for)},
     description: ${ts(DESCRIPTION)},

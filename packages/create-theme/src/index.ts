@@ -31,7 +31,7 @@ and with no folder the folder is named after the theme (my-theme with --yes or n
 
   --name <text>          theme name (default: the folder name)
   --templates <keys>     businesses to make templates for, comma-separated (required with --yes)
-  --primary <key>        the primary template (default: the first)
+  --primary <key>        the main template (default: the first)
   --categories <keys>    business categories (default: the templates')
   --tags <tags>          1–6 tags for the look (required with --yes)
   --pages <list|none>    extra pages: contact, faq (default: both)

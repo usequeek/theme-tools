@@ -43,10 +43,12 @@ try {
   console.log('e2e: installed from the tarballs');
 
   // A freshly created theme is not clean — it still carries the starter's
-  // placeholder products/photos/descriptions, two templates with the same
+  // placeholder products/photos/descriptions, two designs with the same
   // home layout (create clones one demo per template), and no screenshots
   // (create deletes the skeleton's own theme.jpg: it would misrepresent
-  // whatever the developer ends up designing). `formatJson` in
+  // whatever the developer ends up designing). What create declares is
+  // complete, so theme/template-designs is never on the list: every design
+  // names its template (contract R2.8). `formatJson` in
   // packages/theme-check/src/format.ts emits findings[].rule and
   // findings[].level, 'error' for a reject.
   const check = sh(process.execPath, [join(project, 'node_modules/@usequeek/theme-cli/bin/run.js'), 'check', '--format', 'json'], project, true);
