@@ -1,9 +1,9 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUSINESS_KEYS, businessRoot, isBusinessKey } from '../src/utils/business-vocabulary.js';
-import { frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
+import { fontsSelfHostedRule, frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
 import { copyViolations } from '../src/utils/template-copy.js';
 import type { DemoStore, ThemeContext } from '../src/types.js';
 
@@ -230,5 +230,23 @@ describe('theme/core-boundary: the framework stays behind the kit', () => {
     expect(findings[0]).toMatchObject({ rule: 'theme/core-boundary', severity: 'reject', where: 'header.tsx' });
     expect(findings[0].found).toContain("'next/link'");
     expect(findings[0].fix).toContain('@usequeek/theme-kit/navigation');
+  });
+});
+
+describe('theme/fonts-self-hosted', () => {
+  it('rejects a Google Fonts @import in a theme stylesheet, same as next/font/google', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fonts-rule-'));
+    mkdirSync(join(dir, 'styles'), { recursive: true });
+    writeFileSync(join(dir, 'styles/type.css'), "@import url('https://fonts.googleapis.com/css2?family=Jost&display=swap');\n");
+
+    const findings = await fontsSelfHostedRule.run({ ...context({}), dir });
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      rule: 'theme/fonts-self-hosted',
+      severity: 'reject',
+      where: 'styles/type.css',
+      found: 'loads a font with @import from fonts.googleapis.com',
+    });
   });
 });

@@ -11,3 +11,38 @@ export { BUSINESS_KEYS, SERVICE_SLUGS, CATALOGUE, SUBCATEGORIES, isBusinessKey, 
 export { TEMPLATE_COPY_PLACES, copyViolations, isTestimonialSection, storeNameForms } from './utils/template-copy.js';
 export { PRIMARY_DEMO_ID, DEMO_ID_FORMAT, demoFilesOf } from './utils/theme-demos.js';
 export { TEMPLATE_DESCRIPTION_MAX, screenshotFile, sectionStyle, sectionCopy, declaredFieldsByVariant } from './utils/theme-templates.js';
+
+// Per-kind rule arrays and the individual rule constants, for rule-level unit
+// tests that want to run one rule against a hand-built ThemeContext instead
+// of a whole theme directory through checkTheme().
+export {
+  STATIC_RULES,
+  moduleContractRule,
+  structureRule,
+  demoStoreRule,
+  demoStoresRule,
+  demoArtRule,
+  codeQualityRule,
+  sdkBoundaryRule,
+  selectionMetadataRule,
+  demoCompletenessRule,
+  subscribeScopeRule,
+  demoBlockTypesRule,
+  identityRule,
+  productMetafieldsRule,
+  poweredByRule,
+  fontsSelfHostedRule,
+  templateDescriptionRule,
+  templateScreenshotRule,
+  templateChromeRule,
+  templateStyleRule,
+  templateBusinessRule,
+  templateVersionsRule,
+  templatePagesRule,
+  templateCopyRule,
+  vendorFactsRule,
+  placeholderContentRule,
+  frameworkImport,
+  STARTER_PLACEHOLDER_IMAGES,
+} from './rules/static.js';
+export { ANALYSIS_RULES, variantParityRule, fieldParityRule, designTokensRule } from './rules/analysis.js';

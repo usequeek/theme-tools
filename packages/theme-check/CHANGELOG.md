@@ -1,5 +1,11 @@
 # @usequeek/theme-check
 
+## 0.3.3
+
+### Patch Changes
+
+- `theme/fonts-self-hosted` now rejects a Google Fonts `@import` in a theme stylesheet, matching the storefront's own checker instead of only warning. The package entry (`@usequeek/theme-check`) also now exports `STATIC_RULES`, `ANALYSIS_RULES`, every individual rule constant, and the `frameworkImport`/`STARTER_PLACEHOLDER_IMAGES` helpers, so rule-level unit tests can run one rule against a hand-built context without going through a whole theme directory.
+
 ## 0.3.2
 
 ### Patch Changes

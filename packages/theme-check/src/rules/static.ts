@@ -1201,7 +1201,7 @@ function themeCssFiles(dir: string): string[] {
 
 export const fontsSelfHostedRule: Rule = {
   id: 'theme/fonts-self-hosted',
-  summary: 'Theme fonts ship as files in the theme: next/font/google is rejected (it fails builds), a Google Fonts @import is flagged',
+  summary: 'Theme fonts ship as files in the theme: next/font/google (fails builds) and a Google Fonts @import (dropped or render-blocking) are rejected',
   kind: 'static',
   run(context) {
     const findings: Finding[] = [];
@@ -1222,10 +1222,10 @@ export const fontsSelfHostedRule: Rule = {
     for (const path of themeCssFiles(context.dir)) {
       const css = readFileSync(path, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
       if (/@import\s+(?:url\()?['"]?https?:\/\/fonts\.googleapis\.com/.test(css)) {
-        findings.push(finding(context, 'theme/fonts-self-hosted', 'warn', {
+        findings.push(finding(context, 'theme/fonts-self-hosted', 'reject', {
           where: relative(context.dir, path),
           found: 'loads a font with @import from fonts.googleapis.com',
-          fix: `Either the bundler drops it (it only survives as the very first rule of the compiled stylesheet), so the font never loads, or it survives and every page load waits on an extra render-blocking request to Google before the text can paint. ${fix}`,
+          fix: `Either the bundler drops it (it only survives as the very first rule of the compiled stylesheet), so the font never loads — atelier, deluxr and lumiere shipped that way until 24/9/26 — or it survives and every page load waits on an extra render-blocking request to Google before the text can paint. ${fix}`,
           docs: `${context.env.docs}#fonts`,
         }));
       }
