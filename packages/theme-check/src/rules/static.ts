@@ -1235,14 +1235,18 @@ export const fontsSelfHostedRule: Rule = {
   },
 };
 
-/** The starter's own demo photos, rehosted under themes/_bare — never a real theme's. */
+/** The starter's labelled placeholder images ("Your banner photo", "Category photo", "Product photo") under theme-assets/_bare. */
 export const STARTER_PLACEHOLDER_IMAGES: readonly string[] = [
-  'https://media.usequeek.com/theme-assets/_bare/0e21e31030533d79.jpg',
-  'https://media.usequeek.com/theme-assets/_bare/201b6247be904af4.jpg',
-  'https://media.usequeek.com/theme-assets/_bare/377756cea202d263.jpg',
-  'https://media.usequeek.com/theme-assets/_bare/57e4183c303aab31.jpg',
-  'https://media.usequeek.com/theme-assets/_bare/67913acc7ef19523.jpg',
-  'https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/0c8749c67b449815.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/23d5f6928502dcca.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/430bb331b314f613.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/43b1e392b8039306.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/5a75479e668914bb.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/8847c6c8472cc629.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/ce7b1219776e7a98.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/dcdae58f874939a9.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/e37b930c35976c89.jpg',
+  'https://media.usequeek.com/theme-assets/_bare/e8543451de24e310.jpg',
 ];
 
 export const placeholderContentRule: Rule = {

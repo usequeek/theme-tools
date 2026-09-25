@@ -170,7 +170,7 @@ describe('theme/placeholder-content', () => {
 
   it("rejects the starter's placeholder products and photos", async () => {
     const found = await placeholderContentRule.run(context({ demos: [store([
-      { slug: 'placeholder-one', media: { image: 'https://media.usequeek.com/theme-assets/_bare/0e21e31030533d79.jpg' } },
+      { slug: 'placeholder-one', media: { image: 'https://media.usequeek.com/theme-assets/_bare/0c8749c67b449815.jpg' } },
       { slug: 'real-dress' },
     ])] }));
     expect(found).toHaveLength(1);
@@ -196,7 +196,7 @@ describe('theme/placeholder-content', () => {
   });
 
   it("passes a store using lumiere's original photos", async () => {
-    expect(await placeholderContentRule.run(context({ demos: [store([{ slug: 'real-dress', media: { image: 'https://media.usequeek.com/theme-assets/lumiere/0e21e31030533d79.jpg' } }])] }))).toEqual([]);
+    expect(await placeholderContentRule.run(context({ demos: [store([{ slug: 'real-dress', media: { image: 'https://media.usequeek.com/theme-assets/lumiere/0c8749c67b449815.jpg' } }])] }))).toEqual([]);
   });
 });
 

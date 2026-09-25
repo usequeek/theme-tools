@@ -1,5 +1,11 @@
 # @usequeek/create-theme
 
+## 0.3.2
+
+### Patch Changes
+
+- The starter's demo images are now labelled placeholders instead of fashion photos.
+
 ## 0.3.1
 
 ### Patch Changes

@@ -5,7 +5,7 @@
     "name": "Bare",
     "tagline": "A starting point, not a design.",
     "logo": null,
-    "banner": "https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg",
+    "banner": "https://media.usequeek.com/theme-assets/_bare/dcdae58f874939a9.jpg",
     "currency": "NGN",
     "rating": 5,
     "rating_count": 1,
@@ -68,19 +68,19 @@
       "id": "bare-c1",
       "name": "First",
       "slug": "first",
-      "image": "https://media.usequeek.com/theme-assets/_bare/201b6247be904af4.jpg"
+      "image": "https://media.usequeek.com/theme-assets/_bare/5a75479e668914bb.jpg"
     },
     {
       "id": "bare-c2",
       "name": "Second",
       "slug": "second",
-      "image": "https://media.usequeek.com/theme-assets/_bare/0e21e31030533d79.jpg"
+      "image": "https://media.usequeek.com/theme-assets/_bare/0c8749c67b449815.jpg"
     },
     {
       "id": "bare-c3",
       "name": "Third",
       "slug": "third",
-      "image": "https://media.usequeek.com/theme-assets/_bare/57e4183c303aab31.jpg"
+      "image": "https://media.usequeek.com/theme-assets/_bare/430bb331b314f613.jpg"
     }
   ],
   "products": [
@@ -117,9 +117,9 @@
         "rating_count": 1
       },
       "media": {
-        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg",
-        "image": "https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg",
-        "original": "https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg",
+        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/43b1e392b8039306.jpg",
+        "image": "https://media.usequeek.com/theme-assets/_bare/43b1e392b8039306.jpg",
+        "original": "https://media.usequeek.com/theme-assets/_bare/43b1e392b8039306.jpg",
         "gallery": []
       },
       "inventory": {
@@ -185,9 +185,9 @@
         "rating_count": 1
       },
       "media": {
-        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/201b6247be904af4.jpg",
-        "image": "https://media.usequeek.com/theme-assets/_bare/201b6247be904af4.jpg",
-        "original": "https://media.usequeek.com/theme-assets/_bare/201b6247be904af4.jpg",
+        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/23d5f6928502dcca.jpg",
+        "image": "https://media.usequeek.com/theme-assets/_bare/23d5f6928502dcca.jpg",
+        "original": "https://media.usequeek.com/theme-assets/_bare/23d5f6928502dcca.jpg",
         "gallery": []
       },
       "inventory": {
@@ -253,9 +253,9 @@
         "rating_count": 1
       },
       "media": {
-        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/0e21e31030533d79.jpg",
-        "image": "https://media.usequeek.com/theme-assets/_bare/0e21e31030533d79.jpg",
-        "original": "https://media.usequeek.com/theme-assets/_bare/0e21e31030533d79.jpg",
+        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/e8543451de24e310.jpg",
+        "image": "https://media.usequeek.com/theme-assets/_bare/e8543451de24e310.jpg",
+        "original": "https://media.usequeek.com/theme-assets/_bare/e8543451de24e310.jpg",
         "gallery": []
       },
       "inventory": {
@@ -321,9 +321,9 @@
         "rating_count": 1
       },
       "media": {
-        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/57e4183c303aab31.jpg",
-        "image": "https://media.usequeek.com/theme-assets/_bare/57e4183c303aab31.jpg",
-        "original": "https://media.usequeek.com/theme-assets/_bare/57e4183c303aab31.jpg",
+        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/ce7b1219776e7a98.jpg",
+        "image": "https://media.usequeek.com/theme-assets/_bare/ce7b1219776e7a98.jpg",
+        "original": "https://media.usequeek.com/theme-assets/_bare/ce7b1219776e7a98.jpg",
         "gallery": []
       },
       "inventory": {
@@ -389,9 +389,9 @@
         "rating_count": 1
       },
       "media": {
-        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/67913acc7ef19523.jpg",
-        "image": "https://media.usequeek.com/theme-assets/_bare/67913acc7ef19523.jpg",
-        "original": "https://media.usequeek.com/theme-assets/_bare/67913acc7ef19523.jpg",
+        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/8847c6c8472cc629.jpg",
+        "image": "https://media.usequeek.com/theme-assets/_bare/8847c6c8472cc629.jpg",
+        "original": "https://media.usequeek.com/theme-assets/_bare/8847c6c8472cc629.jpg",
         "gallery": []
       },
       "inventory": {
@@ -457,9 +457,9 @@
         "rating_count": 1
       },
       "media": {
-        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/377756cea202d263.jpg",
-        "image": "https://media.usequeek.com/theme-assets/_bare/377756cea202d263.jpg",
-        "original": "https://media.usequeek.com/theme-assets/_bare/377756cea202d263.jpg",
+        "thumbnail": "https://media.usequeek.com/theme-assets/_bare/e37b930c35976c89.jpg",
+        "image": "https://media.usequeek.com/theme-assets/_bare/e37b930c35976c89.jpg",
+        "original": "https://media.usequeek.com/theme-assets/_bare/e37b930c35976c89.jpg",
         "gallery": []
       },
       "inventory": {
@@ -500,7 +500,7 @@
       "type": "post",
       "title": "Hello",
       "excerpt": "A placeholder journal entry.",
-      "cover_image_url": "https://media.usequeek.com/theme-assets/_bare/67913acc7ef19523.jpg",
+      "cover_image_url": "https://media.usequeek.com/theme-assets/_bare/8847c6c8472cc629.jpg",
       "tags": [],
       "seo": {
         "title": "Hello — Bare",
@@ -526,7 +526,7 @@
           "data": {
             "images": [
               {
-                "url": "https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg",
+                "url": "https://media.usequeek.com/theme-assets/_bare/dcdae58f874939a9.jpg",
                 "alt": "",
                 "title": "A starting point",
                 "subtitle": "Structure and token wiring, no design opinions.",
@@ -644,7 +644,7 @@
           "data": {
             "images": [
               {
-                "url": "https://media.usequeek.com/theme-assets/_bare/cd48af92c911f8b6.jpg",
+                "url": "https://media.usequeek.com/theme-assets/_bare/dcdae58f874939a9.jpg",
                 "alt": "",
                 "title": "One product, the whole page",
                 "subtitle": "A sales page sells one to three products. The backend binds the merchant’s own to every products section here.",
@@ -701,7 +701,7 @@
           "data": {
             "images": [
               {
-                "url": "https://media.usequeek.com/theme-assets/_bare/201b6247be904af4.jpg",
+                "url": "https://media.usequeek.com/theme-assets/_bare/dcdae58f874939a9.jpg",
                 "alt": "",
                 "title": "A campaign page",
                 "subtitle": "A season, a launch or an offer: a hero, the products in it, and why now.",
