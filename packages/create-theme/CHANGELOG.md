@@ -1,5 +1,11 @@
 # @usequeek/create-theme
 
+## 0.3.1
+
+### Patch Changes
+
+- A new project installs `@usequeek/theme-cli` 0.3, the checker that rejects Next.js imports; the 0.3.0 starter still asked for 0.1 or 0.2.
+
 ## 0.3.0
 
 ### Minor Changes

@@ -121,9 +121,11 @@ yarn starter:publish --tag v<new version>
 `create` downloads `github:usequeek/theme-starter#v<version>` and fails if the tag
 is missing, and a created project installs whatever `@usequeek/theme-cli` its
 starter's range allows (on 0.x, `^0.1.0` never reaches 0.2.0). Tags never move, so
-get the range right before tagging. `pnpm release` enforces the tag: it runs
+get the range right before tagging. `pnpm release` enforces both: it runs
 `scripts/check-starter-tag.mjs` first, which fails when the starter has no tag for
-create-theme's version.
+create-theme's version, or when that tag's `@usequeek/theme-cli` range does not take
+the theme-cli being released. Run it yourself after tagging
+(`node scripts/check-starter-tag.mjs`) to find out before CI does.
 
 ## AI-assisted contributions
 
