@@ -52,8 +52,10 @@ describe('checkTheme on a real theme folder', () => {
     const dir = passingCopy();
     const config = join(dir, 'theme.config.ts');
     const source = readFileSync(config, 'utf8');
-    expect(source).toContain("    template: 'shop',\n");
-    writeFileSync(config, source.replace("    template: 'shop',\n", ''));
+    // A Windows checkout has CRLF line endings.
+    const line = /^ {4}template: 'shop',\r?\n/m;
+    expect(source).toMatch(line);
+    writeFileSync(config, source.replace(line, ''));
     const { findings } = await checkTheme(dir, { env: { root: 'theme/' } });
     expect(rejects(findings).map((f) => [f.rule, f.found])).toEqual([['theme/template-designs', 'the main template has no key (default_demo.template)']]);
   }, 60_000);
