@@ -75,3 +75,12 @@ describe('renameContent', () => {
     expect(renameContent("name: 'Bare',", '.ts', SKELETON, { ...TO, name: 'A\nB' })).toBe("name: 'A\\nB',");
   });
 });
+
+describe('the package entry', () => {
+  // Queek's `yarn theme:new` copies a theme under a new name with this rename.
+  it('exports the rename and the skeleton identity', async () => {
+    const api = await import('../src/index.js');
+    expect(api.renameTheme).toBe(renameTheme);
+    expect(api.SKELETON).toEqual({ slug: 'bare', prefix: 'bare', name: 'Bare' });
+  });
+});

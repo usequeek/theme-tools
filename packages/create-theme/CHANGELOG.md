@@ -1,5 +1,11 @@
 # @usequeek/create-theme
 
+## 0.3.4
+
+### Patch Changes
+
+- Export `renameTheme`, `SKELETON` and the `Identity` type, so a tool that copies a theme under a new name uses the same rename as `npm create`.
+
 ## 0.3.2
 
 ### Patch Changes

@@ -9,6 +9,8 @@ import { setupTheme, type Answers } from './setup.js';
 export { UsageError, CancelledError, type Flags, type Prompter, type PackageManager } from './options.js';
 export { setupTheme, type Answers } from './setup.js';
 export { clackPrompter } from './prompts.js';
+/** The rename `npm create` applies to the starter, for tools that copy a theme under a new name (Queek's `yarn theme:new`). */
+export { renameTheme, SKELETON, type Identity } from './rename.js';
 
 const VERSION = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
 /** The starter this release was tested with: its tag matches this package's version (`yarn starter:publish --tag`). */
