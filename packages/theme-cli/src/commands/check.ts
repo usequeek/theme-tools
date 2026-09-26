@@ -1,6 +1,7 @@
 import { Command, Flags } from '@oclif/core';
 import { checkTheme, formatGithubActions, formatJson, formatStylish, levelOf, summarize } from '@usequeek/theme-check';
 import { resolveProject } from '../lib/project.js';
+import { resolveCommandVocabulary, vocabularyFlags } from '../lib/vocabulary.js';
 
 export default class Check extends Command {
   static override summary = 'Check your theme against the Queek theme contract.';
@@ -20,6 +21,7 @@ Exit codes: 0 — no errors (or no findings at --fail-level warning); 1 — find
     format: Flags.string({ summary: 'Output format.', options: ['stylish', 'json', 'github-actions'], default: 'stylish', env: 'QUEEK_THEME_FORMAT' }),
     'fail-level': Flags.string({ summary: 'Lowest level that makes the command exit 1.', options: ['error', 'warning'], default: 'error' }),
     quiet: Flags.boolean({ summary: 'Report errors only.', default: false }),
+    ...vocabularyFlags,
   };
 
   async run(): Promise<void> {
@@ -27,7 +29,8 @@ Exit codes: 0 — no errors (or no findings at --fail-level warning); 1 — find
     let result;
     try {
       const project = resolveProject(flags.path);
-      result = await checkTheme(project.themeDir);
+      const vocabulary = await resolveCommandVocabulary(flags, (line) => this.logToStderr(line));
+      result = await checkTheme(project.themeDir, { vocabulary });
     } catch (error) {
       this.error((error as Error).message, { exit: 2 });
     }

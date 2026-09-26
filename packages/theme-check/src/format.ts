@@ -30,6 +30,7 @@ export function formatJson(result: CheckResult): string {
   return JSON.stringify({
     theme: result.context.slug,
     summary: summarize(result.findings),
+    vocabulary: result.vocabulary,
     findings: result.findings.map((finding) => ({
       rule: finding.rule,
       level: levelOf(finding),

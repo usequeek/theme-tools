@@ -1,24 +1,429 @@
 {
-  "$comment": "The only keys a template's `for` may use (theme.config.ts default_demo.for / demos[].for). `services` are the slugs a vendor registers as; `catalogue` is the marketplace product taxonomy, root -> branches, and `subcategories` a branch -> its own children; each key is the Str::slug of the category name. The backend reads a vendor's business from what they actually sell and ranks a specific (branch) match above a broad one. Agreed with queek_backend 24/9/26 (storefront-theme-templates-contract.md, R2.1; jewelry and beverages R2.5); change it only together with the backend.",
+  "$comment": "The only keys a template's `for` may use (theme.config.ts default_demo.for / demos[].for). `services` are the slugs a vendor registers as; `catalogue` is the marketplace product taxonomy, root -> branches, and `subcategories` a branch -> its own children; each key is the Str::slug of the category name. The backend reads a vendor's business from what they actually sell and ranks a specific (branch) match above a broad one. Agreed with queek_backend (storefront-theme-templates-contract.md, R2.1; jewelry R2.5; production snapshot R2.9); change it only together with the backend.",
+  "version": "d1f9c8eefc91ed3b2c834345458c62343f465ce6",
   "services": [
-    "foods", "local-meals", "shawarma-pizza-snacks", "suya", "boli", "fruits-fresh-natural",
-    "meat-fish", "supermarket", "groceries", "shop-groceries", "local-market", "pharmacy",
-    "health-wellness-store", "fashion", "beauty-cosmetics", "electronics", "phones-accessories",
-    "home-living", "baby-kids", "office-school", "shop", "laundry", "gas-refill", "home-cleaning",
-    "car-wash"
+    "baby-kids",
+    "beauty-cosmetics",
+    "electronics",
+    "fashion",
+    "foods",
+    "gas-refill",
+    "groceries",
+    "health-wellness-store",
+    "home-living",
+    "laundry",
+    "office-school",
+    "pharmacy",
+    "phones-accessories",
+    "shop",
+    "shop-groceries",
+    "supermarket"
   ],
   "catalogue": {
-    "fashion": ["womens-fashion", "mens-fashion", "kids-fashion", "shoes", "bags-accessories", "modest-occasion-wear"],
-    "beauty-personal-care": ["makeup", "skincare", "hair-care-styling", "fragrance", "wigs-extensions-hair-accessories", "personal-care", "beauty-tools-devices"],
-    "electronics": ["computers-laptops", "tv-home-entertainment", "gaming-consoles", "cameras-drones", "smart-home-security", "power-solar"],
-    "phones-tablets": ["smartphones", "tablets-e-readers", "smartwatches-wearables", "chargers-power-banks", "earbuds-headsets", "cases-screen-protection", "phone-repair-replacement"],
-    "home-living": ["furniture", "home-decor", "kitchen-dining", "bedding-bath", "lighting-electrical", "storage-organization"],
-    "baby-kids": ["baby-gear", "feeding-nursing", "diapering-potty", "baby-clothing", "kids-clothing", "toys-games", "school-essentials", "nursery-safety"],
-    "health-wellness": ["vitamins-supplements", "personal-care-hygiene", "fitness-recovery", "sexual-wellness", "medical-supplies", "health-devices", "healthy-living"],
-    "office-school": ["stationery-writing", "office-supplies", "school-supplies", "bags-lunch-gear", "office-furniture", "printers-accessories", "tech-for-school-office"],
-    "supermarket": ["beverages"]
+    "baby-kids": [
+      "baby-clothing",
+      "baby-gear",
+      "diapering-potty",
+      "feeding-nursing",
+      "kids-clothing",
+      "nursery-safety",
+      "school-essentials",
+      "toys-games"
+    ],
+    "beauty-personal-care": [
+      "beauty-tools-devices",
+      "fragrance",
+      "hair-care-styling",
+      "makeup",
+      "personal-care",
+      "skincare",
+      "wigs-extensions-hair-accessories"
+    ],
+    "electronics": [
+      "cameras-drones",
+      "computers-laptops",
+      "gaming-consoles",
+      "power-solar",
+      "smart-home-security",
+      "tv-home-entertainment"
+    ],
+    "fashion": [
+      "bags-accessories",
+      "kids-fashion",
+      "mens-fashion",
+      "modest-occasion-wear",
+      "shoes",
+      "womens-fashion"
+    ],
+    "health-wellness": [
+      "fitness-recovery",
+      "health-devices",
+      "healthy-living",
+      "medical-supplies",
+      "personal-care-hygiene",
+      "sexual-wellness",
+      "vitamins-supplements"
+    ],
+    "home-living": [
+      "bedding-bath",
+      "furniture",
+      "home-decor",
+      "kitchen-dining",
+      "lighting-electrical",
+      "storage-organization"
+    ],
+    "office-school": [
+      "bags-lunch-gear",
+      "office-furniture",
+      "office-supplies",
+      "printers-accessories",
+      "school-supplies",
+      "stationery-writing",
+      "tech-for-school-office"
+    ],
+    "phones-tablets": [
+      "cases-screen-protection",
+      "chargers-power-banks",
+      "earbuds-headsets",
+      "phone-repair-replacement",
+      "smartphones",
+      "smartwatches-wearables",
+      "tablets-e-readers"
+    ]
   },
   "subcategories": {
-    "bags-accessories": ["jewelry"]
+    "baby-clothing": [
+      "newborn-clothing",
+      "sets",
+      "sleepsuits",
+      "socks-caps"
+    ],
+    "baby-gear": [
+      "car-seats",
+      "carriers",
+      "strollers",
+      "walkers"
+    ],
+    "bags-accessories": [
+      "backpacks",
+      "handbags",
+      "jewelry",
+      "wallets",
+      "watches"
+    ],
+    "bags-lunch-gear": [
+      "backpacks",
+      "lunch-bags",
+      "pencil-cases",
+      "water-bottles"
+    ],
+    "beauty-tools-devices": [
+      "beauty-blenders",
+      "makeup-brushes",
+      "nail-tools",
+      "skincare-devices"
+    ],
+    "bedding-bath": [
+      "bathroom-accessories",
+      "bedsheets",
+      "pillows-duvets",
+      "towels"
+    ],
+    "cameras-drones": [
+      "cameras",
+      "drones",
+      "lenses",
+      "photography-accessories"
+    ],
+    "cases-screen-protection": [
+      "phone-cases",
+      "screen-protectors",
+      "tablet-covers"
+    ],
+    "chargers-power-banks": [
+      "cables",
+      "car-chargers",
+      "power-banks",
+      "wall-chargers",
+      "wireless-chargers"
+    ],
+    "computers-laptops": [
+      "desktop-pcs",
+      "keyboards-mice",
+      "laptops",
+      "monitors",
+      "storage-devices"
+    ],
+    "diapering-potty": [
+      "changing-accessories",
+      "diapers",
+      "potty-training",
+      "wipes"
+    ],
+    "earbuds-headsets": [
+      "bluetooth-earbuds",
+      "headphones",
+      "phone-headsets",
+      "speakers"
+    ],
+    "feeding-nursing": [
+      "bibs",
+      "bottles",
+      "breast-pumps",
+      "feeding-accessories"
+    ],
+    "fitness-recovery": [
+      "exercise-equipment",
+      "massage-recovery",
+      "support-braces",
+      "yoga-pilates"
+    ],
+    "fragrance": [
+      "body-mists",
+      "gift-sets",
+      "perfumes"
+    ],
+    "furniture": [
+      "beds-mattresses",
+      "chairs-stools",
+      "sofas",
+      "tables-desks",
+      "wardrobes-storage"
+    ],
+    "gaming-consoles": [
+      "consoles",
+      "gaming-accessories",
+      "gaming-chairs"
+    ],
+    "hair-care-styling": [
+      "hair-tools",
+      "hair-treatments",
+      "shampoo-conditioner",
+      "styling-products"
+    ],
+    "health-devices": [
+      "nebulizers",
+      "oximeters",
+      "posture-wellness-devices",
+      "weighing-scales"
+    ],
+    "healthy-living": [
+      "digestive-health",
+      "healthy-snacks",
+      "herbal-products",
+      "sleep-support"
+    ],
+    "home-decor": [
+      "decorative-accessories",
+      "mirrors",
+      "rugs-curtains",
+      "wall-art"
+    ],
+    "kids-clothing": [
+      "boys-clothing",
+      "girls-clothing",
+      "school-wear"
+    ],
+    "kids-fashion": [
+      "baby-clothing",
+      "boys-clothing",
+      "girls-clothing",
+      "school-wear"
+    ],
+    "kitchen-dining": [
+      "cookware",
+      "dinnerware",
+      "kitchen-storage",
+      "small-kitchen-appliances"
+    ],
+    "lighting-electrical": [
+      "ceiling-lights",
+      "electrical-fittings",
+      "lamps",
+      "outdoor-lighting"
+    ],
+    "makeup": [
+      "eye-makeup",
+      "face-makeup",
+      "lip-makeup",
+      "makeup-sets"
+    ],
+    "medical-supplies": [
+      "blood-pressure-monitors",
+      "first-aid",
+      "glucose-monitors",
+      "thermometers"
+    ],
+    "mens-fashion": [
+      "native-wear",
+      "shirts",
+      "t-shirts-polos",
+      "trousers-jeans",
+      "underwear-sleepwear"
+    ],
+    "modest-occasion-wear": [
+      "aso-ebi",
+      "bridal-occasion",
+      "kaftans-abayas",
+      "suits-blazers"
+    ],
+    "nursery-safety": [
+      "baby-monitors",
+      "cots-cribs",
+      "nursery-bedding",
+      "safety-gates"
+    ],
+    "office-furniture": [
+      "desks",
+      "office-chairs",
+      "shelves",
+      "whiteboards"
+    ],
+    "office-supplies": [
+      "desk-accessories",
+      "filing-organization",
+      "laminating-binding",
+      "paper-products"
+    ],
+    "personal-care": [
+      "bath-body",
+      "feminine-care",
+      "grooming",
+      "oral-care"
+    ],
+    "personal-care-hygiene": [
+      "bath-body",
+      "deodorants",
+      "feminine-care",
+      "oral-care"
+    ],
+    "phone-repair-replacement": [
+      "phone-batteries",
+      "repair-tools",
+      "replacement-screens"
+    ],
+    "power-solar": [
+      "batteries-ups",
+      "extension-surge-protectors",
+      "inverters",
+      "solar-panels"
+    ],
+    "printers-accessories": [
+      "ink-toner",
+      "printer-accessories",
+      "printers",
+      "printing-paper"
+    ],
+    "school-essentials": [
+      "lunch-boxes",
+      "school-bags",
+      "stationery",
+      "water-bottles"
+    ],
+    "school-supplies": [
+      "classroom-supplies",
+      "exam-essentials",
+      "exercise-books",
+      "geometry-sets"
+    ],
+    "sexual-wellness": [
+      "condoms",
+      "intimate-care",
+      "lubricants",
+      "performance-support"
+    ],
+    "shoes": [
+      "kids-shoes",
+      "men-shoes",
+      "slides-sandals",
+      "women-shoes"
+    ],
+    "skincare": [
+      "cleansers",
+      "face-masks",
+      "moisturizers",
+      "serums",
+      "sunscreens"
+    ],
+    "smart-home-security": [
+      "cctv-security",
+      "networking",
+      "smart-home-devices"
+    ],
+    "smartphones": [
+      "android-phones",
+      "iphones",
+      "refurbished-phones"
+    ],
+    "smartwatches-wearables": [
+      "fitness-bands",
+      "gps-wearables",
+      "smartwatches"
+    ],
+    "stationery-writing": [
+      "art-supplies",
+      "markers-highlighters",
+      "notebooks",
+      "pens-pencils"
+    ],
+    "storage-organization": [
+      "closet-organizers",
+      "laundry-storage",
+      "shelving",
+      "utility-storage"
+    ],
+    "tablets-e-readers": [
+      "e-readers",
+      "kids-tablets",
+      "tablets"
+    ],
+    "tech-for-school-office": [
+      "calculators",
+      "computer-accessories",
+      "laptops",
+      "projectors"
+    ],
+    "toys-games": [
+      "board-games",
+      "dolls-action-figures",
+      "learning-toys",
+      "outdoor-toys"
+    ],
+    "tv-home-entertainment": [
+      "home-audio",
+      "projectors",
+      "streaming-devices",
+      "televisions",
+      "tv-accessories"
+    ],
+    "vitamins-supplements": [
+      "immunity-support",
+      "multivitamins",
+      "sports-nutrition",
+      "weight-management"
+    ],
+    "wigs-extensions-hair-accessories": [
+      "extensions",
+      "hair-accessories",
+      "human-hair-wigs",
+      "synthetic-wigs",
+      "wigs"
+    ],
+    "womens-fashion": [
+      "dresses",
+      "lingerie-sleepwear",
+      "skirts-shorts",
+      "tops-tees"
+    ]
+  },
+  "root_service": {
+    "baby-kids": "baby-kids",
+    "beauty-personal-care": "beauty-cosmetics",
+    "electronics": "electronics",
+    "fashion": "fashion",
+    "health-wellness": "health-wellness-store",
+    "home-living": "home-living",
+    "office-school": "office-school",
+    "phones-tablets": "phones-accessories"
   }
 }

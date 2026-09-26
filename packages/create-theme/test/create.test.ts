@@ -21,7 +21,7 @@ const throwingPrompter: Prompter = {
 const BIN = resolve(import.meta.dirname, '../dist/cli.js');
 const flags = (dir: string, overrides: Partial<Flags> = {}): Flags => ({
   dir, template: starterProject(), templates: 'laundry,foods', tags: 'minimal',
-  install: false, git: false, yes: true, dryRun: false, force: false, ...overrides,
+  install: false, git: false, yes: true, dryRun: false, force: false, offline: true, ...overrides,
 });
 const cli = (cwd: string, ...args: string[]) => spawnSync(process.execPath, [BIN, ...args], { cwd, encoding: 'utf8', env: { ...process.env, NO_COLOR: '1' } });
 
@@ -148,7 +148,7 @@ describe('runCreate', () => {
 });
 
 describe('runCreate with no folder argument', () => {
-  const base = (overrides: Partial<Flags> = {}): Flags => ({ template: starterProject(), install: false, git: false, yes: false, dryRun: false, force: false, ...overrides });
+  const base = (overrides: Partial<Flags> = {}): Flags => ({ template: starterProject(), install: false, git: false, yes: false, dryRun: false, force: false, offline: true, ...overrides });
   const inFolder = async (cwd: string, run: () => Promise<void>): Promise<void> => {
     const before = process.cwd();
     process.chdir(cwd);
@@ -272,7 +272,7 @@ describe('create-theme, as a command (pnpm build first)', () => {
 
   it('exits 1 when the starter cannot be fetched, leaving no folder behind', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'create-'));
-    const result = cli(cwd, 'my-theme', '--yes', '--template', 'github:usequeek/no-such-starter-repo', '--templates', 'laundry', '--tags', 'minimal', '--no-install', '--no-git');
+    const result = cli(cwd, 'my-theme', '--yes', '--offline', '--template', 'github:usequeek/no-such-starter-repo', '--templates', 'laundry', '--tags', 'minimal', '--no-install', '--no-git');
     expect(result.status, result.stderr).toBe(1);
     expect(result.stderr).toContain('--template github:usequeek/theme-starter');
     expect(existsSync(join(cwd, 'my-theme'))).toBe(false);
@@ -307,5 +307,28 @@ describe('create-theme, as a command (pnpm build first)', () => {
     const help = cli(tmpdir(), '--help').stdout;
     expect(help).toMatch(/--templates <keys> .*\(required with --yes\)/);
     expect(help).toMatch(/--tags <tags> .*\(required with --yes\)/);
+  });
+
+  it('creates from the bundled copy with --offline, and from a pinned file with --vocabulary', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'create-'));
+    const starter = starterProject();
+    const offline = cli(cwd, 'my-theme', '--yes', '--offline', '--template', starter, '--templates', 'laundry', '--tags', 'minimal', '--no-install', '--no-git');
+    expect(offline.status, offline.stderr).toBe(0);
+    expect(readFileSync(join(cwd, 'my-theme/theme/theme.config.ts'), 'utf8')).toContain("for: ['laundry']");
+
+    const file = join(cwd, 'vocab.json');
+    writeFileSync(file, JSON.stringify({ version: 'test', services: ['laundry'], catalogue: {}, subcategories: {}, labels: { laundry: 'Laundry' } }));
+    const pinned = cli(cwd, 'my-theme-2', '--yes', '--vocabulary', file, '--template', starter, '--templates', 'laundry', '--tags', 'minimal', '--no-install', '--no-git');
+    expect(pinned.status, pinned.stderr).toBe(0);
+
+    const outside = cli(cwd, 'my-theme-3', '--yes', '--vocabulary', file, '--template', starter, '--templates', 'foods', '--tags', 'minimal', '--no-install', '--no-git');
+    expect(outside.status).toBe(2);
+    expect(outside.stderr).toContain('Unknown business "foods"');
+  });
+
+  it('lists --offline and --vocabulary in --help', () => {
+    const help = cli(tmpdir(), '--help').stdout;
+    expect(help).toContain('--offline');
+    expect(help).toContain('--vocabulary <file>');
   });
 });

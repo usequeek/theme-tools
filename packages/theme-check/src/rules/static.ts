@@ -5,7 +5,7 @@ import { DEMO_ID_FORMAT, PRIMARY_DEMO_ID } from '../utils/theme-demos.js';
 import { designsOf, groupTemplates, mainTemplateKey, type DesignDeclaration, type ThemeDesign, type ThemeDesignsConfig } from '../utils/theme-designs.js';
 import { SCREENSHOT_LOCK, TEMPLATE_DESCRIPTION_MAX, TEMPLATE_DESCRIPTION_PLACEHOLDER, declaredFieldsByVariant, isPresentationalField, screenshotFile, screenshotUrl, sectionCopy } from '../utils/theme-templates.js';
 import { copyViolations, isTestimonialSection } from '../utils/template-copy.js';
-import { BUSINESS_KEYS, SERVICE_SLUGS, isBusinessKey } from '../utils/business-vocabulary.js';
+import { bundledVocabularyView, type VocabularyView } from '../utils/business-vocabulary.js';
 import { themeSourceFiles } from '../context.js';
 import { finding, type DemoStore, type Finding, type Rule, type ThemeContext } from '../types.js';
 
@@ -916,6 +916,10 @@ export const templateBusinessRule: Rule = {
   kind: 'static',
   run(context) {
     if (context.retired || context.declaredDemos === null) return [];
+    // The resolved vocabulary on the context (checkTheme puts it there:
+    // bundled unless a live, cached or pinned copy was passed), never the
+    // module-level bundled import — hand-built contexts fall back to bundled.
+    const vocabulary: VocabularyView = context.vocabulary ?? bundledVocabularyView;
     const config = `${context.env.root}theme.config.ts`;
     // Each template once, by its design 1: `for` is the template's, and a later
     // design that repeats it is theme/template-designs' to compare.
@@ -937,13 +941,13 @@ export const templateBusinessRule: Rule = {
         }));
         continue;
       }
-      const unknown = keys.filter((key) => typeof key !== 'string' || !isBusinessKey(key));
+      const unknown = keys.filter((key) => typeof key !== 'string' || !vocabulary.isBusinessKey(key));
       if (unknown.length === 0) {
         // R2.7: the backend matches the business category a merchant picked at setup
         // first. A general template leads with its category; a niche one (hair, shoes,
         // jewellery) names none, or it competes as a general template.
-        const named = (keys as string[]).filter((key) => SERVICE_SLUGS.includes(key));
-        if (named.length > 0 && !SERVICE_SLUGS.includes(keys[0] as string)) {
+        const named = (keys as string[]).filter((key) => vocabulary.services.includes(key));
+        if (named.length > 0 && !vocabulary.services.includes(keys[0] as string)) {
           const general = [...named, ...(keys as string[]).filter((key) => !named.includes(key))];
           findings.push(finding(context, 'theme/template-business', 'reject', {
             where,
@@ -952,12 +956,24 @@ export const templateBusinessRule: Rule = {
             docs: `${context.env.docs}#templates`,
           }));
         }
+        // R2.9: `shop` is for a general store only. A template dressed as a
+        // specific business that names only `shop` matches every general store
+        // and no one in particular — advisory (warn), never a reject, so the
+        // starter and existing general themes keep passing.
+        if (keys.length === 1 && keys[0] === 'shop') {
+          findings.push(finding(context, 'theme/template-business', 'warn', {
+            where,
+            found: `template "${id}" is for only "shop"`,
+            fix: 'Name the specific business this template serves in `for` (its business category first) — "shop" is for a general store only.',
+            docs: `${context.env.docs}#templates`,
+          }));
+        }
         continue;
       }
       findings.push(finding(context, 'theme/template-business', 'reject', {
         where,
         found: `template "${id}" is for ${unknown.map((key) => JSON.stringify(key)).join(', ')}, not in the business vocabulary`,
-        fix: `Use service slugs or catalogue keys from ${context.env.vocabulary} (${BUSINESS_KEYS.size} keys): a whole business leads with its category, a niche names only catalogue keys. The backend matches vendors on these keys only; any other key matches no one.`,
+        fix: `Use service slugs or catalogue keys from ${context.env.vocabulary} (${vocabulary.businessKeys.size} keys): a whole business leads with its category, a niche names only catalogue keys. The backend matches vendors on these keys only; any other key matches no one.`,
         docs: `${context.env.docs}#templates`,
       }));
     }

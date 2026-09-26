@@ -1,5 +1,5 @@
 import * as p from '@clack/prompts';
-import { NICHES, SERVICES, TAGS, categoryOf, labelOf } from './lists.js';
+import { TAGS, getActiveLists, type BusinessLists, type BusinessOption } from './lists.js';
 import { slugify } from './naming.js';
 import { CancelledError, type Prompter } from './options.js';
 import type { Assistant, OptionalPage } from './setup.js';
@@ -24,16 +24,23 @@ export async function askUntil<T>(ask: (previous: T | undefined) => Promise<T>, 
   }
 }
 
-const businessOption = (key: string) => ({
-  value: key,
-  label: labelOf(key),
-  hint: SERVICES.includes(key) ? 'business category' : `niche · ${labelOf(categoryOf(key))}`,
-});
+/**
+ * The business picker: services, then niches, `shop` dead last as "General
+ * store" with its hint. clack 1.8 has no grouped autocomplete, so each hint
+ * names its group.
+ */
+export const templateOptions = (lists: BusinessLists = getActiveLists()): BusinessOption[] => lists.templateOptions();
 
-/** Business categories first, then niches: clack 1.8 has no grouped autocomplete, so each hint names its group. */
-export const templateOptions = () => [...SERVICES, ...NICHES].map(businessOption);
+const serviceOption = (lists: BusinessLists, key: string): BusinessOption => {
+  const found = lists.categoryOptions().find((option) => option.value === key);
+  if (!found) throw new Error(`unknown business category "${key}"`);
+  return found;
+};
 
-export function clackPrompter(): Prompter {
+export function clackPrompter(lists?: BusinessLists): Prompter {
+  // Read at each question, not at construction: runCreate sets the run's
+  // lists (cached-or-bundled, then live) after the caller builds the prompter.
+  const current = (): BusinessLists => lists ?? getActiveLists();
   return {
     async name(initial, problem) {
       const typed = answer<string>(await p.text({ message: 'Theme name', placeholder: initial, defaultValue: initial, validate: (v) => problem(v?.trim() || initial) }));
@@ -42,13 +49,15 @@ export function clackPrompter(): Prompter {
       return name;
     },
     async templates() {
-      return answer<string[]>(await p.autocompleteMultiselect({ message: 'Businesses to make templates for (type to search)', options: templateOptions(), required: true }));
+      return answer<string[]>(await p.autocompleteMultiselect({ message: 'Businesses to make templates for (type to search)', options: templateOptions(current()), required: true }));
     },
     async primary(keys) {
-      return answer<string>(await p.select({ message: 'Which template is the main one (the theme\'s first impression)?', options: keys.map(businessOption) }));
+      const options = templateOptions(current()).filter((option) => keys.includes(option.value));
+      return answer<string>(await p.select({ message: 'Which template is the main one (the theme\'s first impression)?', options: keys.map((key) => options.find((option) => option.value === key) ?? { value: key, label: key }) }));
     },
     async categories(initial) {
-      return answer<string[]>(await p.multiselect({ message: 'Business categories the theme serves', options: SERVICES.map((key) => ({ value: key, label: labelOf(key) })), initialValues: initial, required: true }));
+      const resolved = current();
+      return answer<string[]>(await p.multiselect({ message: 'Business categories the theme serves', options: resolved.services.map((key) => serviceOption(resolved, key)), initialValues: initial, required: true }));
     },
     async tags(problem) {
       return askUntil(

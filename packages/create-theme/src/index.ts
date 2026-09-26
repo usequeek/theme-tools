@@ -3,12 +3,15 @@ import { cpSync, existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { downloadTemplate } from 'giget';
+import { parseVocabularyData, resolveVocabulary } from '@usequeek/theme-check';
+import { bundledLists, cachedLists, createLists, getActiveLists, setActiveLists, type BusinessLists } from './lists.js';
 import { UsageError, equivalentCommand, resolveAnswers, shellWord, type Flags, type PackageManager, type Prompter } from './options.js';
 import { setupTheme, type Answers } from './setup.js';
 
 export { UsageError, CancelledError, type Flags, type Prompter, type PackageManager } from './options.js';
 export { setupTheme, type Answers } from './setup.js';
 export { clackPrompter } from './prompts.js';
+export { bundledLists, cachedLists, createLists, getActiveLists, setActiveLists, SHOP_HINT, SHOP_KEY, SHOP_LABEL, type BusinessLists, type BusinessOption, type ListsData } from './lists.js';
 /** The rename `npm create` applies to the starter, for tools that copy a theme under a new name (Queek's `yarn theme:new`). */
 export { renameTheme, SKELETON, type Identity } from './rename.js';
 
@@ -40,7 +43,9 @@ and with no folder the folder is named after the theme (my-theme with --yes or n
   --yes, -y              never prompt; take the default for everything else
   --dry-run              print what would be written; write nothing
   --force                allow a folder that is not empty
-  --template <source>    another starter: a giget source or a local folder`;
+  --template <source>    another starter: a giget source or a local folder
+  --vocabulary <file>    a pinned vocabulary file (default: the live copy)
+  --offline              use the bundled vocabulary snapshot; no network`;
 
 function targetState(dir: string): 'missing' | 'usable' | 'busy' | 'file' {
   if (!existsSync(dir)) return 'missing';
@@ -125,7 +130,7 @@ function gitStep(target: string): 'present' | 'no-git' | 'inside' | 'init' {
   return inside.status === 0 ? 'inside' : 'init';
 }
 
-export async function createTheme(dir: string, answers: Answers, options: { install: boolean; git: boolean; pm: PackageManager; dryRun: boolean; force: boolean; template?: string; log?: (line: string) => void }): Promise<void> {
+export async function createTheme(dir: string, answers: Answers, options: { install: boolean; git: boolean; pm: PackageManager; dryRun: boolean; force: boolean; template?: string; offline?: boolean; vocabularyFile?: string; log?: (line: string) => void }): Promise<void> {
   const log = options.log ?? ((line: string) => console.log(line));
   const { target, state } = checkTarget(dir, options.force);
 
@@ -196,7 +201,7 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
   log(`  ${run} dev     # preview every template`);
   log(`  ${run} check   # your to-do list: each template's description, its own home and screenshot, your products and photos`);
   log('');
-  log(`To repeat this setup: ${equivalentCommand(options.pm, dir, answers, { template: options.template, install: options.install, git: options.git })}`);
+  log(`To repeat this setup: ${equivalentCommand(options.pm, dir, answers, { template: options.template, install: options.install, git: options.git, offline: options.offline, vocabularyFile: options.vocabularyFile })}`);
 }
 
 /** Why `dir` cannot take the theme (`checkTarget`'s message), or null. */
@@ -211,16 +216,94 @@ function targetProblem(dir: string, force: boolean): string | null {
 }
 
 /**
+ * The lists the prompts ask from: a pinned file when `--vocabulary` is given
+ * (validated — an unreadable or invalid file is a usage error), else the
+ * cached copy when one is stored, else the bundled snapshot. Synchronous, so
+ * the first question never waits on the network.
+ */
+function startingLists(flags: Flags): BusinessLists {
+  const bundled = bundledLists();
+  const withBundledLabels = (data: { services: string[]; catalogue: Record<string, string[]>; subcategories: Record<string, string[]>; root_service?: Record<string, string>; labels?: Record<string, string> }): BusinessLists =>
+    createLists({
+      services: data.services,
+      catalogue: data.catalogue,
+      subcategories: data.subcategories,
+      root_service: data.root_service,
+      // A copy from before labels were stored still gets the bundled names.
+      labels: data.labels ?? Object.fromEntries(bundled.businessKeys.map((key) => [key, bundled.labelOf(key)])),
+    });
+  if (flags.vocabularyFile !== undefined) {
+    let raw: string;
+    try {
+      raw = readFileSync(resolve(flags.vocabularyFile), 'utf8');
+    } catch (error) {
+      throw new UsageError(`Cannot read --vocabulary ${flags.vocabularyFile} (${(error as Error).message}).`);
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new UsageError(`--vocabulary ${flags.vocabularyFile} is not valid JSON.`);
+    }
+    try {
+      const data = typeof (parsed as { data?: unknown }).data === 'object' && (parsed as { data?: unknown }).data !== null
+        ? parseVocabularyData((parsed as { data: unknown }).data, { requireVersion: false })
+        : parseVocabularyData(parsed, { requireVersion: false });
+      return withBundledLabels(data);
+    } catch (error) {
+      throw new UsageError(`--vocabulary ${flags.vocabularyFile} is not a vocabulary (${(error as Error).message}).`);
+    }
+  }
+  if (flags.offline) return bundled;
+  return cachedLists() ?? bundled;
+}
+
+/**
  * Flags → answers (prompting when a prompter is given) → the theme. Shared by the CLI and `queek-theme init`.
  * With no folder argument, a person at the prompts gets a folder named after the theme's slug (checked
  * with the name, before the next question); a script gets `my-theme`.
+ *
+ * The prompts ask from the cached-or-bundled copy at once while a live
+ * refresh runs in the background; the final `for` is validated against the
+ * fresh copy when it has arrived, else the copy the prompts used.
  */
 export async function runCreate(flags: Flags, prompter: Prompter | null, log?: (line: string) => void): Promise<void> {
   const named = flags.dir === undefined && prompter !== null;
   if (!named) checkTarget(flags.dir ?? 'my-theme', flags.force); // before any question is asked, not just before any write
   const pm = (flags.pm as PackageManager | undefined) ?? detectPackageManager();
   if (!['npm', 'pnpm', 'yarn', 'bun'].includes(pm)) throw new UsageError(`--pm must be npm, pnpm, yarn or bun, not "${pm}".`);
-  const answers = await resolveAnswers(flags, prompter, named ? (slug) => targetProblem(slug, flags.force) : undefined);
-  const dir = flags.dir ?? (named ? answers.slug : 'my-theme');
-  await createTheme(dir, answers, { install: flags.install, git: flags.git, pm, dryRun: flags.dryRun, force: flags.force, template: flags.template, log });
+  const previous = getActiveLists();
+  const starting = startingLists(flags);
+  setActiveLists(starting);
+  // Started at launch, awaited after the answers: the prompts never wait on it.
+  const refresh = !flags.offline && flags.vocabularyFile === undefined
+    ? resolveVocabulary({ mode: 'live' }).then((resolved) => resolved, () => null)
+    : null;
+  try {
+    const answers = await resolveAnswers(flags, prompter, named ? (slug) => targetProblem(slug, flags.force) : undefined, starting);
+    const fresh = refresh ? await refresh : null;
+    if (fresh) {
+      if (fresh.notice && log) log(fresh.notice);
+      const lists = createLists({
+        services: fresh.vocabulary.services,
+        catalogue: fresh.vocabulary.catalogue,
+        subcategories: fresh.vocabulary.subcategories,
+        root_service: fresh.vocabulary.root_service,
+        labels: fresh.vocabulary.labels ?? Object.fromEntries(starting.businessKeys.map((key) => [key, starting.labelOf(key)])),
+      });
+      const unknown = answers.templates.map((t) => t.key).filter((key) => !lists.businessKeys.includes(key));
+      if (unknown.length > 0) {
+        throw new UsageError(`The live vocabulary no longer has ${unknown.map((key) => `"${key}"`).join(', ')} — pick from: ${lists.businessKeys.join(', ')}.`);
+      }
+      const unknownCategories = answers.categories.filter((key) => !lists.services.includes(key as string));
+      if (unknownCategories.length > 0) {
+        throw new UsageError(`The live vocabulary no longer has the categor${unknownCategories.length === 1 ? 'y' : 'ies'} ${unknownCategories.map((key) => `"${key}"`).join(', ')}.`);
+      }
+      setActiveLists(lists);
+    }
+    const dir = flags.dir ?? (named ? answers.slug : 'my-theme');
+    await createTheme(dir, answers, { install: flags.install, git: flags.git, pm, dryRun: flags.dryRun, force: flags.force, template: flags.template, offline: flags.offline, vocabularyFile: flags.vocabularyFile, log });
+  } finally {
+    setActiveLists(previous);
+  }
 }

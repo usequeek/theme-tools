@@ -1,4 +1,4 @@
-import { RESERVED_PREFIXES, RESERVED_SLUGS, categoryOf, labelOf } from './lists.js';
+import { RESERVED_PREFIXES, RESERVED_SLUGS, getActiveLists, type BusinessLists } from './lists.js';
 
 /** `Mọ́ Laundry & Co.` → `mo-laundry-co`: what `yarn theme:pull` accepts, `^[a-z][a-z0-9-]{1,30}$`. */
 export function slugify(name: string): string {
@@ -47,15 +47,15 @@ export interface TemplatePlan {
  * niche a niche one — either way `for` is just that key, so a niche never
  * names a category (R2.7).
  */
-export function planTemplates(keys: string[], primary?: string): TemplatePlan[] {
+export function planTemplates(keys: string[], primary?: string, lists: BusinessLists = getActiveLists()): TemplatePlan[] {
   const unique = [...new Set(keys)];
   if (unique.length === 0) return [];
   const first = primary && unique.includes(primary) ? primary : unique[0];
   const ordered = [first, ...unique.filter((key) => key !== first)];
-  return ordered.map((key, index) => ({ id: index === 0 ? 'default' : key, key, template: key, label: labelOf(key), for: [key], primary: index === 0 }));
+  return ordered.map((key, index) => ({ id: index === 0 ? 'default' : key, key, template: key, label: lists.labelOf(key), for: [key], primary: index === 0 }));
 }
 
 /** The business categories the templates belong to, once each, in order. */
-export function defaultCategories(keys: string[]): string[] {
-  return [...new Set(keys.map(categoryOf))];
+export function defaultCategories(keys: string[], lists: BusinessLists = getActiveLists()): string[] {
+  return [...new Set(keys.map((key) => lists.categoryOf(key)))];
 }

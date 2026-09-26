@@ -1,3 +1,5 @@
+import type { VocabularyView } from './utils/business-vocabulary.js';
+
 /**
  * One definition of "is this theme valid", shared by three consumers: the
  * author's `yarn theme:check`, this repo's CI, and (later) the pull/publish
@@ -106,6 +108,8 @@ export interface CheckEnv {
 
 export interface ThemeContext {
   env: CheckEnv;
+  /** The vocabulary the rules check `for` against. Set by checkTheme (bundled unless a vocabulary is passed); hand-built contexts fall back to bundled. */
+  vocabulary?: VocabularyView;
   slug: string;
   dir: string;
   /** `active: false` in theme.config.ts — retired, exempt from publish gates. */

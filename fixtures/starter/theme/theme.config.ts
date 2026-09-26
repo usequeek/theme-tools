@@ -23,7 +23,7 @@ const config = {
   // More designs, one per `demos/<id>.json`, previewed at `/?demo=<id>` here
   // and `/<slug>~<id>` once published. Another business is another template;
   // its first design's id is its key:
-  // demos: [{ id: 'food', template: 'food', label: 'Restaurant & takeaway', for: ['foods', 'local-meals'], description: '…' }],
+  // demos: [{ id: 'food', template: 'food', label: 'Restaurant & takeaway', for: ['foods'], description: '…' }],
   // A second design of the same template declares only `id`, `template`,
   // `design_label` and `description` — it inherits the template's `label` and
   // `for`:

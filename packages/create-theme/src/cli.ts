@@ -17,6 +17,7 @@ const OPTIONS = {
   pm: { type: 'string' }, 'no-install': { type: 'boolean', default: false }, 'no-git': { type: 'boolean', default: false },
   yes: { type: 'boolean', short: 'y', default: false }, 'dry-run': { type: 'boolean', default: false },
   force: { type: 'boolean', default: false }, template: { type: 'string' },
+  vocabulary: { type: 'string' }, offline: { type: 'boolean', default: false },
   help: { type: 'boolean', short: 'h', default: false },
 } satisfies ParseArgsOptionsConfig;
 
@@ -58,4 +59,5 @@ runCreate({
   categories: values.categories, tags: values.tags, pages: values.pages, ai: values.ai, noAi: values['no-ai'],
   pm: values.pm, install: !values['no-install'], git: !values['no-git'], yes: values.yes,
   dryRun: values['dry-run'], force: values.force, template: values.template,
+  vocabularyFile: values.vocabulary, offline: values.offline,
 }, interactive ? clackPrompter() : null).catch(fail);

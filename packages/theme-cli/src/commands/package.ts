@@ -4,6 +4,7 @@ import { Command, Flags } from '@oclif/core';
 import { checkTheme, summarize } from '@usequeek/theme-check';
 import yazl from 'yazl';
 import { resolveProject } from '../lib/project.js';
+import { resolveCommandVocabulary, vocabularyFlags } from '../lib/vocabulary.js';
 
 const SKIP = new Set(['node_modules', '.queek', '.next', '.git', '.DS_Store']);
 
@@ -25,6 +26,7 @@ export default class Package extends Command {
   static override flags = {
     path: Flags.string({ summary: 'The theme project (or its theme folder).', default: '.', env: 'QUEEK_THEME_PATH' }),
     output: Flags.string({ summary: 'Where to write the zip. Defaults to <slug>.zip in the project.' }),
+    ...vocabularyFlags,
   };
 
   async run(): Promise<void> {
@@ -33,7 +35,8 @@ export default class Package extends Command {
     let result;
     try {
       project = resolveProject(flags.path);
-      result = await checkTheme(project.themeDir);
+      const vocabulary = await resolveCommandVocabulary(flags, (line) => this.logToStderr(line));
+      result = await checkTheme(project.themeDir, { vocabulary });
     } catch (error) {
       this.error((error as Error).message, { exit: 2 });
     }

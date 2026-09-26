@@ -3,11 +3,16 @@
  * against, as a library. The `queek-theme check` command of
  * @usequeek/theme-cli is its command-line front end.
  */
-export { checkTheme, rejects, RULES, AT_SUBMISSION, type CheckOptions, type CheckResult } from './run.js';
+export { checkTheme, rejects, RULES, AT_SUBMISSION, type CheckOptions, type CheckResult, type CheckVocabulary } from './run.js';
+export {
+  resolveVocabulary, vocabularyCacheDir, readCachedVocabulary, bundledVocabulary, bundledVersion,
+  parseEndpointPayload, parseVocabularyData, VOCABULARY_URL, VOCABULARY_CACHE_TTL_MS,
+  type BusinessVocabularyData, type ResolveVocabularyOptions, type ResolvedVocabulary, type VocabularySource,
+} from './vocabulary.js';
 export { loadContext, localEnv, CONTRACT_URL } from './context.js';
 export { formatJson, formatGithubActions, formatStylish, summarize, levelOf, fileOf, type Level, type Summary } from './format.js';
 export type { CheckEnv, Finding, Rule, Severity, ThemeContext, DemoStore, DeclaredDemo } from './types.js';
-export { BUSINESS_KEYS, SERVICE_SLUGS, CATALOGUE, SUBCATEGORIES, isBusinessKey, businessRoot } from './utils/business-vocabulary.js';
+export { BUSINESS_KEYS, SERVICE_SLUGS, CATALOGUE, SUBCATEGORIES, ROOT_SERVICE, BUNDLED_VERSION, bundledVocabularyView, vocabularyViewOf, isBusinessKey, businessRoot, type VocabularyView } from './utils/business-vocabulary.js';
 export { TEMPLATE_COPY_PLACES, copyViolations, isTestimonialSection, storeNameForms } from './utils/template-copy.js';
 export { PRIMARY_DEMO_ID, DEMO_ID_FORMAT, demoFilesOf } from './utils/theme-demos.js';
 // Theme → template → design (contract R2.8): the resolver the registry, the

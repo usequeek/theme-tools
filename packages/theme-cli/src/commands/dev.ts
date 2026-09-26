@@ -1,6 +1,7 @@
 import { Command, Flags } from '@oclif/core';
 import { resolveProject } from '../lib/project.js';
 import { startPreview, writePreview } from '../lib/preview.js';
+import { resolveCommandVocabulary, vocabularyFlags } from '../lib/vocabulary.js';
 
 export default class Dev extends Command {
   static override summary = 'Preview your theme as a whole store: every design of every template, every page of each.';
@@ -15,6 +16,7 @@ The preview app is written to .queek/preview in your project and regenerated on 
     path: Flags.string({ summary: 'The theme project (or its theme folder).', default: '.', env: 'QUEEK_THEME_PATH' }),
     port: Flags.integer({ summary: 'Port to serve on.', default: 3000, min: 1, max: 65535, env: 'QUEEK_THEME_PORT' }),
     host: Flags.string({ summary: 'Host to bind. Use 0.0.0.0 to reach it from another device.', default: '127.0.0.1', env: 'QUEEK_THEME_HOST' }),
+    ...vocabularyFlags,
   };
 
   async run(): Promise<void> {
@@ -22,6 +24,9 @@ The preview app is written to .queek/preview in your project and regenerated on 
     let project;
     try {
       project = resolveProject(flags.path);
+      // Resolved (and its notice printed) so the preview warms the same live
+      // copy `check` enforces; the preview itself renders whatever the theme declares.
+      await resolveCommandVocabulary(flags, (line) => this.logToStderr(line));
     } catch (error) {
       this.error((error as Error).message, { exit: 2 });
     }

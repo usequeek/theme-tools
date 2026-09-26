@@ -2,6 +2,8 @@ import { loadContext } from './context.js';
 import { ANALYSIS_RULES } from './rules/analysis.js';
 import { STATIC_RULES } from './rules/static.js';
 import type { CheckEnv, Finding, Rule, ThemeContext } from './types.js';
+import { bundledVocabularyView, vocabularyViewOf } from './utils/business-vocabulary.js';
+import type { BusinessVocabularyData, VocabularySource } from './vocabulary.js';
 
 /** Every rule that runs on a developer's machine, in the order they report. */
 export const RULES: Rule[] = [...STATIC_RULES, ...ANALYSIS_RULES];
@@ -19,21 +21,37 @@ export const AT_SUBMISSION: ReadonlyArray<{ id: string; summary: string }> = [
   { id: 'theme/template-screenshot', summary: 'template screenshots are uploaded (done for you)' },
 ];
 
+/** The vocabulary a check runs against: resolved data plus where it came from (for `check --json`). */
+export interface CheckVocabulary {
+  data: BusinessVocabularyData;
+  /** Where the data came from. Defaults to bundled for bundled data, else file. */
+  source?: VocabularySource;
+}
+
 export interface CheckOptions {
   /** Override how findings name files and where they link (see CheckEnv). */
   env?: Partial<CheckEnv>;
   /** Run only these rule ids. */
   only?: string[];
+  /** The vocabulary the rules read from the context. Default: the bundled snapshot, so existing callers keep working. */
+  vocabulary?: CheckVocabulary;
 }
 
 export interface CheckResult {
   context: ThemeContext;
   findings: Finding[];
+  vocabulary: { source: VocabularySource; version: string };
 }
 
 /** Every finding for the theme in `themeDir`. No `reject` finding means it will pass these checks on submission. */
 export async function checkTheme(themeDir: string, options: CheckOptions = {}): Promise<CheckResult> {
   const context = await loadContext(themeDir, options.env);
+  const view = options.vocabulary
+    ? vocabularyViewOf(options.vocabulary.data)
+    : bundledVocabularyView;
+  const source: VocabularySource =
+    options.vocabulary?.source ?? (options.vocabulary ? 'file' : 'bundled');
+  context.vocabulary = view;
   const rules = RULES.filter((rule) => !options.only || options.only.includes(rule.id));
 
   const findings: Finding[] = [];
@@ -54,7 +72,7 @@ export async function checkTheme(themeDir: string, options: CheckOptions = {}): 
     }
   }
 
-  return { context, findings };
+  return { context, findings, vocabulary: { source, version: view.version } };
 }
 
 export const rejects = (findings: Finding[]): Finding[] => findings.filter((finding) => finding.severity === 'reject');

@@ -60,21 +60,21 @@ function run(...args: string[]) {
 
 describe('queek-theme check', () => {
   it('exits 0 when there are no errors, and prints what runs at submission', () => {
-    const { code, stdout, stderr } = run('check');
+    const { code, stdout, stderr } = run('check', '--offline');
     expect(code, stderr).toBe(0);
     expect(stdout).toContain('Also checked when you submit');
   }, 60_000);
 
   it('exits 1 at --fail-level warning when there are only warnings', () => {
-    const json = runAt(WARNINGS_ONLY, 'check', '--format', 'json');
+    const json = runAt(WARNINGS_ONLY, 'check', '--offline', '--format', 'json');
     const report = JSON.parse(json.stdout);
     expect(report.summary.errors, json.stderr).toBe(0);
     expect(report.summary.warnings, json.stderr).toBeGreaterThanOrEqual(1);
 
-    const plain = runAt(WARNINGS_ONLY, 'check');
+    const plain = runAt(WARNINGS_ONLY, 'check', '--offline');
     expect(plain.code, plain.stderr).toBe(0);
 
-    const { code, stderr } = runAt(WARNINGS_ONLY, 'check', '--fail-level', 'warning');
+    const { code, stderr } = runAt(WARNINGS_ONLY, 'check', '--offline', '--fail-level', 'warning');
     expect(code, stderr).toBe(1);
   }, 60_000);
 
@@ -85,33 +85,65 @@ describe('queek-theme check', () => {
   }, 60_000);
 
   it('--format json is one stable object on stdout', () => {
-    const { stdout, stderr } = run('check', '--format', 'json');
+    const { stdout, stderr } = run('check', '--offline', '--format', 'json');
     expect(stdout, stderr).not.toBe('');
     const report = JSON.parse(stdout);
-    expect(Object.keys(report)).toEqual(['theme', 'summary', 'findings', 'atSubmission']);
+    expect(Object.keys(report)).toEqual(['theme', 'summary', 'vocabulary', 'findings', 'atSubmission']);
     expect(report.theme).toBe('bare');
     for (const finding of report.findings) expect(Object.keys(finding)).toEqual(['rule', 'level', 'file', 'where', 'message', 'fix', 'docs', 'fixable']);
   }, 60_000);
 
   it('--format github-actions emits workflow annotations with the file', () => {
-    const { stdout, stderr } = runAt(FIXTURE, 'check', '--format', 'github-actions');
+    const { stdout, stderr } = runAt(FIXTURE, 'check', '--offline', '--format', 'github-actions');
     const lines = stdout.trim().split('\n').filter(Boolean);
     expect(lines.length, stderr).toBeGreaterThan(0);
     for (const line of lines) expect(line).toMatch(/^::(error|warning) file=theme\/[^,]+,title=theme\/[a-z-]+::/);
   }, 60_000);
 });
 
+describe('queek-theme check vocabulary flags', () => {
+  const BUNDLED = resolve(import.meta.dirname, '../../theme-check/src/utils/business-vocabulary.json');
+
+  it('parses --offline and --vocabulary', () => {
+    const { code, stdout, stderr } = run('check', '--help');
+    expect(code, stderr).toBe(0);
+    expect(stdout).toContain('--offline');
+    expect(stdout).toContain('--vocabulary');
+  }, 60_000);
+
+  it('--offline checks the bundled snapshot without the network, and reports it', () => {
+    const { code, stdout, stderr } = run('check', '--offline', '--format', 'json');
+    expect(code, stderr).toBe(0);
+    const report = JSON.parse(stdout);
+    expect(report.vocabulary.source).toBe('bundled');
+    expect(typeof report.vocabulary.version).toBe('string');
+  }, 60_000);
+
+  it('--vocabulary pins a file, and reports source file', () => {
+    const { code, stdout, stderr } = run('check', '--vocabulary', BUNDLED, '--format', 'json');
+    expect(code, stderr).toBe(0);
+    const report = JSON.parse(stdout);
+    expect(report.vocabulary.source).toBe('file');
+  }, 60_000);
+
+  it('--vocabulary with a missing file exits 2', () => {
+    const { code, stderr } = run('check', '--offline', '--vocabulary', 'no-such-vocab.json');
+    expect(code).toBe(2);
+    expect(stderr).toContain('no-such-vocab.json');
+  }, 60_000);
+});
+
 describe('queek-theme init', () => {
   it('creates a theme from flags alone', () => {
     const out = join(mkdtempSync(join(tmpdir(), 'init-')), 'my-theme');
-    const { code, stderr } = run('init', out, '--yes', '--template', FIXTURE, '--templates', 'laundry', '--tags', 'minimal', '--no-install', '--no-git');
+    const { code, stderr } = run('init', out, '--yes', '--offline', '--template', FIXTURE, '--templates', 'laundry', '--tags', 'minimal', '--no-install', '--no-git');
     expect(code, stderr).toBe(0);
     expect(existsSync(join(out, 'theme/theme.config.ts'))).toBe(true);
   }, 60_000);
 
   it('writes my-theme when no folder is given and nothing is asked', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'init-'));
-    const { code, stderr } = runAt(cwd, 'init', '--yes', '--template', FIXTURE, '--templates', 'laundry', '--tags', 'minimal', '--no-install', '--no-git');
+    const { code, stderr } = runAt(cwd, 'init', '--yes', '--offline', '--template', FIXTURE, '--templates', 'laundry', '--tags', 'minimal', '--no-install', '--no-git');
     expect(code, stderr).toBe(0);
     expect(existsSync(join(cwd, 'my-theme/theme/theme.config.ts'))).toBe(true);
   }, 60_000);
@@ -121,7 +153,7 @@ describe('queek-theme package', () => {
   it('zips the theme folder, and nothing else', () => {
     const out = join(mkdtempSync(join(tmpdir(), 'queek-package-')), 'theme.zip');
     try {
-      const { code, stdout, stderr } = run('package', '--output', out);
+      const { code, stdout, stderr } = run('package', '--offline', '--output', out);
       expect(code, stderr).toBe(0);
       expect(stdout).toContain('Packaged bare');
       expect(existsSync(out)).toBe(true);

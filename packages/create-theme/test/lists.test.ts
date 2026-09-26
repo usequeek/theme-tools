@@ -24,7 +24,9 @@ describe('bundled lists', () => {
     expect(categoryOf('laundry')).toBe('laundry');
     expect(categoryOf('jewelry')).toBe('fashion');
     expect(categoryOf('wigs-extensions-hair-accessories')).toBe('beauty-cosmetics');
-    expect(categoryOf('beverages')).toBe('supermarket');
+    expect(categoryOf('beauty-personal-care')).toBe('beauty-cosmetics');
+    expect(categoryOf('phones-tablets')).toBe('phones-accessories');
+    expect(categoryOf('health-wellness')).toBe('health-wellness-store');
     expect(categoryOf('smartphones')).toBe('phones-accessories');
     expect(categoryOf('vitamins-supplements')).toBe('health-wellness-store');
   });

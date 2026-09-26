@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BUSINESS_KEYS, businessRoot, isBusinessKey } from '../src/utils/business-vocabulary.js';
+import { BUSINESS_KEYS, businessRoot, isBusinessKey, vocabularyViewOf } from '../src/utils/business-vocabulary.js';
 import { demoStoresRule, fontsSelfHostedRule, frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templateDesignsRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
 import { copyViolations } from '../src/utils/template-copy.js';
 import type { DeclaredDemo, DemoStore, ThemeContext } from '../src/types.js';
@@ -44,9 +44,10 @@ describe('business vocabulary', () => {
     expect(businessRoot('shoes')).toBe('fashion');
   });
 
-  it('holds jewelry (under bags-accessories) and beverages, spelled as the categories are', () => {
+  it('holds jewelry (under bags-accessories) and the subcategory depth, spelled as the categories are', () => {
     expect(isBusinessKey('jewelry')).toBe(true);
-    expect(isBusinessKey('beverages')).toBe(true);
+    expect(isBusinessKey('android-phones')).toBe(true);
+    expect(isBusinessKey('beverages')).toBe(false);
     expect(isBusinessKey('coffee')).toBe(false);
     expect(businessRoot('jewelry')).toBe('fashion');
   });
@@ -56,7 +57,7 @@ describe('theme/template-business order (R2.7)', () => {
   it('rejects a named business category behind a catalogue key; passes general and niche', async () => {
     const found = await templateBusinessRule.run(context({
       defaultFor: ['makeup', 'beauty-cosmetics'],
-      declaredDemos: [{ id: 'hair', label: 'Hair', for: ['wigs-extensions-hair-accessories'] }, { id: 'food', label: 'Food', for: ['foods', 'local-meals'] }],
+      declaredDemos: [{ id: 'hair', label: 'Hair', for: ['wigs-extensions-hair-accessories'] }, { id: 'food', label: 'Food', for: ['foods'] }],
     }));
     expect(found.map((f) => f.found)).toEqual(['template "default" names the business category "beauty-cosmetics" but leads with "makeup"']);
   });
@@ -171,7 +172,7 @@ describe('theme/template-versions', () => {
         { id: 'food', file: 'demos/food.json', data: home('gallery/slider', 'products/menu') },
         { id: 'food-2', file: 'demos/food-2.json', data: home('gallery/slider', 'products/grid') },
       ],
-      declaredDemos: [{ id: 'food', template: 'food', label: 'F', for: ['foods', 'local-meals'] }, { id: 'food-2', template: 'food', label: 'F2', for: ['foods'] }],
+      declaredDemos: [{ id: 'food', template: 'food', label: 'F', for: ['foods'] }, { id: 'food-2', template: 'food', label: 'F2', for: ['foods'] }],
     }));
     expect(found.map((f) => f.found)).toEqual([
       'design "food-2" has the same home sections, in the same order, as "default"',
@@ -184,7 +185,7 @@ describe('theme/template-versions', () => {
 type Design = Record<string, unknown>;
 /** Medley-shaped (contract R2.8): a main template and a two-design Food template. */
 const MAIN: Design = { template: 'beauty', label: 'Skincare & make-up', design_label: 'Photo collage', for: ['beauty-cosmetics', 'makeup'] };
-const FOOD: Design = { id: 'food', template: 'food', label: 'Restaurant & kitchen', design_label: 'Dining room', for: ['foods', 'local-meals'] };
+const FOOD: Design = { id: 'food', template: 'food', label: 'Restaurant & kitchen', design_label: 'Dining room', for: ['foods'] };
 const FOOD_2: Design = { id: 'food-2', template: 'food', design_label: 'Neighbourhood buka' };
 
 /** A context declaring these designs, each with its own store on disk named `names[id]` (default "Ata Kitchen"). */
@@ -244,8 +245,8 @@ describe('theme/template-designs', () => {
   });
 
   it("rejects a later design for another business than its template's", async () => {
-    expect(await designFindings(MAIN, [FOOD, { ...FOOD_2, for: ['foods'] }])).toEqual([
-      'design "food-2" is for ["foods"], its template "food" for ["foods","local-meals"]',
+    expect(await designFindings(MAIN, [FOOD, { ...FOOD_2, for: ['groceries'] }])).toEqual([
+      'design "food-2" is for ["groceries"], its template "food" for ["foods"]',
     ]);
   });
 
@@ -307,6 +308,33 @@ describe('theme/template-business (R2.8)', () => {
     expect(found.map((f) => [f.found, f.where])).toEqual([
       ['template "food" is for "jewellery", not in the business vocabulary', 'theme/theme.config.ts → demos[food].for'],
     ]);
+  });
+});
+
+describe('theme/template-business shop advisory (R2.9)', () => {
+  it('warns, never rejects, when a template names only shop; a specific for is quiet', async () => {
+    const warned = await templateBusinessRule.run(context({ defaultFor: ['shop'] }));
+    expect(warned).toHaveLength(1);
+    expect(warned[0]).toMatchObject({ rule: 'theme/template-business', severity: 'warn' });
+    expect(warned[0].found).toBe('template "default" is for only "shop"');
+    expect(warned[0].fix).toContain('"shop" is for a general store only');
+    expect(await templateBusinessRule.run(context({ defaultFor: ['laundry'] }))).toEqual([]);
+    expect(await templateBusinessRule.run(context({ defaultFor: ['shop', 'groceries'] }))).toEqual([]);
+  });
+
+  it("warns once per shop-only template, by its design 1", async () => {
+    const found = await templateBusinessRule.run(declaring(MAIN, [{ ...FOOD, for: ['shop'] }, FOOD_2]));
+    expect(found.map((f) => [f.severity, f.found, f.where])).toEqual([
+      ['warn', 'template "food" is for only "shop"', 'theme/theme.config.ts → demos[food].for'],
+    ]);
+  });
+
+  it('reads the vocabulary from the context, not the bundled import', async () => {
+    const found = await templateBusinessRule.run({
+      ...context({ defaultFor: ['shop'] }),
+      vocabulary: vocabularyViewOf({ services: ['laundry'], catalogue: {}, subcategories: {} }),
+    });
+    expect(found.map((f) => f.found)).toEqual(['template "default" is for "shop", not in the business vocabulary']);
   });
 });
 

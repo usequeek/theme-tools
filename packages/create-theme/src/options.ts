@@ -1,5 +1,5 @@
 import { basename, resolve } from 'node:path';
-import { BUSINESS_KEYS, SERVICES, TAGS, nearest } from './lists.js';
+import { TAGS, getActiveLists, nearest, type BusinessLists } from './lists.js';
 import { defaultCategories, planTemplates, prefixFor, slugProblem, slugify } from './naming.js';
 import type { Answers, Assistant, OptionalPage } from './setup.js';
 
@@ -30,6 +30,10 @@ export interface Flags {
   force: boolean;
   /** Where the starter comes from: a giget source or a local folder. Default: the pinned starter. */
   template?: string;
+  /** Use the bundled vocabulary snapshot; no network. */
+  offline?: boolean;
+  /** A pinned vocabulary file the prompts and the final check read instead. */
+  vocabularyFile?: string;
 }
 
 export interface Prompter {
@@ -78,18 +82,18 @@ const tagsProblem = (tags: string[]): string | undefined => (tags.length < 1 || 
  * so no answer is lost after it is given. `folderProblem` (a folder named after the slug) is checked
  * with the name.
  */
-export async function resolveAnswers(flags: Flags, prompter: Prompter | null, folderProblem?: (slug: string) => string | null): Promise<Answers> {
+export async function resolveAnswers(flags: Flags, prompter: Prompter | null, folderProblem?: (slug: string) => string | null, lists: BusinessLists = getActiveLists()): Promise<Answers> {
   // Flags first: a typo in one must not cost the answers to the questions before it.
   const keyFlag = csv(flags.templates);
   if (keyFlag) {
     if (keyFlag.length === 0) throw new UsageError('Pick at least one business for --templates.');
-    checkAll('business', '--templates', keyFlag, BUSINESS_KEYS);
+    checkAll('business', '--templates', keyFlag, lists.businessKeys);
   }
-  if (flags.primary !== undefined) checkAll('business', '--primary', [flags.primary], BUSINESS_KEYS);
+  if (flags.primary !== undefined) checkAll('business', '--primary', [flags.primary], lists.businessKeys);
   const categoryFlag = csv(flags.categories);
   if (categoryFlag) {
     if (categoryFlag.length === 0) throw new UsageError('Pick at least one business category for --categories.');
-    checkAll('category', '--categories', categoryFlag, SERVICES);
+    checkAll('category', '--categories', categoryFlag, lists.services);
   }
   const tagFlag = csv(flags.tags);
   if (tagFlag) {
@@ -112,19 +116,19 @@ export async function resolveAnswers(flags: Flags, prompter: Prompter | null, fo
   const problem = slugProblem(slug) ?? folderProblem?.(slug);
   if (problem) throw new UsageError(problem);
 
-  const keys = keyFlag ?? (prompter ? await prompter.templates() : required('--templates', BUSINESS_KEYS));
+  const keys = keyFlag ?? (prompter ? await prompter.templates() : required('--templates', lists.businessKeys));
   if (keys.length === 0) throw new UsageError('Pick at least one business for --templates.');
-  checkAll('business', '--templates', keys, BUSINESS_KEYS);
+  checkAll('business', '--templates', keys, lists.businessKeys);
 
   const unique = [...new Set(keys)];
   const primary = flags.primary ?? (prompter && unique.length > 1 && flags.templates === undefined ? await prompter.primary(unique) : unique[0]);
   if (!unique.includes(primary)) throw new UsageError(`--primary "${primary}" is not one of --templates (${unique.join(', ')}).`);
-  const templates = planTemplates(unique, primary);
+  const templates = planTemplates(unique, primary, lists);
 
   const categories = categoryFlag
-    ?? (prompter ? await prompter.categories(defaultCategories(templates.map((t) => t.key))) : defaultCategories(templates.map((t) => t.key)));
+    ?? (prompter ? await prompter.categories(defaultCategories(templates.map((t) => t.key), lists)) : defaultCategories(templates.map((t) => t.key), lists));
   if (categories.length === 0) throw new UsageError('Pick at least one business category for --categories.');
-  checkAll('category', '--categories', categories, SERVICES);
+  checkAll('category', '--categories', categories, lists.services);
 
   const tags = tagFlag ?? (prompter ? await prompter.tags(tagsProblem) : required('--tags', TAGS));
   if (tags.length === 0 || tags.length > 6) throw new UsageError('Pick 1 to 6 --tags.');
@@ -148,7 +152,7 @@ export const shellWord = (text: string): string => (needsQuoting(text) ? quote(t
  * The command that repeats this setup without a single prompt. npm needs `--` before create's flags.
  * `given` holds the flags that are not answers, repeated only when they were given.
  */
-export function equivalentCommand(pm: PackageManager, dir: string, answers: Answers, given: { template?: string; install?: boolean; git?: boolean } = {}): string {
+export function equivalentCommand(pm: PackageManager, dir: string, answers: Answers, given: { template?: string; install?: boolean; git?: boolean; offline?: boolean; vocabularyFile?: string } = {}): string {
   const flags = [
     `--name ${quote(answers.name)}`,
     `--templates ${answers.templates.map((t) => t.key).join(',')}`,
@@ -160,6 +164,8 @@ export function equivalentCommand(pm: PackageManager, dir: string, answers: Answ
     ...(given.template !== undefined ? [`--template ${shellWord(given.template)}`] : []),
     ...(given.install === false ? ['--no-install'] : []),
     ...(given.git === false ? ['--no-git'] : []),
+    ...(given.offline ? ['--offline'] : []),
+    ...(given.vocabularyFile !== undefined ? [`--vocabulary ${shellWord(given.vocabularyFile)}`] : []),
   ].join(' ');
   return pm === 'npm' ? `npm create @usequeek/theme@latest ${shellWord(dir)} -- ${flags}` : `${pm} create @usequeek/theme ${shellWord(dir)} ${flags}`;
 }

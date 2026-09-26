@@ -1,7 +1,7 @@
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { checkTheme, rejects } from '../src/index.js';
+import { bundledVersion, checkTheme, rejects } from '../src/index.js';
 
 const FIXTURE = resolve(import.meta.dirname, '../../../fixtures/starter/theme');
 
@@ -33,6 +33,29 @@ describe('checkTheme on a real theme folder', () => {
     expect(context.slug).toBe('bare');
     expect(rejects(findings)).toEqual([]);
     expect(findings.every((f) => !f.where || f.where.startsWith('theme/'))).toBe(true);
+  }, 60_000);
+
+  it('runs on the bundled vocabulary by default, and reports its source and version', async () => {
+    const { vocabulary } = await checkTheme(passingCopy(), { env: { root: 'theme/' } });
+    expect(vocabulary.source).toBe('bundled');
+    expect(vocabulary.version).toBe(bundledVersion());
+  }, 60_000);
+
+  it('checks `for` against a passed vocabulary instead of the bundled one', async () => {
+    const dir = passingCopy();
+    const vocabulary = { data: { services: ['laundry'], catalogue: {}, subcategories: {} }, source: 'file' as const };
+    const { findings, vocabulary: reported } = await checkTheme(dir, { env: { root: 'theme/' }, vocabulary });
+    expect(rejects(findings).map((f) => f.rule)).toContain('theme/template-business');
+    expect(reported).toEqual({ source: 'file', version: 'unknown' });
+  }, 60_000);
+
+  it('advises (warn, never reject) on the skeleton’s shop-only template', async () => {
+    const { findings } = await checkTheme(passingCopy(), { env: { root: 'theme/' } });
+    const advisory = findings.filter((finding) => finding.rule === 'theme/template-business');
+    expect(advisory).toHaveLength(1);
+    expect(advisory[0].severity).toBe('warn');
+    expect(advisory[0].found).toBe('template "default" is for only "shop"');
+    expect(rejects(findings)).toEqual([]);
   }, 60_000);
 
   it("rejects the unmodified skeleton for the placeholders it ships by design", async () => {

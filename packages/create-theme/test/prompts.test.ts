@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NICHES, SERVICES } from '../src/lists.js';
+import { NICHES, SERVICES, getActiveLists } from '../src/lists.js';
 import { askUntil, templateOptions } from '../src/prompts.js';
 
 describe('askUntil', () => {
@@ -21,15 +21,29 @@ describe('askUntil', () => {
 describe('the templates question', () => {
   const options = templateOptions();
 
-  it('lists the business categories first, then the niches', () => {
-    expect(options.map((option) => option.value)).toEqual([...SERVICES, ...NICHES]);
-    expect(options.slice(0, SERVICES.length).every((option) => option.hint === 'business category')).toBe(true);
+  it('lists the business categories, then the niches, with shop dead last', () => {
+    expect(options.map((option) => option.value)).toEqual([
+      ...SERVICES.filter((key) => key !== 'shop'),
+      ...NICHES,
+      'shop',
+    ]);
+    expect(options.at(-1)).toMatchObject({ value: 'shop', label: 'General store' });
+    expect(options.slice(0, SERVICES.length - 1).every((option) => option.hint === 'business category')).toBe(true);
   });
 
   it("names a niche's business category in its hint, catalogue roots included", () => {
     const hint = (key: string) => options.find((option) => option.value === key)?.hint;
     expect(hint('jewelry')).toBe('niche · Fashion');
-    expect(hint('beauty-personal-care')).toBe('niche · Beauty & cosmetics');
+    expect(hint('beauty-personal-care')).toBe('niche · Beauty & Cosmetics');
     expect(hint('laundry')).toBe('business category');
+  });
+
+  it('labels shop "General store" with its hint, in both pickers', () => {
+    const shop = options.find((option) => option.value === 'shop');
+    expect(shop?.label).toBe('General store');
+    expect(shop?.hint).toBe('pick a specific business; this is for a general store only');
+    const categories = getActiveLists().categoryOptions();
+    expect(categories.map((option) => option.value)).toEqual([...SERVICES.filter((key) => key !== 'shop'), 'shop']);
+    expect(categories.at(-1)).toMatchObject({ value: 'shop', label: 'General store', hint: 'pick a specific business; this is for a general store only' });
   });
 });

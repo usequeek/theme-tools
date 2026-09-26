@@ -1,5 +1,6 @@
 import { Args, Command, Flags } from '@oclif/core';
 import { clackPrompter, runCreate } from '@usequeek/create-theme';
+import { vocabularyFlags } from '../lib/vocabulary.js';
 
 export default class Init extends Command {
   static override summary = 'Start a new theme, the same as `npm create @usequeek/theme`.';
@@ -29,6 +30,7 @@ export default class Init extends Command {
     'dry-run': Flags.boolean({ summary: 'Print what would be written; write nothing.', default: false }),
     force: Flags.boolean({ summary: 'Allow a folder that is not empty.', default: false }),
     template: Flags.string({ summary: 'Another starter: a giget source or a local folder.' }),
+    ...vocabularyFlags,
   };
 
   async run(): Promise<void> {
@@ -39,6 +41,7 @@ export default class Init extends Command {
         dir: args.dir, name: flags.name, templates: flags.templates, primary: flags.primary, categories: flags.categories,
         tags: flags.tags, pages: flags.pages, ai: flags.ai, noAi: flags['no-ai'], pm: flags.pm, install: flags.install,
         git: flags.git, yes: flags.yes, dryRun: flags['dry-run'], force: flags.force, template: flags.template,
+        offline: flags.offline, vocabularyFile: flags.vocabulary,
       }, interactive ? clackPrompter() : null, (line) => this.log(line));
     } catch (error) {
       const { message, exitCode } = error as Error & { exitCode?: number };

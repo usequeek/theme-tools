@@ -12,7 +12,7 @@ const MEDLEY = {
   demos: [
     { id: 'clothes', template: 'clothes', label: 'Clothing & menswear', design_label: 'Campaign', for: ['fashion'] },
     { id: 'food-2', template: 'food', design_label: 'Neighbourhood buka' },
-    { id: 'food', template: 'food', label: 'Restaurant & kitchen', design_label: 'Dining room', for: ['foods', 'local-meals'] },
+    { id: 'food', template: 'food', label: 'Restaurant & kitchen', design_label: 'Dining room', for: ['foods'] },
     { id: 'clothes-2', template: 'clothes', design_label: 'Tailoring house' },
     { id: 'hair', template: 'hair', label: 'Wigs & hair', for: ['wigs-extensions-hair-accessories'] },
   ],

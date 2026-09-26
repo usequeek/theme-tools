@@ -22,13 +22,13 @@ describe('setupTheme', () => {
     expect(config).toContain("tags: ['minimal']");
     expect(config).toContain("categories: ['laundry', 'foods']");
     expect(config).toContain("for: ['laundry']");
-    expect(config).toContain("id: 'foods', template: 'foods', label: 'Food & restaurants', for: ['foods']");
+    expect(config).toContain("id: 'foods', template: 'foods', label: 'Foods', for: ['foods']");
     expect(config.match(/description: 'Replace before publishing\./g)).toHaveLength(3);
   });
 
   it('declares every design with its template key (R2.8): the main one by its business, never an id suffix', () => {
     const config = readFileSync(join(dir, 'theme/theme.config.ts'), 'utf8');
-    expect(config).toMatch(/default_demo: \{\n\s+template: 'laundry',\n\s+label: 'Laundry & dry cleaning',/);
+    expect(config).toMatch(/default_demo: \{\n\s+template: 'laundry',\n\s+label: 'Laundry',/);
     expect(config).toContain("id: 'foods', template: 'foods'");
     expect(config).not.toContain('-2');
     expect(config).not.toContain('design_label:');
