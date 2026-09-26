@@ -58,6 +58,11 @@ describe('checkTheme on a real theme folder', () => {
     expect(rejects(findings)).toEqual([]);
   }, 60_000);
 
+  it('finds no unimplemented variants in the skeleton’s compositions', async () => {
+    const { findings } = await checkTheme(FIXTURE, { env: { root: 'theme/' } });
+    expect(findings.filter((finding) => finding.rule === 'theme/composition-variants')).toEqual([]);
+  }, 60_000);
+
   it("rejects the unmodified skeleton for the placeholders it ships by design", async () => {
     const { findings } = await checkTheme(FIXTURE, { env: { root: 'theme/' } });
     expect(rejects(findings).map((f) => f.rule).sort()).toEqual(['theme/placeholder-content', 'theme/template-description']);

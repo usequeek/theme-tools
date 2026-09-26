@@ -45,6 +45,7 @@ export {
   demoCompletenessRule,
   subscribeScopeRule,
   demoBlockTypesRule,
+  compositionVariantsRule,
   identityRule,
   productMetafieldsRule,
   poweredByRule,

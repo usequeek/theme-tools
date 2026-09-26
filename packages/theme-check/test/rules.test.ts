@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUSINESS_KEYS, businessRoot, isBusinessKey, vocabularyViewOf } from '../src/utils/business-vocabulary.js';
-import { demoStoresRule, fontsSelfHostedRule, frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templateDesignsRule, templatePagesRule, templateVersionsRule } from '../src/rules/static.js';
+import { demoStoresRule, fontsSelfHostedRule, frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templateDesignsRule, templatePagesRule, templateVersionsRule, compositionVariantsRule } from '../src/rules/static.js';
 import { copyViolations } from '../src/utils/template-copy.js';
 import type { DeclaredDemo, DemoStore, ThemeContext } from '../src/types.js';
 
@@ -335,6 +335,51 @@ describe('theme/template-business shop advisory (R2.9)', () => {
       vocabulary: vocabularyViewOf({ services: ['laundry'], catalogue: {}, subcategories: {} }),
     });
     expect(found.map((f) => f.found)).toEqual(['template "default" is for "shop", not in the business vocabulary']);
+  });
+});
+
+describe('theme/composition-variants (BE19)', () => {
+  const manifest = { slug: 'x', variants: { gallery: [{ id: 'mosaic' }, { id: 'slider' }], products: [{ id: 'grid' }] } } as unknown as ThemeContext['manifest'];
+  const store = (id: string, file: string, content: unknown): DemoStore => ({ id, file, data: { pages: { home: { content } } } });
+
+  it('rejects a section naming a variant the theme does not implement, in every design', async () => {
+    const found = await compositionVariantsRule.run(context({
+      manifest,
+      demos: [
+        store('default', 'demo.json', [{ type: 'gallery', variant: 'mosaic' }, { type: 'gallery', variant: 'grid' }]),
+        store('blog-shop', 'demos/blog-shop.json', [{ type: 'gallery', variant: 'grid' }]),
+      ],
+    }));
+    expect(found.map((f) => [f.severity, f.found, f.where])).toEqual([
+      ['reject', 'gallery/grid', 'theme/demo.json → pages.home[1]'],
+      ['reject', 'gallery/grid', 'theme/demos/blog-shop.json → pages.home[0]'],
+    ]);
+    expect(found[0].fix).toContain('mosaic');
+    expect(found[0].fix).toContain('slider');
+    expect(found[0]).toMatchObject({ rule: 'theme/composition-variants' });
+  });
+
+  it('passes implemented variants, and ignores sections with no variant or a type with no declared variants', async () => {
+    const found = await compositionVariantsRule.run(context({
+      manifest,
+      demos: [store('default', 'demo.json', [
+        { type: 'gallery', variant: 'slider' },
+        { type: 'products', variant: 'grid' },
+        { type: 'gallery' },
+        { type: 'gallery', variant: null },
+        { type: 'divider', variant: 'anything' },
+      ])],
+    }));
+    expect(found).toEqual([]);
+  });
+
+  it('skips a retired theme or an unloadable manifest', async () => {
+    const bad = context({
+      manifest,
+      demos: [store('default', 'demo.json', [{ type: 'gallery', variant: 'grid' }])],
+    });
+    expect(await compositionVariantsRule.run({ ...bad, retired: true })).toEqual([]);
+    expect(await compositionVariantsRule.run({ ...bad, manifest: null })).toEqual([]);
   });
 });
 

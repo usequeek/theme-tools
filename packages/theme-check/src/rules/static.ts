@@ -613,6 +613,58 @@ export const demoBlockTypesRule: Rule = {
   },
 };
 
+/**
+ * A composition's variants are ones the theme implements (backend BE19: every
+ * beaurify store's blog named gallery/grid, which beaurify does not implement,
+ * and the backend refused three templates over it). "Implemented" is the
+ * registry's `implemented_variants`: the manifest's declared variants per
+ * scope — theme/variant-parity enforces they match the theme's
+ * `variantImplementations` map 1:1, so the manifest list is the implemented
+ * set. A separate id from theme/demo-block-types: that rule owns type names
+ * against core's list, this one variant ids against the theme's own.
+ */
+export const compositionVariantsRule: Rule = {
+  id: 'theme/composition-variants',
+  summary: 'Every section names a variant its theme implements',
+  kind: 'static',
+  run(context) {
+    if (context.retired || !context.manifest) return [];
+    const declared = (context.manifest as unknown as { variants?: Record<string, Array<{ id?: unknown }>> }).variants ?? {};
+    const implemented = new Map<string, string[]>();
+    for (const [scope, list] of Object.entries(declared)) {
+      if (Array.isArray(list)) implemented.set(scope, list.map((variant) => String(variant?.id)));
+    }
+
+    const findings: Finding[] = [];
+    for (const store of context.demos) {
+      if (!store.data) continue;
+      const pages = (store.data.pages as Record<string, { content?: Array<{ type?: string; variant?: string | null }> }>) ?? {};
+      const list = Array.isArray(pages)
+        ? (pages as Array<{ slug?: string; content?: Array<{ type?: string; variant?: string | null }> }>)
+        : Object.entries(pages).map(([slug, page]) => ({ slug, ...page }));
+
+      for (const page of list) {
+        (page?.content ?? []).forEach((section, index) => {
+          const type = section?.type;
+          const variant = section?.variant;
+          if (typeof type !== 'string' || typeof variant !== 'string' || variant === '') return;
+          const ids = implemented.get(type);
+          if (!ids || ids.includes(variant)) return;
+
+          findings.push(finding(context, 'theme/composition-variants', 'reject', {
+            where: `${context.env.root}${store.file} → pages.${page.slug ?? '?'}[${index}]`,
+            found: `${type}/${variant}`,
+            fix: `${type}/${variant} is not a ${type} variant ${context.slug} implements (one of: ${ids.join(', ') || 'none'}). A store built from this page carries the section verbatim; a variant the theme cannot render comes out blank.`,
+            docs: `${context.env.docs}#manifest`,
+          }));
+        });
+      }
+    }
+
+    return findings;
+  },
+};
+
 
 export const identityRule: Rule = {
   id: 'theme/identity',
@@ -1443,7 +1495,7 @@ export const placeholderContentRule: Rule = {
   },
 };
 
-export const STATIC_RULES: Rule[] = [moduleContractRule, structureRule, demoStoreRule, demoStoresRule, demoArtRule, codeQualityRule, sdkBoundaryRule, selectionMetadataRule, demoCompletenessRule, subscribeScopeRule, demoBlockTypesRule, identityRule, productMetafieldsRule, poweredByRule, fontsSelfHostedRule,
+export const STATIC_RULES: Rule[] = [moduleContractRule, structureRule, demoStoreRule, demoStoresRule, demoArtRule, codeQualityRule, sdkBoundaryRule, selectionMetadataRule, demoCompletenessRule, subscribeScopeRule, demoBlockTypesRule, compositionVariantsRule, identityRule, productMetafieldsRule, poweredByRule, fontsSelfHostedRule,
   templateDescriptionRule, templateScreenshotRule, templateChromeRule, templateStyleRule,
   templateBusinessRule, templateVersionsRule, templateDesignsRule, templatePagesRule, templateCopyRule, vendorFactsRule, placeholderContentRule,
 ];

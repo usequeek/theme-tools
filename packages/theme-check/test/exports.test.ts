@@ -24,7 +24,7 @@ describe('package entry exports the rule-level surface', () => {
     const exported = [
       pkg.moduleContractRule, pkg.structureRule, pkg.demoStoreRule, pkg.demoStoresRule, pkg.demoArtRule,
       pkg.codeQualityRule, pkg.sdkBoundaryRule, pkg.selectionMetadataRule, pkg.demoCompletenessRule,
-      pkg.subscribeScopeRule, pkg.demoBlockTypesRule, pkg.identityRule, pkg.productMetafieldsRule,
+      pkg.subscribeScopeRule, pkg.demoBlockTypesRule, pkg.compositionVariantsRule, pkg.identityRule, pkg.productMetafieldsRule,
       pkg.poweredByRule, pkg.fontsSelfHostedRule, pkg.templateDescriptionRule, pkg.templateScreenshotRule,
       pkg.templateChromeRule, pkg.templateStyleRule, pkg.templateBusinessRule, pkg.templateVersionsRule,
       pkg.templateDesignsRule, pkg.templatePagesRule, pkg.templateCopyRule, pkg.vendorFactsRule, pkg.placeholderContentRule,
