@@ -76,6 +76,92 @@ describe('renameContent', () => {
   });
 });
 
+const MEDLEY = { slug: 'medley', prefix: 'md', name: 'Medley' };
+const PROBE = { slug: 'zzprobe', prefix: 'zq', name: 'Zzprobe' };
+
+describe('renameContent on a real theme (medley → zzprobe)', () => {
+  it('renames CSS custom properties and their var() uses', () => {
+    const css = ':root { --md-accent: #b00; }\n.md-card { color: var(--md-accent); border-color: var(--md-accent-wash); }';
+    const out = renameContent(css, '.css', MEDLEY, PROBE);
+    expect(out).toContain('--zq-accent:');
+    expect(out).toContain('var(--zq-accent)');
+    expect(out).toContain('var(--zq-accent-wash)');
+    expect(out).toContain('.zq-card');
+    expect(out).not.toContain('md-accent');
+  });
+
+  it('renames data attributes and their selectors', () => {
+    const tsx = '<div data-md-open={open} className="md-sheet">\n{/* [data-md-open] */}';
+    const css = '[data-md-open="true"] { display: block; }';
+    expect(renameContent(tsx, '.tsx', MEDLEY, PROBE)).toContain('data-zq-open');
+    expect(renameContent(css, '.css', MEDLEY, PROBE)).toContain('[data-zq-open="true"]');
+    expect(renameContent(css, '.css', MEDLEY, PROBE)).not.toContain('data-md-open');
+  });
+
+  it('renames component heads but leaves the standalone display name to the name pass', () => {
+    const tsx = 'export function MedleyModalLayer() { return <MedleyHeader />; } // Medley theme';
+    const out = renameContent(tsx, '.tsx', MEDLEY, PROBE);
+    expect(out).toContain('ZzprobeModalLayer');
+    expect(out).toContain('<ZzprobeHeader />');
+    expect(out).toContain('// Zzprobe theme');
+    expect(out).not.toMatch(/Medley[A-Z]/);
+  });
+
+  it('derives the component head from a multi-word display name', () => {
+    const from = { slug: 'sole', prefix: 'st', name: 'Sole Theory' };
+    const to = { slug: 'zzprobe', prefix: 'zq', name: 'Zz Probe' };
+    const out = renameContent('function SoleTheoryHeader() { return <SoleTheoryMark />; }', '.tsx', from, to);
+    expect(out).toBe('function ZzProbeHeader() { return <ZzProbeMark />; }');
+  });
+
+  it('renames demo store ids: the slug followed by more id', () => {
+    const json = '{"profile": {"id": "medley-food"}, "products": [{"shop_id": "medley-food-2"}]}';
+    const out = renameContent(json, '.json', MEDLEY, PROBE);
+    expect(JSON.parse(out)).toMatchObject({ profile: { id: 'zzprobe-food' }, products: [{ shop_id: 'zzprobe-food-2' }] });
+  });
+
+  it('never rewrites inside URLs, while the same slug beside them is renamed', () => {
+    const json = '{"banner": "https://media.usequeek.com/theme-assets/medley/abc.jpg", "theme": "medley"}';
+    const out = renameContent(json, '.json', MEDLEY, PROBE);
+    expect(out).toContain('https://media.usequeek.com/theme-assets/medley/abc.jpg');
+    expect(out).toContain('"theme": "zzprobe"');
+  });
+
+  it('rewrites preview paths to the new slug: the demo is the new theme’s own store', () => {
+    expect(renameContent('// previewed at /medley~<id>', '.ts', MEDLEY, PROBE)).toBe('// previewed at /zzprobe~<id>');
+  });
+});
+
+describe('renameTheme end to end on a real-theme-like fixture', () => {
+  it('leaves no old identity outside URLs', async () => {
+    const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const dir = mkdtempSync(join(tmpdir(), 'rename-e2e-'));
+    writeFileSync(join(dir, 'theme.css'), ':root { --md-accent: #b00; }\n.md-card { color: var(--md-accent); }\n[data-md-open] { display: block; }\n');
+    writeFileSync(join(dir, 'layer.tsx'), 'export function MedleyModalLayer() { return <div data-md-open className="md-sheet"><MedleyHeader /></div>; }\n');
+    writeFileSync(
+      join(dir, 'demo.json'),
+      JSON.stringify({ profile: { id: 'medley-food', slug: 'medley', name: 'Medley' }, products: [{ shop_id: 'medley-food-2', image: 'https://media.usequeek.com/theme-assets/medley/abc.jpg' }] }, null, 2),
+    );
+    mkdirSync(join(dir, 'docs'));
+    writeFileSync(join(dir, 'docs', 'notes.md'), '# Medley\nThe medley theme. See https://media.usequeek.com/theme-assets/medley/abc.jpg and /medley~food.\n');
+
+    renameTheme(dir, MEDLEY, PROBE);
+
+    const files = readdirSync(dir).filter((name) => name !== 'docs');
+    const bodies = [...files.map((name) => readFileSync(join(dir, name), 'utf8')), readFileSync(join(dir, 'docs/notes.md'), 'utf8')];
+    const withoutUrls = bodies.map((body) => body.replace(/https?:\/\/[^\s'"`<>]*/g, ''));
+    for (const [index, body] of withoutUrls.entries()) {
+      expect(body, String(index)).not.toMatch(/Medley|medley|--md-|data-md-/);
+    }
+    const demo = JSON.parse(readFileSync(join(dir, 'demo.json'), 'utf8'));
+    expect(demo.products[0].image).toBe('https://media.usequeek.com/theme-assets/medley/abc.jpg');
+    expect(demo).toMatchObject({ profile: { id: 'zzprobe-food' }, products: [{ shop_id: 'zzprobe-food-2' }] });
+    expect(readFileSync(join(dir, 'docs/notes.md'), 'utf8')).toContain('/zzprobe~food');
+  });
+});
+
 describe('the package entry', () => {
   // Queek's `yarn theme:new` copies a theme under a new name with this rename.
   it('exports the rename and the skeleton identity', async () => {
