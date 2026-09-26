@@ -1,10 +1,11 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUSINESS_KEYS, businessRoot, isBusinessKey, vocabularyViewOf } from '../src/utils/business-vocabulary.js';
 import { demoStoresRule, fontsSelfHostedRule, frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templateDesignsRule, templatePagesRule, templateVersionsRule, compositionVariantsRule } from '../src/rules/static.js';
 import { copyViolations } from '../src/utils/template-copy.js';
+import { checkTheme } from '../src/run.js';
 import type { DeclaredDemo, DemoStore, ThemeContext } from '../src/types.js';
 
 /**
@@ -472,6 +473,56 @@ describe('theme/core-boundary: the framework stays behind the kit', () => {
     expect(findings[0].found).toContain("'next/link'");
     expect(findings[0].fix).toContain('@usequeek/theme-kit/navigation');
   });
+
+  it("rejects an `@/` app-code import in every module form, even in .mjs", async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'boundary-alias-'));
+    writeFileSync(join(dir, 'a.ts'), "import { useClientState } from '@/lib/storefront/hooks/use-client-state';\n");
+    writeFileSync(join(dir, 'b.ts'), "export { useClientState } from '@/lib/storefront/hooks/use-client-state';\n");
+    writeFileSync(join(dir, 'c.ts'), "const mod = await import('@/lib/storefront/hooks/use-client-state');\n");
+    writeFileSync(join(dir, 'd.ts'), "const mod = require('@/lib/storefront/hooks/use-client-state');\n");
+    writeFileSync(join(dir, 'e.mjs'), "import '@/lib/storefront/hooks/use-client-state';\n");
+
+    const findings = await sdkBoundaryRule.run({ ...context({}), dir });
+
+    expect(findings).toHaveLength(5);
+    for (const finding of findings) {
+      expect(finding).toMatchObject({ rule: 'theme/core-boundary', severity: 'reject' });
+      expect(finding.found).toContain('@/lib/storefront/hooks/use-client-state');
+      expect(finding.fix).toContain('@usequeek/theme-kit');
+    }
+    expect(findings.map((f) => f.where).sort()).toEqual(['a.ts', 'b.ts', 'c.ts', 'd.ts', 'e.mjs']);
+  });
+
+  it('rejects a relative import that escapes the theme, naming where it lands', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'boundary-escape-'));
+    mkdirSync(join(dir, 'blocks'), { recursive: true });
+    writeFileSync(join(dir, 'blocks', 'card.tsx'), "import { helper } from '../../lib/x';\n");
+
+    const findings = await sdkBoundaryRule.run({ ...context({}), dir });
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({ rule: 'theme/core-boundary', severity: 'reject', where: 'blocks/card.tsx' });
+    expect(findings[0].found).toContain("'../../lib/x'");
+    expect(findings[0].found).toContain('../lib/x');
+    expect(findings[0].fix).toContain('@usequeek/theme-kit');
+  });
+
+  it('passes in-theme relatives, the kit, react, and other scoped packages', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'boundary-clean-'));
+    mkdirSync(join(dir, 'blocks'), { recursive: true });
+    mkdirSync(join(dir, 'components'), { recursive: true });
+    writeFileSync(join(dir, 'components', 'x.tsx'), 'export const X = () => null;\n');
+    writeFileSync(join(dir, 'blocks', 'card.tsx'), "import { X } from '../components/x';\n");
+    writeFileSync(join(dir, 'header.tsx'), "import { Link } from '@usequeek/theme-kit/navigation';\nimport { useState } from 'react';\n");
+    writeFileSync(join(dir, 'footer.js'), "import { thing } from '@scope/pkg';\n");
+
+    expect(await sdkBoundaryRule.run({ ...context({}), dir })).toEqual([]);
+  });
+
+  it('passes the starter fixture', async () => {
+    const { findings } = await checkTheme(resolve(import.meta.dirname, '../../../fixtures/starter/theme'), { only: ['theme/core-boundary'] });
+    expect(findings).toEqual([]);
+  }, 60_000);
 });
 
 describe('theme/fonts-self-hosted', () => {

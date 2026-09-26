@@ -1,4 +1,4 @@
-import { join, relative } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { foreignImageRefs } from '../utils/theme-demo-images.js';
 import { DEMO_ID_FORMAT, PRIMARY_DEMO_ID } from '../utils/theme-demos.js';
@@ -344,9 +344,29 @@ export function frameworkImport(source: string): string | null {
   return match ? match[1] : null;
 }
 
+/**
+ * Every static module specifier in a source file: `import … from`,
+ * `export … from`, side-effect `import '…'`, dynamic `import('…')` and
+ * `require('…')`. Parsed like frameworkImport — regexes, not a bundler — so
+ * a theme whose module graph will not load still gets checked.
+ */
+export function moduleSpecifiers(source: string): string[] {
+  const found: string[] = [];
+  const patterns = [
+    /(?:import|export)[^'"]*?from\s*['"]([^'"]+)['"]/g,
+    /\bimport\s*['"]([^'"]+)['"]/g,
+    /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+    /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+  ];
+  for (const pattern of patterns) {
+    for (const match of source.matchAll(pattern)) found.push(match[1]);
+  }
+  return found;
+}
+
 export const sdkBoundaryRule: Rule = {
   id: 'theme/core-boundary',
-  summary: 'No SDK or framework imports, no direct API calls, no store mutations',
+  summary: 'No SDK or framework imports, no app-code imports or escapes, no direct API calls, no store mutations',
   kind: 'static',
   run(context) {
     const findings: Finding[] = [];
@@ -372,6 +392,33 @@ export const sdkBoundaryRule: Rule = {
           fix: "Import Link, useRouter and usePathname from '@usequeek/theme-kit/navigation'. Which framework runs the storefront is Queek's to change; a theme that imports it would break when it does.",
           docs: `${context.env.docs}#what-themes-must-not-do`,
         }));
+      }
+
+      // A theme is a self-contained folder: it imports packages and its own
+      // files, never the app around it. `@/` only resolves inside the
+      // storefront repo, and a relative import past the theme root only
+      // resolves there too — both break in a developer's `npm create`
+      // project and in `theme:pull`.
+      const root = resolve(context.dir);
+      for (const spec of moduleSpecifiers(source)) {
+        if (spec.startsWith('@/')) {
+          findings.push(finding(context, 'theme/core-boundary', 'reject', {
+            where,
+            found: `imports app code ('${spec}')`,
+            fix: "Move the code into the theme's own folder, or import it from '@usequeek/theme-kit'.",
+            docs: `${context.env.docs}#what-themes-must-not-do`,
+          }));
+        } else if (spec.startsWith('.')) {
+          const resolved = resolve(dirname(path), spec);
+          if (resolved !== root && !resolved.startsWith(root + sep)) {
+            findings.push(finding(context, 'theme/core-boundary', 'reject', {
+              where,
+              found: `relative import '${spec}' escapes the theme (resolves to ${relative(root, resolved)})`,
+              fix: "Move the code into the theme's own folder, or import it from '@usequeek/theme-kit'.",
+              docs: `${context.env.docs}#what-themes-must-not-do`,
+            }));
+          }
+        }
       }
 
       if (/\b(?:fetch|axios)\s*\(\s*['"`]https?:/.test(source)) {

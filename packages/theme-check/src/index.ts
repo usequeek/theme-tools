@@ -63,6 +63,7 @@ export {
   vendorFactsRule,
   placeholderContentRule,
   frameworkImport,
+  moduleSpecifiers,
   STARTER_PLACEHOLDER_IMAGES,
 } from './rules/static.js';
 export { ANALYSIS_RULES, variantParityRule, fieldParityRule, designTokensRule } from './rules/analysis.js';

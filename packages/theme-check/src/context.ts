@@ -90,12 +90,12 @@ export async function loadContext(themeDir: string, env: Partial<CheckEnv> = {})
   };
 }
 
-/** Every .ts/.tsx under a theme, for the whole-tree scans. */
+/** Every JS/TS source file under a theme, for the whole-tree scans. */
 export function themeSourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) return entry.name === 'node_modules' ? [] : themeSourceFiles(full);
-    return /\.tsx?$/.test(entry.name) ? [full] : [];
+    return /\.[mc]?[jt]sx?$/.test(entry.name) ? [full] : [];
   });
 }
 
