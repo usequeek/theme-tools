@@ -1,6 +1,6 @@
 {
   "name": "@usequeek/theme-check",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "The rules a Queek storefront theme is checked against, as a library.",
   "license": "MIT",
   "type": "module",
