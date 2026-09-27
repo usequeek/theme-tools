@@ -1,10 +1,14 @@
-import { Command, Flags } from '@oclif/core';
+import { Flags } from '@oclif/core';
+import { BaseCommand } from '../lib/base-command.js';
 import { pickPort } from '../lib/port.js';
 import { resolveProject } from '../lib/project.js';
 import { startPreview, writePreview } from '../lib/preview.js';
 import { resolveCommandVocabulary, vocabularyFlags } from '../lib/vocabulary.js';
 
-export default class Dev extends Command {
+export default class Dev extends BaseCommand {
+  // A long-running server has no result to print.
+  static override enableJsonFlag = false;
+
   static override summary = 'Preview your theme as a whole store: every design of every template, every page of each.';
 
   static override description = `Renders the theme with real Next.js against its designs (its demo stores) — theme/demo.json, the main template's first design, at /default, each theme/demos/<id>.json at /<id> — with the same composition a live Queek storefront uses. The index lists them by template, as theme.config.ts declares them. Edits reload the page.
@@ -22,6 +26,7 @@ The preview app is written to .queek/preview in your project and regenerated on 
 
   async run(): Promise<void> {
     const { flags } = await this.parse(Dev);
+    this.setVerbose(flags.verbose);
     let project;
     try {
       project = resolveProject(flags.path);
@@ -36,15 +41,20 @@ The preview app is written to .queek/preview in your project and regenerated on 
     // should not be found only after it.
     const port = await pickPort({ host: flags.host, requested: flags.port })
       .catch((error: Error) => this.error(error.message, { exit: 2 }));
+    this.debug(`project root: ${project.root}`);
+    this.debug(`theme dir: ${project.themeDir}`);
+    this.debug(`port: ${port}${flags.port === undefined ? ' (first free from 7833)' : ''}`);
     this.logToStderr('Starting the preview…');
     const dir = writePreview(project);
+    this.debug(`preview app: ${dir}`);
     const server = await startPreview(project, dir, flags.host, port).catch((error: Error & { code?: string }) =>
       this.error(error.code === 'EADDRINUSE' ? `Port ${port} is in use. Pass another --port, or leave --port out to use the next free one.` : error.message, { exit: 2 }));
 
     this.log(`\n  Preview: ${server.url}\n  Templates, designs and pages are listed there. Ctrl+C to stop.\n`);
 
+    // Next's close can stall on its watchers; Ctrl+C must never hang on it.
     const stop = async (): Promise<void> => {
-      await server.close();
+      await Promise.race([server.close(), new Promise((done) => setTimeout(done, 3000).unref())]);
       process.exit(0);
     };
     process.once('SIGINT', stop);

@@ -113,6 +113,14 @@ try {
   const size = jpegSize(shot);
   if (size.width !== 1280 || size.height !== 800) throw new Error(`screenshot: theme/theme.jpg is ${size.width}×${size.height}, expected 1280×800`);
   console.log(`e2e: screenshot ✓ (theme/theme.jpg, JPEG ${size.width}×${size.height}, ${shot.length} bytes)`);
+
+  // The screenshots are the files the checker reads: both screenshot rules
+  // leave the to-do list, and nothing else changes.
+  const after = JSON.parse(sh(process.execPath, [join(project, 'node_modules/@usequeek/theme-cli/bin/run.js'), 'check', '--json'], project, true).stdout);
+  const left = [...new Set(after.findings.filter((f) => f.level === 'error').map((f) => f.rule))].sort();
+  const expected = todo.filter((rule) => rule !== 'theme/structure' && rule !== 'theme/template-screenshot');
+  if (JSON.stringify(left) !== JSON.stringify(expected)) throw new Error(`check after screenshot: expected ${expected.join(', ')}, got ${left.join(', ')}`);
+  console.log(`e2e: check after screenshot ✓ (left: ${expected.join(', ')})`);
   console.log('e2e: all passed');
 } finally {
   rmSync(work, { recursive: true, force: true });

@@ -1,4 +1,5 @@
-import { Args, Command, Flags } from '@oclif/core';
+import { Args, Flags } from '@oclif/core';
+import { BaseCommand } from '../lib/base-command.js';
 import { demoFilesOf, screenshotFile } from '@usequeek/theme-check';
 import { existsSync, mkdirSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
@@ -6,6 +7,9 @@ import { launchBrowser } from '../lib/browser.js';
 import { pickPort } from '../lib/port.js';
 import { startPreview, writePreview } from '../lib/preview.js';
 import { resolveProject, type Project } from '../lib/project.js';
+
+/** How long the preview may take to start before the command gives up. */
+const BOOT_TIMEOUT_MS = 5 * 60_000;
 
 /** One design's screenshot: the design id and the file it is written to, relative to the project root. */
 export interface ScreenshotTarget {
@@ -56,7 +60,7 @@ async function muteStdout<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-export default class Screenshot extends Command {
+export default class Screenshot extends BaseCommand {
   static override summary = 'Capture every design\'s first screen at 1280×800 into the files the checker reads.';
 
   static override description = `Starts the same preview \`dev\` serves, opens every design (its demo store) at 1280×800, and writes the screenshot the checker reads: theme/theme.jpg for the primary design, theme/demos/<id>.jpg for the rest. Pass design ids to capture only those.
@@ -74,10 +78,10 @@ Needs a Chromium-based browser: Google Chrome, Microsoft Edge, Playwright's own 
     port: Flags.integer({ summary: 'Port to serve the preview on [default: 7833, or the next free port].', min: 1, max: 65535, env: 'QUEEK_THEME_PORT' }),
   };
 
-  static enableJsonFlag = true;
 
   async run(): Promise<{ files: Array<{ design: string; file: string; bytes: number }> }> {
     const { args, flags } = await this.parse(Screenshot);
+    this.setVerbose(flags.verbose);
     let project: Project;
     try {
       project = resolveProject(flags.path);
@@ -94,9 +98,16 @@ Needs a Chromium-based browser: Google Chrome, Microsoft Edge, Playwright's own 
 
     const port = await pickPort({ host: '127.0.0.1', requested: flags.port })
       .catch((error: Error) => this.error(error.message, { exit: 2 }));
+    this.debug(`project root: ${project.root}`);
+    this.debug(`port: ${port}${flags.port === undefined ? ' (first free from 7833)' : ''}`);
     const dir = writePreview(project);
+    this.debug(`preview app: ${dir}`);
+    // A preview that never starts must not hang a script or CI job.
     const boot = (): Promise<{ url: string; close: () => Promise<void> }> =>
-      startPreview(project, dir, '127.0.0.1', port, { quiet: flags.json === true });
+      Promise.race([
+        startPreview(project, dir, '127.0.0.1', port, { quiet: flags.json === true }),
+        new Promise<never>((_, fail) => setTimeout(() => fail(new Error(`The preview did not start within ${BOOT_TIMEOUT_MS / 60_000} minutes. Run \`npx queek-theme dev\` to see why.`)), BOOT_TIMEOUT_MS).unref()),
+      ]);
     const server = await (flags.json === true ? muteStdout(boot) : boot()).catch((error: Error & { code?: string }) =>
       this.error(error.code === 'EADDRINUSE' ? `Port ${port} is in use. Pass another --port, or leave --port out to use the next free one.` : error.message, { exit: 2 }));
 
@@ -112,6 +123,7 @@ Needs a Chromium-based browser: Google Chrome, Microsoft Edge, Playwright's own 
     try {
       for (const target of targets) {
         const url = `http://127.0.0.1:${port}/${target.design}`;
+        this.debug(`capturing ${url}`);
         const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
         try {
           const page = await context.newPage();
@@ -135,6 +147,8 @@ Needs a Chromium-based browser: Google Chrome, Microsoft Edge, Playwright's own 
           files.push({ design: target.design, file: target.file, bytes });
           // Suppressed under --json by the framework; the JSON carries the files instead.
           this.log(`${target.design} → ${target.file} (${Math.max(1, Math.round(bytes / 1024))} KB)`);
+        } catch (error) {
+          this.error(`Could not capture "${target.design}" (${url}): ${(error as Error).message}`, { exit: 2 });
         } finally {
           await context.close();
         }
