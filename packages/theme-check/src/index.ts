@@ -10,7 +10,14 @@ export {
   type BusinessVocabularyData, type ResolveVocabularyOptions, type ResolvedVocabulary, type VocabularySource,
 } from './vocabulary.js';
 export { loadContext, localEnv, CONTRACT_URL } from './context.js';
-export { formatJson, formatGithubActions, formatStylish, summarize, levelOf, fileOf, type Level, type Summary } from './format.js';
+export { formatJson, formatGithubActions, formatStylish, summarize, levelOf, fileOf, jsonReport, type JsonFinding, type JsonReport, type Level, type Summary } from './format.js';
+export {
+  loadProjectConfig, applyProjectConfig, warningRuleIds, renderInitConfig,
+  CONFIG_FILE_NAME, CONFIG_POLICY, ConfigError,
+  type ConfigRuleLevel, type ProjectConfig,
+} from './config.js';
+export { applyDisableComments, scanUnknownDisableIds, type UnknownDisableId } from './disable-comments.js';
+export { tsDisableDirectives, cssDisableDirectives, editDistance, closestRuleId, type DisableDirective } from './utils/disable-comments.js';
 export type { CheckEnv, Finding, Rule, Severity, ThemeContext, DemoStore, DeclaredDemo } from './types.js';
 export { BUSINESS_KEYS, SERVICE_SLUGS, CATALOGUE, SUBCATEGORIES, ROOT_SERVICE, BUNDLED_VERSION, bundledVocabularyView, vocabularyViewOf, isBusinessKey, businessRoot, type VocabularyView } from './utils/business-vocabulary.js';
 export { TEMPLATE_COPY_PLACES, copyViolations, isTestimonialSection, storeNameForms } from './utils/template-copy.js';
@@ -62,6 +69,8 @@ export {
   templateCopyRule,
   vendorFactsRule,
   placeholderContentRule,
+  markdownHtmlRule,
+  disableCommentRule,
   frameworkImport,
   moduleSpecifiers,
   STARTER_PLACEHOLDER_IMAGES,

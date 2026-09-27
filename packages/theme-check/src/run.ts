@@ -35,6 +35,8 @@ export interface CheckOptions {
   only?: string[];
   /** The vocabulary the rules read from the context. Default: the bundled snapshot, so existing callers keep working. */
   vocabulary?: CheckVocabulary;
+  /** Called with each rule's elapsed milliseconds (used for `--verbose` per-rule timing). */
+  profile?: (ruleId: string, ms: number) => void;
 }
 
 export interface CheckResult {
@@ -56,6 +58,7 @@ export async function checkTheme(themeDir: string, options: CheckOptions = {}): 
 
   const findings: Finding[] = [];
   for (const rule of rules) {
+    const started = Date.now();
     try {
       findings.push(...(await rule.run(context)));
     } catch (error) {
@@ -69,6 +72,8 @@ export async function checkTheme(themeDir: string, options: CheckOptions = {}): 
         found: `the check could not run: ${(error as Error).message}`,
         fix: 'Usually a theme module that fails to load. Run `npx tsc --noEmit` and fix the error first.',
       });
+    } finally {
+      options.profile?.(rule.id, Date.now() - started);
     }
   }
 

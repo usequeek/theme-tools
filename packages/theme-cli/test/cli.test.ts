@@ -1,7 +1,8 @@
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 
 /** The built CLI, run as a user runs it — `pnpm build` first. */
@@ -161,6 +162,122 @@ describe('queek-theme package', () => {
       rmSync(out, { force: true });
     }
   }, 60_000);
+
+  it('package --json returns the six keys with a correct sha256', () => {
+    const out = join(mkdtempSync(join(tmpdir(), 'queek-package-')), 'theme.zip');
+    try {
+      const { code, stdout, stderr } = run('package', '--offline', '--json', '--output', out);
+      expect(code, stderr).toBe(0);
+      const report = JSON.parse(stdout);
+      expect(Object.keys(report).sort()).toEqual(['bytes', 'errors', 'file', 'sha256', 'theme', 'warnings']);
+      expect(report.theme).toBe('bare');
+      expect(report.file).toBe(relative(PASSING, out));
+      const bytes = readFileSync(out);
+      expect(report.bytes).toBe(bytes.length);
+      expect(report.sha256).toBe(createHash('sha256').update(bytes).digest('hex'));
+      expect(typeof report.errors).toBe('number');
+      expect(typeof report.warnings).toBe('number');
+    } finally {
+      rmSync(out, { force: true });
+    }
+  }, 60_000);
+
+  it('package --verbose reports the zip entry count on stderr', () => {
+    const out = join(mkdtempSync(join(tmpdir(), 'queek-package-')), 'theme.zip');
+    try {
+      const { code, stderr } = run('package', '--offline', '--verbose', '--output', out);
+      expect(code, stderr).toBe(0);
+      expect(stderr).toContain('[debug] project root:');
+      expect(stderr).toContain('[debug] theme dir:');
+      expect(stderr).toMatch(/\[debug\] zip entries: \d+/);
+    } finally {
+      rmSync(out, { force: true });
+    }
+  }, 60_000);
+});
+
+describe('queek-theme check --json', () => {
+  it('prints the same report as --format json, and exits 1 on errors', () => {
+    const withFlag = runAt(FIXTURE, 'check', '--offline', '--json');
+    const withFormat = runAt(FIXTURE, 'check', '--offline', '--format', 'json');
+    expect(withFlag.code, withFlag.stderr).toBe(1);
+    expect(JSON.parse(withFlag.stdout)).toEqual(JSON.parse(withFormat.stdout));
+  }, 60_000);
+
+  it('exits 0 with --json when there are no errors', () => {
+    const { code, stdout, stderr } = run('check', '--offline', '--json');
+    expect(code, stderr).toBe(0);
+    expect(JSON.parse(stdout).summary.errors).toBe(0);
+  }, 60_000);
+
+  it('--verbose keeps stdout valid JSON and puts debug lines on stderr', () => {
+    const { code, stdout, stderr } = run('check', '--offline', '--json', '--verbose');
+    expect(code, stderr).toBe(0);
+    expect(JSON.parse(stdout).theme).toBe('bare');
+    expect(stdout).not.toContain('[debug]');
+    expect(stderr).toContain('[debug] project root:');
+    expect(stderr).toContain('[debug] theme dir:');
+    expect(stderr).toContain('[debug] vocabulary: bundled');
+    expect(stderr).toContain('[debug] config: no .queek-theme.yml');
+    expect(stderr).toMatch(/\[debug\] rule theme\/[a-z-]+: \d+ms/);
+  }, 60_000);
+});
+
+describe('queek-theme check project config', () => {
+  /** A fresh copy of the starter project (config written per test, cleaned after). */
+  function freshProject(): string {
+    const dir = mkdtempSync(join(resolve(import.meta.dirname, '../../../fixtures'), '.tmp-cli-config-'));
+    cpSync(FIXTURE, dir, { recursive: true });
+    return dir;
+  }
+
+  it('check --init writes the file and refuses the second time', () => {
+    const dir = freshProject();
+    try {
+      const first = runAt(dir, 'check', '--init');
+      expect(first.code, first.stderr).toBe(0);
+      const file = join(dir, '.queek-theme.yml');
+      expect(existsSync(file)).toBe(true);
+      const text = readFileSync(file, 'utf8');
+      expect(text).toContain('The config changes warnings only.');
+      expect(text).toContain('#  theme/template-business: off');
+
+      const second = runAt(dir, 'check', '--init');
+      expect(second.code, second.stderr).toBe(2);
+      expect(readFileSync(file, 'utf8')).toBe(text);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  it('exits 2 on an invalid config', () => {
+    const dir = freshProject();
+    try {
+      writeFileSync(join(dir, '.queek-theme.yml'), 'bogus:\n  - 1\n');
+      const { code, stderr } = runAt(dir, 'check', '--offline');
+      expect(code, stderr).toBe(2);
+      expect(stderr).toContain('.queek-theme.yml');
+      expect(stderr).toContain('bogus');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  it('applies off and prints the stderr line', () => {
+    const dir = warningsOnlyTheme();
+    try {
+      const before = runAt(dir, 'check', '--offline', '--format', 'json');
+      expect(JSON.parse(before.stdout).summary.warnings).toBeGreaterThanOrEqual(1);
+
+      writeFileSync(join(dir, '.queek-theme.yml'), 'rules:\n  theme/template-business: off\n  theme/template-pages: off\n');
+      const { code, stdout, stderr } = runAt(dir, 'check', '--offline', '--format', 'json');
+      expect(code, stderr).toBe(0);
+      expect(JSON.parse(stdout).summary.warnings).toBe(0);
+      expect(stderr).toContain('Using .queek-theme.yml (2 rules changed, 0 ignore patterns).');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 120_000);
 });
 
 describe('queek-theme', () => {

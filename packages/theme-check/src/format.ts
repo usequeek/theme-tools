@@ -25,9 +25,29 @@ export function summarize(findings: Finding[]): Summary {
   };
 }
 
-/** Machine-readable output: stable keys, one object per run. */
-export function formatJson(result: CheckResult): string {
-  return JSON.stringify({
+export interface JsonFinding {
+  rule: string;
+  level: Level;
+  file: string | null;
+  where: string | null;
+  message: string;
+  fix: string;
+  docs: string | null;
+  fixable: boolean;
+}
+
+/** Machine-readable report: stable keys, one object per run. */
+export interface JsonReport {
+  theme: string;
+  summary: Summary;
+  vocabulary: CheckResult['vocabulary'];
+  findings: JsonFinding[];
+  atSubmission: typeof AT_SUBMISSION;
+}
+
+/** The object the machine-readable output is built from. */
+export function jsonReport(result: CheckResult): JsonReport {
+  return {
     theme: result.context.slug,
     summary: summarize(result.findings),
     vocabulary: result.vocabulary,
@@ -42,7 +62,12 @@ export function formatJson(result: CheckResult): string {
       fixable: finding.fixable ?? false,
     })),
     atSubmission: AT_SUBMISSION,
-  }, null, 2);
+  };
+}
+
+/** Machine-readable output: stable keys, one object per run. */
+export function formatJson(result: CheckResult): string {
+  return JSON.stringify(jsonReport(result), null, 2);
 }
 
 /** GitHub Actions workflow commands — annotations on the pull request's diff. */

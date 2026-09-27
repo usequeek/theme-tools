@@ -28,6 +28,7 @@ describe('package entry exports the rule-level surface', () => {
       pkg.poweredByRule, pkg.fontsSelfHostedRule, pkg.templateDescriptionRule, pkg.templateScreenshotRule,
       pkg.templateChromeRule, pkg.templateStyleRule, pkg.templateBusinessRule, pkg.templateVersionsRule,
       pkg.templateDesignsRule, pkg.templatePagesRule, pkg.templateCopyRule, pkg.vendorFactsRule, pkg.placeholderContentRule,
+      pkg.markdownHtmlRule, pkg.disableCommentRule,
     ];
     expect(exported).toHaveLength(pkg.STATIC_RULES.length);
     exported.forEach((rule, i) => expect(rule).toBe(pkg.STATIC_RULES[i]));
