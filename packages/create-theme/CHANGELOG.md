@@ -1,5 +1,16 @@
 # @usequeek/create-theme
 
+## 0.6.0
+
+### Minor Changes
+
+- New themes get `npm run screenshot` (every design's first screen at 1280×800, into the files the check reads) and preview on port 7833, or the next free one. The starter requires @usequeek/theme-cli 0.6.
+
+### Patch Changes
+
+- Updated dependencies [`591956a`, `350c352`]:
+  - @usequeek/theme-check@0.6.0
+
 ## 0.5.2
 
 ### Patch Changes

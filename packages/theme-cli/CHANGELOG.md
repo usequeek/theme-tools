@@ -1,5 +1,25 @@
 # @usequeek/theme-cli
 
+## 0.6.0
+
+### Minor Changes
+
+- - Reject passing renderMarkdown output to dangerouslySetInnerHTML, which renders "[object Object]" on the page.
+  - Tune warnings per project with .queek-theme.yml, without ever silencing errors.
+  - Print the check report with --json and zip details with package --json, keeping exit codes.
+  - Debug check and package with --verbose lines on stderr.
+  - Never show the new-version notice in CI or when update checks are opted out.
+
+- - `queek-theme dev` serves on port 7833 by default, or the next free port up to 7852 when 7833 is busy; a given `--port` stays strict and exits 2 when busy.
+  - New `queek-theme screenshot` command captures every design's first screen at 1280x800 into the files the checker reads, using Google Chrome, Edge, Playwright's chromium, or QUEEK_THEME_BROWSER.
+  - The checker's screenshot fixes tell developers to run `npx queek-theme screenshot`, and its preview links use port 7833.
+
+### Patch Changes
+
+- Updated dependencies [`591956a`, `350c352`]:
+  - @usequeek/create-theme@0.6.0
+  - @usequeek/theme-check@0.6.0
+
 ## 0.5.0
 
 ### Minor Changes
