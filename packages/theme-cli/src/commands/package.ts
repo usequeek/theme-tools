@@ -3,7 +3,6 @@ import { createWriteStream, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path';
 import { Flags } from '@oclif/core';
 import {
-  applyDisableComments,
   applyProjectConfig,
   checkTheme,
   CONFIG_FILE_NAME,
@@ -78,8 +77,6 @@ export default class Package extends BaseCommand {
     } catch (error) {
       this.error((error as Error).message, { exit: 2 });
     }
-
-    result = { ...result, findings: applyDisableComments(result.findings, project.themeDir) };
 
     const out = resolve(flags.output ?? join(project.root, `${result.context.slug}.zip`));
     const files = filesOf(project.themeDir);

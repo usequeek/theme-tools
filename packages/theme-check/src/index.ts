@@ -16,8 +16,7 @@ export {
   CONFIG_FILE_NAME, CONFIG_POLICY, ConfigError,
   type ConfigRuleLevel, type ProjectConfig,
 } from './config.js';
-export { applyDisableComments, scanUnknownDisableIds, type UnknownDisableId } from './disable-comments.js';
-export { tsDisableDirectives, cssDisableDirectives, editDistance, closestRuleId, type DisableDirective } from './utils/disable-comments.js';
+export { editDistance, closestRuleId } from './utils/closest-id.js';
 export type { CheckEnv, Finding, Rule, Severity, ThemeContext, DemoStore, DeclaredDemo } from './types.js';
 export { BUSINESS_KEYS, SERVICE_SLUGS, CATALOGUE, SUBCATEGORIES, ROOT_SERVICE, BUNDLED_VERSION, bundledVocabularyView, vocabularyViewOf, isBusinessKey, businessRoot, type VocabularyView } from './utils/business-vocabulary.js';
 export { TEMPLATE_COPY_PLACES, copyViolations, isTestimonialSection, storeNameForms } from './utils/template-copy.js';
@@ -70,7 +69,6 @@ export {
   vendorFactsRule,
   placeholderContentRule,
   markdownHtmlRule,
-  disableCommentRule,
   frameworkImport,
   moduleSpecifiers,
   STARTER_PLACEHOLDER_IMAGES,

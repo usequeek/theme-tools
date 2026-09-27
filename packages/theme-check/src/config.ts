@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 import picomatch from 'picomatch';
 import YAML from 'yaml';
 import { RULES } from './run.js';
 import type { Finding } from './types.js';
-import { closestRuleId } from './utils/disable-comments.js';
+import { closestRuleId } from './utils/closest-id.js';
 
 /**
  * The project config: what a theme's own repo may tune. It changes warnings
@@ -106,17 +106,23 @@ export function loadProjectConfig(root: string): ProjectConfig | null {
  * matched against the file part of `where`) drop warn findings in those
  * files. A rule's reject findings are never changed.
  */
-export function applyProjectConfig(findings: Finding[], config: ProjectConfig): Finding[] {
+export function applyProjectConfig(findings: Finding[], config: ProjectConfig, cwd: string = process.cwd()): Finding[] {
   const matchers = config.ignore.map((pattern) => picomatch(pattern, { dot: true }));
+  // A finding's file starts with env.root, which is relative to where `check`
+  // ran — so it only matches project-root-relative globs after resolving it
+  // against that directory and making it relative to the project root again.
+  const ignored = (where: string): boolean => {
+    const file = where.split(' → ')[0]?.trim().replace(/:\d+$/, '') ?? '';
+    if (!file) return false;
+    const rel = relative(config.root, isAbsolute(file) ? file : resolve(cwd, file)).replace(/\\/g, '/');
+    return matchers.some((matches) => matches(rel));
+  };
   return findings.flatMap((finding) => {
     if (finding.severity !== 'warn') return [finding];
     const override = config.rules[finding.rule];
     if (override === 'off') return [];
     if (override === 'error') return [{ ...finding, severity: 'reject' as const }];
-    if (finding.where && matchers.length > 0) {
-      const file = finding.where.split(' → ')[0]?.trim().replace(/:\d+$/, '') ?? '';
-      if (matchers.some((matches) => matches(file))) return [];
-    }
+    if (finding.where && matchers.length > 0 && ignored(finding.where)) return [];
     return [finding];
   });
 }
@@ -130,7 +136,6 @@ export function warningRuleIds(): string[] {
     'theme/demo-completeness',
     'theme/template-business',
     'theme/template-pages',
-    'theme/disable-comment',
   ]);
   return RULES.map((rule) => rule.id).filter((id) => warnable.has(id));
 }

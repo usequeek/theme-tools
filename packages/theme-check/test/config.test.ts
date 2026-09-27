@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -36,8 +36,8 @@ const warn = (rule: string, where = 'theme/a.tsx:1'): Finding =>
 const reject = (rule: string, where = 'theme/a.tsx:1'): Finding =>
   ({ rule, severity: 'reject', theme: 'x', where, found: 'reject found', fix: 'reject fix' });
 
-const configWith = (rules: ProjectConfig['rules'], ignore: string[] = []): ProjectConfig =>
-  ({ root: '/nowhere', path: '/nowhere/.queek-theme.yml', rules, ignore });
+const configWith = (rules: ProjectConfig['rules'], ignore: string[] = [], root = '/nowhere'): ProjectConfig =>
+  ({ root, path: `${root}/.queek-theme.yml`, rules, ignore });
 
 describe('applyProjectConfig', () => {
   it('off drops a warning', () => {
@@ -65,15 +65,26 @@ describe('applyProjectConfig', () => {
   });
 
   it('an ignore glob drops a warning but not a reject', () => {
-    const config = configWith({}, ['theme/vendor/**']);
-    expect(applyProjectConfig([warn('theme/template-pages', 'theme/vendor/a.tsx:3')], config)).toEqual([]);
-    expect(applyProjectConfig([reject('theme/template-pages', 'theme/vendor/a.tsx:3')], config)).toHaveLength(1);
+    const config = configWith({}, ['theme/vendor/**'], '/proj');
+    expect(applyProjectConfig([warn('theme/template-pages', 'theme/vendor/a.tsx:3')], config, '/proj')).toEqual([]);
+    expect(applyProjectConfig([reject('theme/template-pages', 'theme/vendor/a.tsx:3')], config, '/proj')).toHaveLength(1);
   });
 
   it('matches the file part of where, past a detail tail', () => {
-    const config = configWith({}, ['theme/vendor/**']);
+    const config = configWith({}, ['theme/vendor/**'], '/proj');
     const findings = [warn('theme/template-pages', 'theme/vendor/a.tsx → pages.home')];
-    expect(applyProjectConfig(findings, config)).toEqual([]);
+    expect(applyProjectConfig(findings, config, '/proj')).toEqual([]);
+  });
+
+  it('matches globs from the project root wherever check runs from', () => {
+    const config = configWith({}, ['theme/**'], '/proj');
+    expect(applyProjectConfig([warn('theme/template-pages', 'theme/demo.json')], config, '/proj')).toEqual([]);
+    expect(applyProjectConfig([warn('theme/template-pages', '../proj/theme/demo.json')], config, '/other')).toEqual([]);
+  });
+
+  it('a reject in an ignored file stays', () => {
+    const config = configWith({}, ['theme/**'], '/proj');
+    expect(applyProjectConfig([reject('theme/template-pages', 'theme/demo.json')], config, '/proj')).toHaveLength(1);
   });
 });
 
@@ -139,14 +150,24 @@ describe('loadProjectConfig', () => {
 
 describe('warningRuleIds and renderInitConfig', () => {
   it('lists the rules that can warn, not the reject-only ones', () => {
-    const ids = warningRuleIds();
-    expect(ids).toEqual(expect.arrayContaining([
+    expect(warningRuleIds()).toEqual([
       'theme/demo-completeness',
       'theme/template-business',
       'theme/template-pages',
-      'theme/disable-comment',
-    ]));
-    expect(ids).not.toContain('theme/markdown-html');
+    ]);
+  });
+
+  it('matches every warn-capable rule id in src/rules', () => {
+    const dir = resolve(import.meta.dirname, '../src/rules');
+    const ids = new Set<string>();
+    for (const name of readdirSync(dir).filter((entry) => entry.endsWith('.ts'))) {
+      const source = readFileSync(join(dir, name), 'utf8');
+      for (const match of source.matchAll(/finding\(context,\s*'([^']+)',\s*([^\n,)]+)/g)) {
+        if (match[2]?.includes('warn')) ids.add(match[1] as string);
+      }
+    }
+    expect([...ids].sort()).toEqual([...warningRuleIds()].sort());
+    expect(warningRuleIds().length).toBeGreaterThanOrEqual(3);
   });
 
   it('writes the policy, every warnable rule commented out, and a sample ignore', () => {

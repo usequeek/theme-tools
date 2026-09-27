@@ -250,6 +250,18 @@ describe('queek-theme check project config', () => {
     }
   }, 60_000);
 
+  it('check --init --json returns the written file', () => {
+    const dir = freshProject();
+    try {
+      const { code, stdout, stderr } = runAt(dir, 'check', '--init', '--json');
+      expect(code, stderr).toBe(0);
+      expect(JSON.parse(stdout)).toEqual({ file: '.queek-theme.yml' });
+      expect(existsSync(join(dir, '.queek-theme.yml'))).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
   it('exits 2 on an invalid config', () => {
     const dir = freshProject();
     try {

@@ -81,21 +81,6 @@ A rule's errors are never changed. An invalid file exits 2, naming the file and 
 When a config is in effect, `check` says so on stderr
 (`Using .queek-theme.yml (2 rules changed, 1 ignore pattern).`).
 
-## Inline disable comments
-
-A warning can be silenced for one line (errors never can):
-
-```tsx
-// queek-theme-disable-next-line theme/template-business
-```
-
-```css
-/* queek-theme-disable-next-line theme/template-pages */
-```
-
-Naming a rule that does not exist adds a `theme/disable-comment` warning suggesting
-the closest id.
-
 ### `queek-theme init [dir]`
 
 The same as `npm create @usequeek/theme [dir]`, with the same flags; see
@@ -120,12 +105,11 @@ otherwise.
 | `--force` | Allow a folder that is not empty. |
 | `--template <source>` | Another starter: a giget source or a local folder. |
 
-## New rules
+## New rule
 
 - `theme/markdown-html` (error): `renderMarkdown` returns React elements, not an HTML
   string — passing it to `dangerouslySetInnerHTML` renders "[object Object]". Render the
   elements as children, or use `<Markdown>` from `@usequeek/theme-kit/components/markdown`.
-- `theme/disable-comment` (warning): a disable comment names a rule that does not exist.
 
 ## Environment
 

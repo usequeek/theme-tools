@@ -1,8 +1,7 @@
 import { existsSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { Flags } from '@oclif/core';
 import {
-  applyDisableComments,
   applyProjectConfig,
   checkTheme,
   CONFIG_FILE_NAME,
@@ -64,6 +63,7 @@ With --init, writes a starter ${CONFIG_FILE_NAME} in the project instead of chec
         this.error(`${CONFIG_FILE_NAME} already exists at ${target}; leaving it unchanged.`, { exit: 2 });
       }
       writeFileSync(target, renderInitConfig());
+      if ((flags as { json?: boolean }).json) return { file: relative(process.cwd(), target) };
       this.log(`Wrote ${target}`);
       return;
     }
@@ -92,8 +92,6 @@ With --init, writes a starter ${CONFIG_FILE_NAME} in the project instead of chec
     } catch (error) {
       this.error((error as Error).message, { exit: 2 });
     }
-
-    result = { ...result, findings: applyDisableComments(result.findings, project.themeDir) };
 
     if (flags.quiet) result = { ...result, findings: result.findings.filter((finding) => levelOf(finding) === 'error') };
 

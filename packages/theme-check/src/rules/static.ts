@@ -8,9 +8,6 @@ import { copyViolations, isTestimonialSection } from '../utils/template-copy.js'
 import { bundledVocabularyView, type VocabularyView } from '../utils/business-vocabulary.js';
 import { themeSourceFiles } from '../context.js';
 import { finding, type DemoStore, type Finding, type Rule, type ThemeContext } from '../types.js';
-import { scanUnknownDisableIds } from '../disable-comments.js';
-import { ANALYSIS_RULES } from './analysis.js';
-import { closestRuleId } from '../utils/disable-comments.js';
 
 /** A theme file as a finding names it: relative to the theme, with `/` on every OS (Windows gave `styles\type.css`). */
 function themePath(context: ThemeContext, path: string): string {
@@ -1594,29 +1591,8 @@ export const markdownHtmlRule: Rule = {
   },
 };
 
-/* ── Disable comments name real rules ─────────────────────────────── */
-
-export const disableCommentRule: Rule = {
-  id: 'theme/disable-comment',
-  summary: 'Every queek-theme-disable-next-line names a rule that exists',
-  kind: 'static',
-  run(context) {
-    const known = new Set([...STATIC_RULES.map((rule) => rule.id), ...ANALYSIS_RULES.map((rule) => rule.id)]);
-    return scanUnknownDisableIds(context.dir, known).map(({ file, line, id }) =>
-      finding(context, 'theme/disable-comment', 'warn', {
-        where: `${context.env.root}${themePath(context, file)}:${line}`,
-        found: `unknown rule "${id}" in a disable comment`,
-        fix: (() => {
-          const hint = closestRuleId(id, known);
-          return hint ? `Did you mean "${hint}"? Update the comment to name a real rule id.` : 'Update the comment to name a real rule id.';
-        })(),
-        docs: `${context.env.docs}#what-themes-must-not-do`,
-      }));
-  },
-};
-
 export const STATIC_RULES: Rule[] = [moduleContractRule, structureRule, demoStoreRule, demoStoresRule, demoArtRule, codeQualityRule, sdkBoundaryRule, selectionMetadataRule, demoCompletenessRule, subscribeScopeRule, demoBlockTypesRule, compositionVariantsRule, identityRule, productMetafieldsRule, poweredByRule, fontsSelfHostedRule,
   templateDescriptionRule, templateScreenshotRule, templateChromeRule, templateStyleRule,
   templateBusinessRule, templateVersionsRule, templateDesignsRule, templatePagesRule, templateCopyRule, vendorFactsRule, placeholderContentRule,
-  markdownHtmlRule, disableCommentRule,
+  markdownHtmlRule,
 ];
