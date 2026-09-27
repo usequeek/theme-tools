@@ -7,6 +7,7 @@ import { Image } from '@usequeek/theme-kit/components/image';
 import { useCart } from '@usequeek/theme-kit/hooks/use-cart';
 import { useVariantSelection } from '@usequeek/theme-kit/hooks/use-variant-selection';
 import { formatMoney } from '@usequeek/theme-kit/utils/format';
+import { AppBlocks } from '@usequeek/theme-kit/apps';
 
 export function Product({ product, metafieldDefinitions }: ProductPageProps): JSX.Element {
   const { addProduct } = useCart();
@@ -49,6 +50,7 @@ export function Product({ product, metafieldDefinitions }: ProductPageProps): JS
         </button>
 
         <ProductMetafields product={product} definitions={metafieldDefinitions} />
+        <AppBlocks target="product" productId={product.slug ?? undefined} />
       </div>
     </main>
   );

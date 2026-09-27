@@ -120,7 +120,13 @@
         "thumbnail": "https://media.usequeek.com/theme-assets/_bare/43b1e392b8039306.jpg",
         "image": "https://media.usequeek.com/theme-assets/_bare/43b1e392b8039306.jpg",
         "original": "https://media.usequeek.com/theme-assets/_bare/43b1e392b8039306.jpg",
-        "gallery": []
+        "images": [
+          {
+            "id": 1,
+            "url": "https://media.usequeek.com/theme-assets/_bare/43b1e392b8039306.jpg",
+            "alt": "Placeholder One"
+          }
+        ]
       },
       "inventory": {
         "in_stock": true,
@@ -188,7 +194,13 @@
         "thumbnail": "https://media.usequeek.com/theme-assets/_bare/23d5f6928502dcca.jpg",
         "image": "https://media.usequeek.com/theme-assets/_bare/23d5f6928502dcca.jpg",
         "original": "https://media.usequeek.com/theme-assets/_bare/23d5f6928502dcca.jpg",
-        "gallery": []
+        "images": [
+          {
+            "id": 1,
+            "url": "https://media.usequeek.com/theme-assets/_bare/23d5f6928502dcca.jpg",
+            "alt": "Placeholder Two"
+          }
+        ]
       },
       "inventory": {
         "in_stock": true,
@@ -256,7 +268,13 @@
         "thumbnail": "https://media.usequeek.com/theme-assets/_bare/e8543451de24e310.jpg",
         "image": "https://media.usequeek.com/theme-assets/_bare/e8543451de24e310.jpg",
         "original": "https://media.usequeek.com/theme-assets/_bare/e8543451de24e310.jpg",
-        "gallery": []
+        "images": [
+          {
+            "id": 1,
+            "url": "https://media.usequeek.com/theme-assets/_bare/e8543451de24e310.jpg",
+            "alt": "Placeholder Three"
+          }
+        ]
       },
       "inventory": {
         "in_stock": true,
@@ -324,7 +342,13 @@
         "thumbnail": "https://media.usequeek.com/theme-assets/_bare/ce7b1219776e7a98.jpg",
         "image": "https://media.usequeek.com/theme-assets/_bare/ce7b1219776e7a98.jpg",
         "original": "https://media.usequeek.com/theme-assets/_bare/ce7b1219776e7a98.jpg",
-        "gallery": []
+        "images": [
+          {
+            "id": 1,
+            "url": "https://media.usequeek.com/theme-assets/_bare/ce7b1219776e7a98.jpg",
+            "alt": "Placeholder Four"
+          }
+        ]
       },
       "inventory": {
         "in_stock": true,
@@ -392,7 +416,13 @@
         "thumbnail": "https://media.usequeek.com/theme-assets/_bare/8847c6c8472cc629.jpg",
         "image": "https://media.usequeek.com/theme-assets/_bare/8847c6c8472cc629.jpg",
         "original": "https://media.usequeek.com/theme-assets/_bare/8847c6c8472cc629.jpg",
-        "gallery": []
+        "images": [
+          {
+            "id": 1,
+            "url": "https://media.usequeek.com/theme-assets/_bare/8847c6c8472cc629.jpg",
+            "alt": "Placeholder Five"
+          }
+        ]
       },
       "inventory": {
         "in_stock": true,
@@ -460,7 +490,13 @@
         "thumbnail": "https://media.usequeek.com/theme-assets/_bare/e37b930c35976c89.jpg",
         "image": "https://media.usequeek.com/theme-assets/_bare/e37b930c35976c89.jpg",
         "original": "https://media.usequeek.com/theme-assets/_bare/e37b930c35976c89.jpg",
-        "gallery": []
+        "images": [
+          {
+            "id": 1,
+            "url": "https://media.usequeek.com/theme-assets/_bare/e37b930c35976c89.jpg",
+            "alt": "Placeholder Six"
+          }
+        ]
       },
       "inventory": {
         "in_stock": true,

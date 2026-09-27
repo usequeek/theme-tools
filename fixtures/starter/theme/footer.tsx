@@ -7,7 +7,7 @@ import { renderMarkdown } from '@usequeek/theme-kit/utils/markdown';
 import { PoweredByQueek } from '@usequeek/theme-kit/components/powered-by-queek';
 
 export function Footer({ heading, tagline, columns, copyright }: FooterProps): JSX.Element {
-  const { vendor } = useStorefront();
+  const { vendor, basePath } = useStorefront();
 
   return (
     <footer className="bare-footer">
@@ -21,7 +21,7 @@ export function Footer({ heading, tagline, columns, copyright }: FooterProps): J
           {columns.map((column) => (
             <section key={column.heading ?? ''}>
               <h3>{column.heading}</h3>
-              <div dangerouslySetInnerHTML={{ __html: renderMarkdown(column.content ?? '') }} />
+              <div>{renderMarkdown(column.content ?? '', basePath)}</div>
             </section>
           ))}
         </div>

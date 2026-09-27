@@ -1,5 +1,11 @@
 # @usequeek/create-theme
 
+## 0.5.2
+
+### Patch Changes
+
+- New themes render footer columns, pages and blog posts as formatted text instead of "[object Object]". The starter's skeleton passed `renderMarkdown` (which returns elements) to `dangerouslySetInnerHTML`; it now renders the elements directly. The starter also picks up the product page's app blocks slot.
+
 ## 0.5.0
 
 ### Minor Changes
