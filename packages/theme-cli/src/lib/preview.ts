@@ -60,9 +60,10 @@ export default {
   return dir;
 }
 
-type NextFactory = (options: { dev: boolean; dir: string; hostname: string; port: number; turbopack?: boolean }) => {
+type NextFactory = (options: { dev: boolean; dir: string; hostname: string; port: number; turbopack?: boolean; quiet?: boolean }) => {
   prepare(): Promise<void>;
   getRequestHandler(): (req: unknown, res: unknown) => Promise<void>;
+  close(): Promise<void>;
 };
 
 /**
@@ -71,7 +72,7 @@ type NextFactory = (options: { dev: boolean; dir: string; hostname: string; port
  * project's own install, so the preview renders with exactly the versions
  * the theme ships against.
  */
-export async function startPreview(project: Project, dir: string, host: string, port: number): Promise<{ url: string; close: () => Promise<void> }> {
+export async function startPreview(project: Project, dir: string, host: string, port: number, options: { quiet?: boolean } = {}): Promise<{ url: string; close: () => Promise<void> }> {
   const requireFromProject = createRequire(join(project.root, 'package.json'));
   let nextPath: string;
   try {
@@ -82,7 +83,9 @@ export async function startPreview(project: Project, dir: string, host: string, 
   const imported = (await import(pathToFileURL(nextPath).href)) as { default: NextFactory | { default: NextFactory } };
   const next = (typeof imported.default === 'function' ? imported.default : imported.default.default) as NextFactory;
 
-  const app = next({ dev: true, dir, hostname: host, port, turbopack: true });
+  // `quiet` keeps Next's own chatter off stdout, so `--json` stays one
+  // parseable object — route errors still surface through the command.
+  const app = next({ dev: true, dir, hostname: host, port, turbopack: true, quiet: options.quiet ?? false });
   const handle = app.getRequestHandler();
   await app.prepare();
 
@@ -93,6 +96,12 @@ export async function startPreview(project: Project, dir: string, host: string, 
   });
   return {
     url: `http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`,
-    close: () => new Promise<void>((done) => server.close(() => done())),
+    close: async () => {
+      // Next's own close first: its watchers and workers keep the event loop
+      // alive after the HTTP server closes (a command that only closes the
+      // server never exits on its own).
+      await app.close();
+      await new Promise<void>((done) => server.close(() => done()));
+    },
   };
 }

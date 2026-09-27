@@ -62,7 +62,7 @@ export const structureRule: Rule = {
       findings.push(finding(context, 'theme/structure', 'reject', {
         where: `${context.env.root}`,
         found: `no theme screenshot (${SCREENSHOTS.join(' or ')})`,
-        fix: `Capture the homepage at 1280×800 from ${context.env.preview('default')} and save it as theme.jpg.`,
+        fix: `Run \`${context.env.capture('default')}\` — it captures the homepage at 1280×800 into theme.jpg.`,
         docs: `${context.env.docs}#theme-png`,
       }));
     }
@@ -906,7 +906,7 @@ export const templateScreenshotRule: Rule = {
         return [finding(context, 'theme/template-screenshot', 'reject', {
           where,
           found: `template "${id}" has no screenshot`,
-          fix: `Capture the template's first screen at 1280×800 (${context.env.preview(id)}) and save it here. The AI looks at this image before committing to a template — a missing one means a blind pick.`,
+          fix: `Run \`${context.env.capture(id)}\` — it captures this design's first screen at 1280×800 into ${file}. The AI looks at this image before committing to a template — a missing one means a blind pick.`,
           docs: `${context.env.docs}#templates`,
         })];
       }

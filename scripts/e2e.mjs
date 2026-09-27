@@ -4,7 +4,7 @@
 // run there. Nothing here borrows the monorepo's node_modules — that is the
 // point (in-repo green says nothing about what a consumer installs).
 import { spawn, spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -14,6 +14,21 @@ const work = mkdtempSync(join(tmpdir(), 'queek-theme-e2e-'));
 const project = join(work, 'my-theme');
 const packs = join(work, 'packs');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+
+/** A JPEG's dimensions from its SOF0 marker (the frame header), no image library. */
+function jpegSize(bytes) {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) throw new Error('screenshot: theme/theme.jpg is not a JPEG');
+  let i = 2;
+  while (i + 3 < bytes.length) {
+    if (bytes[i] !== 0xff) throw new Error('screenshot: theme/theme.jpg is not a JPEG');
+    const marker = bytes[i + 1];
+    if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7)) { i += 2; continue; }
+    const length = (bytes[i + 2] << 8) | bytes[i + 3];
+    if (marker === 0xc0) return { height: (bytes[i + 5] << 8) | bytes[i + 6], width: (bytes[i + 7] << 8) | bytes[i + 8] };
+    i += 2 + length;
+  }
+  throw new Error('screenshot: theme/theme.jpg has no SOF0 marker');
+}
 
 function sh(cmd, args, cwd, allowFail = false) {
   const result = spawnSync(cmd, args, { cwd, encoding: 'utf8', shell: process.platform === 'win32', env: { ...process.env, NO_COLOR: '1', QUEEK_THEME_SKIP_NEW_VERSION_CHECK: 'true' } });
@@ -86,6 +101,18 @@ try {
   } finally {
     dev.kill('SIGTERM');
   }
+
+  // Screenshot, against the same installed project: capture every design and
+  // assert theme/theme.jpg exists with a JPEG header that says 1280×800
+  // (the SOF0 marker, parsed by hand — no image library). Unconditional on
+  // purpose: under CI with no browser this must fail, not skip (GitHub's
+  // ubuntu runner has Chrome, reached through playwright-core's `chrome`
+  // channel).
+  sh(process.execPath, [join(project, 'node_modules/@usequeek/theme-cli/bin/run.js'), 'screenshot'], project);
+  const shot = readFileSync(join(project, 'theme', 'theme.jpg'));
+  const size = jpegSize(shot);
+  if (size.width !== 1280 || size.height !== 800) throw new Error(`screenshot: theme/theme.jpg is ${size.width}×${size.height}, expected 1280×800`);
+  console.log(`e2e: screenshot ✓ (theme/theme.jpg, JPEG ${size.width}×${size.height}, ${shot.length} bytes)`);
   console.log('e2e: all passed');
 } finally {
   rmSync(work, { recursive: true, force: true });

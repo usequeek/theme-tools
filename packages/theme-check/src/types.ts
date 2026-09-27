@@ -98,6 +98,8 @@ export interface CheckEnv {
   scaffold: string;
   /** Where a template previews, by template id (`default` is the primary). */
   preview: (templateId: string) => string;
+  /** The command that captures a design's screenshot (`default` is the primary). */
+  capture: (designId: string) => string;
   /**
    * True when Queek is checking a submission. Two checks only mean anything
    * then: demo art on Queek's CDN, and screenshots uploaded — both done by the

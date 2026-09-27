@@ -296,6 +296,6 @@ describe('queek-theme', () => {
   it('lists its commands', () => {
     const { code, stdout, stderr } = run('--help');
     expect(code, stderr).toBe(0);
-    for (const command of ['check', 'dev', 'init', 'package']) expect(stdout).toContain(command);
+    for (const command of ['check', 'dev', 'init', 'package', 'screenshot']) expect(stdout).toContain(command);
   });
 });

@@ -24,10 +24,35 @@ its `design_label`. Edits reload the page.
 | Flag | Default | |
 |---|---|---|
 | `--path <dir>` | `.` | The theme project, or its theme folder. |
-| `--port <n>` | `3000` | |
+| `--port <n>` | `7833, or the next free port` | A given port is strict: when it is busy the command exits 2. Without `--port` (and without `QUEEK_THEME_PORT`) the first free port in 7833–7852 is used, probed before the preview builds. |
 | `--host <host>` | `127.0.0.1` | `0.0.0.0` to reach it from another device. |
 
 The preview app is generated in `.queek/preview` on every run and ignores itself for git.
+
+### `queek-theme screenshot [designs…]`
+
+Captures every design's first screen at 1280×800 into the files the checker reads:
+`theme/theme.jpg` for the primary design (`theme.png` when only a png exists there),
+`theme/demos/<id>.jpg` for the rest. Pass design ids to capture only those; an unknown
+id exits 2 and lists the valid ones. Prints one line per file, then
+`Next: npx queek-theme check`. With `--json` it prints
+`{ files: [{ design, file, bytes }] }` (files relative to the project root) instead.
+
+It starts the same preview `dev` serves (on `--port`, or the first free port in
+7833–7852) and drives it with a Chromium-based browser — the first that launches:
+
+1. `QUEEK_THEME_BROWSER` (a Chromium-based executable path),
+2. Google Chrome,
+3. Microsoft Edge,
+4. Playwright's own chromium (run `npx playwright install chromium` once to get it).
+
+With none of those it exits 2. `playwright-core` (not `playwright`) is the dependency,
+so installing the CLI downloads no browser.
+
+| Flag | Default | |
+|---|---|---|
+| `--path <dir>` | `.` | The theme project, or its theme folder. |
+| `--port <n>` | `7833, or the next free port` | Same strict rule as `dev`. |
 
 ### `queek-theme check`
 
@@ -115,6 +140,7 @@ otherwise.
 
 - Every flag of `dev` and `check` has a `QUEEK_THEME_*` variable (`QUEEK_THEME_PORT`, …),
   including `QUEEK_THEME_VERBOSE` for `--verbose`.
+- `QUEEK_THEME_BROWSER` points `screenshot` at a Chromium-based browser executable.
 - `NO_COLOR` turns colour off; output is plain when not a terminal.
 - Once a day the CLI mentions a newer version; `QUEEK_THEME_SKIP_NEW_VERSION_CHECK=true` turns
   that off. It never checks in CI (`CI` set to anything but `''`/`'false'`/`'0'`), nor when

@@ -2,6 +2,7 @@ import Check from './check.js';
 import Dev from './dev.js';
 import Init from './init.js';
 import Package from './package.js';
+import Screenshot from './screenshot.js';
 
 /**
  * Every command, listed explicitly (oclif's `explicit` strategy) rather than
@@ -13,4 +14,5 @@ export const COMMANDS = {
   dev: Dev,
   init: Init,
   package: Package,
+  screenshot: Screenshot,
 };

@@ -1,4 +1,5 @@
 import { Command, Flags } from '@oclif/core';
+import { pickPort } from '../lib/port.js';
 import { resolveProject } from '../lib/project.js';
 import { startPreview, writePreview } from '../lib/preview.js';
 import { resolveCommandVocabulary, vocabularyFlags } from '../lib/vocabulary.js';
@@ -14,7 +15,7 @@ The preview app is written to .queek/preview in your project and regenerated on 
 
   static override flags = {
     path: Flags.string({ summary: 'The theme project (or its theme folder).', default: '.', env: 'QUEEK_THEME_PATH' }),
-    port: Flags.integer({ summary: 'Port to serve on.', default: 3000, min: 1, max: 65535, env: 'QUEEK_THEME_PORT' }),
+    port: Flags.integer({ summary: 'Port to serve on [default: 7833, or the next free port].', min: 1, max: 65535, env: 'QUEEK_THEME_PORT' }),
     host: Flags.string({ summary: 'Host to bind. Use 0.0.0.0 to reach it from another device.', default: '127.0.0.1', env: 'QUEEK_THEME_HOST' }),
     ...vocabularyFlags,
   };
@@ -31,10 +32,14 @@ The preview app is written to .queek/preview in your project and regenerated on 
       this.error((error as Error).message, { exit: 2 });
     }
 
+    // Probed before the preview builds: `prepare` is slow, and a busy port
+    // should not be found only after it.
+    const port = await pickPort({ host: flags.host, requested: flags.port })
+      .catch((error: Error) => this.error(error.message, { exit: 2 }));
     this.logToStderr('Starting the preview…');
     const dir = writePreview(project);
-    const server = await startPreview(project, dir, flags.host, flags.port).catch((error: Error & { code?: string }) =>
-      this.error(error.code === 'EADDRINUSE' ? `Port ${flags.port} is in use. Pass --port with a free one.` : error.message, { exit: 2 }));
+    const server = await startPreview(project, dir, flags.host, port).catch((error: Error & { code?: string }) =>
+      this.error(error.code === 'EADDRINUSE' ? `Port ${port} is in use. Pass another --port, or leave --port out to use the next free one.` : error.message, { exit: 2 }));
 
     this.log(`\n  Preview: ${server.url}\n  Templates, designs and pages are listed there. Ctrl+C to stop.\n`);
 

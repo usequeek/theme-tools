@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
 import { createJiti } from 'jiti';
-import { demoFilesOf } from './utils/theme-demos.js';
+import { PRIMARY_DEMO_ID, demoFilesOf } from './utils/theme-demos.js';
 import type { CheckEnv, DeclaredDemo, DemoStore, ThemeContext, ThemeManifest } from './types.js';
 
 /** The contract every theme is checked against, as published with the starter. */
@@ -22,7 +22,8 @@ export function localEnv(dir: string, cwd = process.cwd()): CheckEnv {
     docs: CONTRACT_URL,
     vocabulary: 'the business vocabulary (docs/business-vocabulary.json in the starter)',
     scaffold: '`npm create @usequeek/theme`',
-    preview: (templateId) => `http://localhost:3000/${templateId}`,
+    preview: (templateId) => `http://localhost:7833/${templateId}`,
+    capture: (designId) => designId === PRIMARY_DEMO_ID ? 'npx queek-theme screenshot' : `npx queek-theme screenshot ${designId}`,
     submission: false,
   };
 }

@@ -17,7 +17,7 @@ function context(parts: Partial<Pick<ThemeContext, 'demos' | 'declaredDemos' | '
   const demos: DemoStore[] = parts.demos ?? [{ id: 'default', file: 'demo.json', data: { pages: {} } }];
   const declaredDemos = parts.declaredDemos ?? [];
   return {
-    env: { root: 'theme/', docs: 'https://example.test/THEME.md', vocabulary: 'the vocabulary', scaffold: 'npm create @usequeek/theme', preview: (id) => `http://localhost:3000/${id}`, submission: false },
+    env: { root: 'theme/', docs: 'https://example.test/THEME.md', vocabulary: 'the vocabulary', scaffold: 'npm create @usequeek/theme', preview: (id) => `http://localhost:7833/${id}`, capture: (id) => id === 'default' ? 'npx queek-theme screenshot' : `npx queek-theme screenshot ${id}`, submission: false },
     slug: 'x',
     dir: '/nowhere/theme',
     retired: false,
