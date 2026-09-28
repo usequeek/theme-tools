@@ -1,5 +1,11 @@
 # @usequeek/theme-check
 
+## 0.9.0
+
+### Minor Changes
+
+- Template copy may not promise a schedule (response or delivery windows, weekday drops, daily freshness, 24/7), and a manifest's purposes and field notes are checked as template copy.
+
 ## 0.8.0
 
 ### Minor Changes
