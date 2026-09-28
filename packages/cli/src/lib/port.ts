@@ -18,19 +18,26 @@ function portBusy(message: string): Error & { code: string } {
   return Object.assign(new Error(message), { code: 'PORT_BUSY' });
 }
 
+/** The ports probed when `--port` is not given; the default is 7833–7852. */
+export interface PortRange {
+  first: number;
+  last: number;
+}
+
 /**
  * The port the preview serves on. A requested port (the `--port` flag or
  * `QUEEK_THEME_PORT`) is strict — a busy one is an error, not a silent move.
- * Otherwise the first free port in 7833–7852 wins, so a busy default does not
+ * Otherwise the first free port in the range wins, so a busy default does not
  * block a developer who already has something running there.
  */
-export async function pickPort({ host, requested }: { host: string; requested?: number }): Promise<number> {
+export async function pickPort({ host, requested, range }: { host: string; requested?: number; range?: PortRange }): Promise<number> {
   if (requested !== undefined) {
     if (await isFree(host, requested)) return requested;
     throw portBusy(`Port ${requested} is in use. Pass another --port, or leave --port out to use the next free one.`);
   }
-  for (let port = FIRST_PREVIEW_PORT; port <= LAST_PREVIEW_PORT; port++) {
+  const { first, last } = range ?? { first: FIRST_PREVIEW_PORT, last: LAST_PREVIEW_PORT };
+  for (let port = first; port <= last; port++) {
     if (await isFree(host, port)) return port;
   }
-  throw portBusy('Ports 7833–7852 are all in use. Pass --port with a free one.');
+  throw portBusy(`Ports ${first}–${last} are all in use. Pass --port with a free one.`);
 }
