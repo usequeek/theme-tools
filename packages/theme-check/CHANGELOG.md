@@ -1,5 +1,11 @@
 # @usequeek/theme-check
 
+## 0.6.1
+
+### Patch Changes
+
+- [`63bbc74`](https://github.com/usequeek/theme-tools/commit/63bbc746fd00de2b01862e8e29ae2c8837758327) Thanks [@ichie-benjamin](https://github.com/ichie-benjamin)! - Findings for `theme/structure` and `theme/demo-stores` link to the sections of the contract that exist (`#themepng`, `#designs-more-than-one-demo-store`); they pointed at headings the contract never had.
+
 ## 0.6.0
 
 ### Minor Changes
