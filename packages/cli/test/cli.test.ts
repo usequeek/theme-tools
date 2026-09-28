@@ -318,10 +318,11 @@ describe('queek', () => {
     expect(JSON.parse(stdout).theme).toBe('bare');
   }, 60_000);
 
-  it('--version prints @usequeek/cli/0.6.0', () => {
+  it('--version prints @usequeek/cli/<its version>', () => {
+    const { version } = JSON.parse(readFileSync(resolve(import.meta.dirname, '../package.json'), 'utf8')) as { version: string };
     const { code, stdout, stderr } = run('--version');
     expect(code, stderr).toBe(0);
-    expect(stdout).toContain('@usequeek/cli/0.6.0');
+    expect(stdout).toContain(`@usequeek/cli/${version}`);
   });
 
   it('never prints queek-theme', () => {

@@ -1,5 +1,13 @@
 # @usequeek/theme-check
 
+## 0.7.0
+
+### Patch Changes
+
+- The CLI is now `@usequeek/cli` with `queek theme dev|check|screenshot|package|init`
+  — one package, no alias. The starter switches to `@usequeek/cli`.
+  `theme-check` fix texts name `npx queek theme screenshot`.
+
 ## 0.6.1
 
 ### Patch Changes

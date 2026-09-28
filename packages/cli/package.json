@@ -1,6 +1,6 @@
 {
   "name": "@usequeek/cli",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "The Queek developer CLI: build, preview, check and package storefront themes (queek theme …).",
   "license": "MIT",
   "type": "module",

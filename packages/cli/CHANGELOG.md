@@ -2,6 +2,20 @@
 
 Formerly `@usequeek/theme-cli` (bin `queek-theme`); from 0.7.0 the CLI is `@usequeek/cli`, bin `queek`, with the theme commands under `queek theme`.
 
+## 0.7.0
+
+### Minor Changes
+
+- The CLI is now `@usequeek/cli` with `queek theme dev|check|screenshot|package|init`
+  — one package, no alias. The starter switches to `@usequeek/cli`.
+  `theme-check` fix texts name `npx queek theme screenshot`.
+
+### Patch Changes
+
+- Updated dependencies [`042a0cf`]:
+  - @usequeek/theme-check@0.7.0
+  - @usequeek/create-theme@0.7.0
+
 ## 0.6.0
 
 ### Minor Changes
