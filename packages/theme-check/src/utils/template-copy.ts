@@ -6,7 +6,9 @@
  * no demo store name ("…at Mama Tee's"), no place ("delivered across Lekki"),
  * no naira amount ("free delivery over ₦5,000"), no offer or coupon code, no
  * opening hours, no promise only the vendor can make (a delivery window, a
- * return period, a guarantee), no claim only the vendor can make
+ * return period, a guarantee), no schedule only the vendor can keep (a
+ * response or delivery window, a weekday drop, daily freshness, 24/7), no
+ * claim only the vendor can make
  * (certifications, testing, free-from and ingredient claims, dietary and faith
  * labels, eco labels and medical effects), no founding date or store age, and
  * no email or phone number. Testimonials and reviews are exempt; the backend
@@ -222,6 +224,38 @@ export const TEMPLATE_COPY_CLAIMS: readonly RegExp[] = [
   /\bheals?\b/iu,
 ];
 
+/**
+ * Schedules only the vendor can keep (BE25): a response or delivery window,
+ * a weekday drop, daily freshness, 24/7. Match case-insensitively (`i`),
+ * with the `u` flag.
+ *
+ * Each pattern is shaped by what it must NOT catch: the freshness pattern
+ * needs a making word (`baked`, `fresh`, `lands`…) before `every morning`,
+ * so usage advice ("SPF every morning", "Two drops every morning") and
+ * product purpose ("made for daily wear", "for daily cooking") are not
+ * schedules; the weekday patterns need `every Friday` / `on Fridays`, so
+ * "Open the box on Friday" and "Sunday best" are not.
+ */
+export const TEMPLATE_COPY_SCHEDULES: readonly RegExp[] = [
+  // a response or delivery window
+  /\bwithin (?:the|an|one|a few|\d+) (?:hour|hours|minutes|mins)\b/iu,
+  /\bsame[- ]day\b/iu,
+  /\bnext[- ]day\b/iu,
+  /\bovernight (?:delivery|shipping)\b/iu,
+  // a weekday drop
+  /\bevery (?:mon|tues|wednes|thurs|fri|satur|sun)day\b/iu,
+  /\bon (?:mon|tues|wednes|thurs|fri|satur|sun)days\b/iu,
+  // daily freshness
+  /\b(?:baked|cooked|mixed|roasted|brewed|ground|restocked|stocked|delivered|dispatched|shipped|harvested|picked|prepared|lit|fresh|freshly|lands?|arrives?|opens?)\b[^.!?\n]{0,40}?\b(?:every|each) (?:morning|day|evening|night|week|month)\b/iu,
+  /\b(?:baked|cooked|mixed|roasted|brewed|restocked|stocked|delivered|dispatched|shipped|harvested|prepared|fresh|freshly)\s+daily\b/iu,
+  // always open
+  /\b24\/7\b/iu,
+  /\b24 hours a day\b/iu,
+  /\bround[- ]the[- ]clock\b/iu,
+  // a reply promised fast
+  /\bwe (?:reply|answer|respond)\b[^.!?\n]{0,30}\b(?:within|in under)\b/iu,
+];
+
 const first = (patterns: RegExp[], text: string): string | null => {
   for (const pattern of patterns) {
     const match = pattern.exec(text);
@@ -250,6 +284,8 @@ export function copyViolations(text: string, storeName: string | null | undefine
   if (contact) found.push(`gives the store’s contact details ("${contact[0]}")`);
   const claim = first([...TEMPLATE_COPY_CLAIMS], text);
   if (claim) found.push(`claim only the vendor can make: "${claim}"`);
+  const schedule = first([...TEMPLATE_COPY_SCHEDULES], text);
+  if (schedule) found.push(`promises a schedule: "${schedule}"`);
   return found;
 }
 

@@ -141,6 +141,107 @@ describe('theme/template-copy', () => {
     }
   });
 
+  it('rejects schedules only the vendor can keep — response and delivery windows, weekday drops, daily freshness, 24/7', () => {
+    for (const text of [
+      'Delivery within the hour', 'We answer within the hour', 'We reply within the hour',
+      'same-day delivery', 'Same day', 'next day dispatch',
+      'New shirts land every Friday', 'New In Every Friday', 'Fresh drops on Fridays',
+      'Cooked fresh every morning', 'Market-fresh every morning', 'Cooked fresh daily',
+      'Chapman and zobo are mixed every morning',
+      'Coals lit every evening', 'Restocked every week', 'Baked daily', '24/7 Support',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^promises a schedule: "/)]),
+      );
+    }
+  });
+
+  it('does not mistake usage advice or product purpose for a schedule', () => {
+    for (const text of [
+      'SPF every morning, rain or shine', 'Finish with SPF, every morning.',
+      'Sunscreen as the last step of every morning',
+      'Two drops every morning', 'Made to be worn every day',
+      'Hoops, studs and chains made for daily wear',
+      'The aisles you shop every week',
+      'Vitamin C and hyaluronic serums for daily routines', 'The daily ritual',
+      'Deep curls that return after every wash', 'Two burners for daily cooking',
+      'Why SPF Every Day Matters',
+      'Open the box on Friday', 'Sunday best',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual([]);
+    }
+  });
+
+  it('leaves schedules in testimonials and reviews alone', async () => {
+    const found = await templateCopyRule.run(context({
+      manifest: { slug: 'x', variants } as unknown as ThemeContext['manifest'],
+      demos: [store([
+        { type: 'content', variant: 'testimonials', data: { items: [{ quote: 'Arrived same-day, repackaged beautifully', author: 'Tolu' }] } },
+        { type: 'content', variant: 'steps', data: { heading: 'Fresh bread', items: [{ title: 'Morning', text: 'Baked daily at dawn.' }] } },
+      ])],
+    }));
+    expect(found).toHaveLength(1);
+    expect(found[0].where).toBe('theme/demos/food.json → pages.home.content[1] (content.steps)');
+    expect(found[0].found).toContain('promises a schedule: "Baked daily"');
+    expect(found[0].fix).toContain('Name the section, not when the store does things');
+  });
+
+  it('reads a manifest’s purposes and field notes as template copy', async () => {
+    const manifest = {
+      slug: 'x',
+      variants: {
+        content: [
+          {
+            id: 'hero',
+            purpose: 'A headline and sub line',
+            fields: {
+              sticker: 'string (words around the turning sticker, e.g. "Cruelty free")',
+              tagline: 'string (short line, e.g. "New in")',
+            },
+          },
+          {
+            id: 'badges',
+            purpose: 'A line icon, a serif title and one line each — materials, certification, a service.',
+            fields: { title: { type: 'string', note: 'The badge title.' } },
+          },
+          {
+            id: 'offer',
+            purpose: 'A strip inviting shoppers to save 15% today',
+            fields: {},
+          },
+        ],
+        header: [
+          {
+            id: 'bar',
+            purpose: 'A slim bar above the nav',
+            fields: { text: { type: 'string', note: 'One line, e.g. "Same-day dispatch on every order".' } },
+          },
+        ],
+        footer: [
+          { id: 'columns', purpose: 'Link columns and the copyright bar', fields: { heading: 'string' } },
+        ],
+      },
+    } as unknown as ThemeContext['manifest'];
+    const found = await templateCopyRule.run(context({ manifest }));
+    const where = found.map((f) => f.where);
+    expect(where).toEqual([
+      'theme/manifest.ts → content/hero → fields.sticker',
+      'theme/manifest.ts → content/badges → purpose',
+      'theme/manifest.ts → content/offer → purpose',
+      'theme/manifest.ts → header/bar → fields.text',
+    ]);
+    expect(found[0].found).toContain('manifest example:');
+    expect(found[0].found).toContain('claim only the vendor can make: "Cruelty free"');
+    expect(found[1].found).toContain('claim only the vendor can make: "certification"');
+    expect(found[2].found).toContain('states an offer ("save 15%")');
+    expect(found[3].found).toContain('promises a schedule: "Same-day"');
+    for (const f of found) {
+      expect(f.rule).toBe('theme/template-copy');
+      expect(f.severity).toBe('reject');
+      expect(f.fix).toContain('Name the section, not when the store does things');
+    }
+  });
+
   it('leaves claims in testimonials and reviews alone', async () => {
     const found = await templateCopyRule.run(context({
       manifest: { slug: 'x', variants } as unknown as ThemeContext['manifest'],
