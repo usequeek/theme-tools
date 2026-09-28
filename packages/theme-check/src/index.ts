@@ -1,7 +1,7 @@
 /**
  * @usequeek/theme-check — the rules a Queek storefront theme is checked
- * against, as a library. The `queek-theme check` command of
- * @usequeek/theme-cli is its command-line front end.
+ * against, as a library. The `queek theme check` command of
+ * @usequeek/cli is its command-line front end.
  */
 export { checkTheme, rejects, RULES, AT_SUBMISSION, type CheckOptions, type CheckResult, type CheckVocabulary } from './run.js';
 export {

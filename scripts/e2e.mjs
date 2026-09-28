@@ -31,14 +31,18 @@ function jpegSize(bytes) {
 }
 
 function sh(cmd, args, cwd, allowFail = false) {
-  const result = spawnSync(cmd, args, { cwd, encoding: 'utf8', shell: process.platform === 'win32', env: { ...process.env, NO_COLOR: '1', QUEEK_THEME_SKIP_NEW_VERSION_CHECK: 'true' } });
+  const result = spawnSync(cmd, args, { cwd, encoding: 'utf8', shell: process.platform === 'win32', env: { ...process.env, NO_COLOR: '1', QUEEK_THEME_SKIP_NEW_VERSION_CHECK: 'true', QUEEK_SKIP_NEW_VERSION_CHECK: 'true' } });
   if (result.status !== 0 && !allowFail) throw new Error(`${cmd} ${args.join(' ')} failed (${result.status}):\n${result.stdout}\n${result.stderr}`);
   return result;
 }
 
+// Both bins, as installed from the tarballs into the throwaway project.
+const queek = () => join(project, 'node_modules/@usequeek/cli/bin/run.js');
+const queekTheme = () => join(project, 'node_modules/@usequeek/theme-cli/bin/run.js');
+
 try {
   mkdirSync(packs);
-  for (const pkg of ['theme-check', 'create-theme', 'theme-cli']) sh('pnpm', ['pack', '--pack-destination', packs], join(ROOT, 'packages', pkg));
+  for (const pkg of ['theme-check', 'create-theme', 'theme-cli', 'cli']) sh('pnpm', ['pack', '--pack-destination', packs], join(ROOT, 'packages', pkg));
   const tarballs = readdirSync(packs).map((file) => join(packs, file));
   console.log(`e2e: packed ${tarballs.length} packages`);
 
@@ -66,17 +70,25 @@ try {
   // names its template (contract R2.8). `formatJson` in
   // packages/theme-check/src/format.ts emits findings[].rule and
   // findings[].level, 'error' for a reject.
-  const check = sh(process.execPath, [join(project, 'node_modules/@usequeek/theme-cli/bin/run.js'), 'check', '--format', 'json'], project, true);
+  const help = sh(process.execPath, [queek(), '--help'], project);
+  if (!help.stdout.includes('theme')) throw new Error(`queek --help does not list the theme topic:\n${help.stdout}`);
+  const themeHelp = sh(process.execPath, [queek(), 'theme', '--help'], project);
+  for (const command of ['check', 'dev', 'init', 'package', 'screenshot']) {
+    if (!themeHelp.stdout.includes(command)) throw new Error(`queek theme --help does not list ${command}:\n${themeHelp.stdout}`);
+  }
+  console.log('e2e: help ✓ (queek --help lists the theme topic, queek theme --help lists the five commands)');
+
+  const check = sh(process.execPath, [queek(), 'theme', 'check', '--format', 'json'], project, true);
   const report = JSON.parse(check.stdout);
   const rejects = [...new Set(report.findings.filter((f) => f.level === 'error').map((f) => f.rule))].sort();
   const todo = ['theme/placeholder-content', 'theme/structure', 'theme/template-description', 'theme/template-screenshot', 'theme/template-versions'];
   if (JSON.stringify(rejects) !== JSON.stringify(todo)) throw new Error(`check after create: expected exactly the to-do list ${todo.join(', ')}, got ${rejects.join(', ')}`);
   console.log(`e2e: check ✓ (exactly the to-do list: ${todo.join(', ')})`);
 
-  sh(process.execPath, [join(project, 'node_modules/@usequeek/theme-cli/bin/run.js'), 'package'], project);
+  sh(process.execPath, [queek(), 'theme', 'package'], project);
   console.log('e2e: package ✓');
 
-  const dev = spawn(process.execPath, [join(project, 'node_modules/@usequeek/theme-cli/bin/run.js'), 'dev', '--port', String(PORT)], { cwd: project, stdio: 'pipe', env: { ...process.env, QUEEK_THEME_SKIP_NEW_VERSION_CHECK: 'true' } });
+  const dev = spawn(process.execPath, [queek(), 'theme', 'dev', '--port', String(PORT)], { cwd: project, stdio: 'pipe', env: { ...process.env, QUEEK_THEME_SKIP_NEW_VERSION_CHECK: 'true', QUEEK_SKIP_NEW_VERSION_CHECK: 'true' } });
   let log = '';
   dev.stdout.on('data', (chunk) => { log += chunk; });
   dev.stderr.on('data', (chunk) => { log += chunk; });
@@ -108,7 +120,7 @@ try {
   // purpose: under CI with no browser this must fail, not skip (GitHub's
   // ubuntu runner has Chrome, reached through playwright-core's `chrome`
   // channel).
-  sh(process.execPath, [join(project, 'node_modules/@usequeek/theme-cli/bin/run.js'), 'screenshot'], project);
+  sh(process.execPath, [queek(), 'theme', 'screenshot'], project);
   const shot = readFileSync(join(project, 'theme', 'theme.jpg'));
   const size = jpegSize(shot);
   if (size.width !== 1280 || size.height !== 800) throw new Error(`screenshot: theme/theme.jpg is ${size.width}×${size.height}, expected 1280×800`);
@@ -116,11 +128,23 @@ try {
 
   // The screenshots are the files the checker reads: both screenshot rules
   // leave the to-do list, and nothing else changes.
-  const after = JSON.parse(sh(process.execPath, [join(project, 'node_modules/@usequeek/theme-cli/bin/run.js'), 'check', '--json'], project, true).stdout);
+  const after = JSON.parse(sh(process.execPath, [queek(), 'theme', 'check', '--json'], project, true).stdout);
   const left = [...new Set(after.findings.filter((f) => f.level === 'error').map((f) => f.rule))].sort();
   const expected = todo.filter((rule) => rule !== 'theme/structure' && rule !== 'theme/template-screenshot');
   if (JSON.stringify(left) !== JSON.stringify(expected)) throw new Error(`check after screenshot: expected ${expected.join(', ')}, got ${left.join(', ')}`);
   console.log(`e2e: check after screenshot ✓ (left: ${expected.join(', ')})`);
+
+  // The old bin stays as an alias: its `check --json` prints the same report
+  // on stdout (still parseable JSON) with the alias notice on stderr, and the
+  // same exit code as `queek theme check --json`.
+  const umbrella = sh(process.execPath, [queek(), 'theme', 'check', '--json'], project, true);
+  const alias = sh(process.execPath, [queekTheme(), 'check', '--json'], project, true);
+  JSON.parse(alias.stdout);
+  if (JSON.stringify(JSON.parse(alias.stdout)) !== JSON.stringify(JSON.parse(umbrella.stdout))) throw new Error('alias check --json stdout differs from queek theme check --json');
+  if (!alias.stderr.includes('`queek-theme` is now `queek theme`')) throw new Error(`alias check has no notice on stderr:\n${alias.stderr}`);
+  if (umbrella.stderr.includes('`queek-theme` is now `queek theme`')) throw new Error('umbrella bin must not print the alias notice');
+  if (alias.status !== umbrella.status) throw new Error(`alias exit ${alias.status} differs from umbrella exit ${umbrella.status}`);
+  console.log('e2e: alias ✓ (queek-theme check --json matches queek theme check --json, notice on stderr only)');
   console.log('e2e: all passed');
 } finally {
   rmSync(work, { recursive: true, force: true });

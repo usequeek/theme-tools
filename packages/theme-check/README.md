@@ -1,8 +1,8 @@
 # @usequeek/theme-check
 
 The rules a [Queek](https://usequeek.com) storefront theme is checked against, as a library.
-Most people want the command line instead: `npx queek-theme check` from
-[`@usequeek/theme-cli`](https://www.npmjs.com/package/@usequeek/theme-cli).
+Most people want the command line instead: `npx queek theme check` from
+[`@usequeek/cli`](https://www.npmjs.com/package/@usequeek/cli).
 
 ```bash
 npm install --save-dev @usequeek/theme-check

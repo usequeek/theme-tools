@@ -1,41 +1,41 @@
 {
-  "name": "@usequeek/theme-cli",
+  "name": "@usequeek/cli",
   "version": "0.6.0",
-  "description": "queek-theme — preview, check and package Queek storefront themes.",
+  "description": "The Queek developer CLI: build, preview, check and package storefront themes (queek theme …).",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "queek-theme": "./bin/run.js"
+    "queek": "./bin/run.js"
   },
   "exports": {
-    "./package.json": "./package.json",
-    "./commands": {
-      "types": "./dist/commands/index.d.ts",
-      "default": "./dist/commands/index.js"
-    }
+    "./package.json": "./package.json"
   },
   "files": [
     "bin",
     "dist",
-    "templates",
     "!dist/**/*.map"
   ],
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && tsc -p preview/tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p preview/tsconfig.json --noEmit"
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "oclif": {
-    "bin": "queek-theme",
-    "dirname": "queek-theme",
+    "bin": "queek",
+    "dirname": "queek",
+    "topicSeparator": " ",
+    "topics": {
+      "theme": {
+        "description": "Build, preview, check and package a storefront theme."
+      }
+    },
     "commands": {
       "strategy": "explicit",
-      "target": "./dist/commands/index.js",
+      "target": "./dist/commands.js",
       "identifier": "COMMANDS"
     },
-    "topicSeparator": " ",
     "plugins": [
       "@oclif/plugin-warn-if-update-available"
     ],
@@ -47,16 +47,9 @@
   "dependencies": {
     "@oclif/core": "^4.14.0",
     "@oclif/plugin-warn-if-update-available": "^3.1.0",
-    "@usequeek/create-theme": "workspace:^",
-    "@usequeek/theme-check": "workspace:^",
-    "playwright-core": "^1.59.1",
-    "yazl": "^3.3.1"
-  },
-  "devDependencies": {
-    "@types/yazl": "^3.3.0"
+    "@usequeek/theme-cli": "workspace:^"
   },
   "peerDependencies": {
-    "@usequeek/theme-kit": ">=0.1.8",
     "next": "^16.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -65,16 +58,15 @@
     "queek",
     "theme",
     "storefront",
-    "cli",
-    "nextjs"
+    "cli"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/usequeek/theme-tools.git",
-    "directory": "packages/theme-cli"
+    "directory": "packages/cli"
   },
   "bugs": "https://github.com/usequeek/theme-tools/issues",
-  "homepage": "https://github.com/usequeek/theme-tools/tree/main/packages/theme-cli#readme",
+  "homepage": "https://github.com/usequeek/theme-tools/tree/main/packages/cli#readme",
   "publishConfig": {
     "access": "public",
     "provenance": true

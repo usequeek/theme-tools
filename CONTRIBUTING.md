@@ -33,10 +33,11 @@ This is a pnpm workspaces monorepo (`pnpm-workspace.yaml` → `packages/*`).
 
 | Path | Package | What it is |
 |---|---|---|
-| `packages/theme-cli` | `@usequeek/theme-cli` | The `queek-theme` CLI: `dev`, `check`, `package`, `init` |
+| `packages/cli` | `@usequeek/cli` | The `queek` CLI: `queek theme dev`, `check`, `package`, `init` |
+| `packages/theme-cli` | `@usequeek/theme-cli` | The theme commands `queek theme …` runs; `queek-theme` remains as an alias |
 | `packages/theme-check` | `@usequeek/theme-check` | Theme validator library (the check rules live here) |
 | `packages/create-theme` | `@usequeek/create-theme` | Scaffolder, run via `npm create @usequeek/theme` |
-| `packages/theme-cli/preview` | — | The preview app `queek-theme dev` serves (TypeScript source, compiled to `templates/preview` as plain JavaScript by `pnpm build`) |
+| `packages/theme-cli/preview` | — | The preview app `queek theme dev` serves (TypeScript source, compiled to `templates/preview` as plain JavaScript by `pnpm build`) |
 | `fixtures/starter` | — | A theme project as a developer has it (the Queek skeleton theme), used by the tests |
 | `scripts/e2e.mjs` | — | End-to-end test: packs the packages, installs them into a fresh project outside the repo, runs `check`, `package` and `dev` |
 | `.changeset/` | — | Changesets config and pending version bumps |
@@ -51,8 +52,8 @@ directory:
 
 ```sh
 pnpm build
-node packages/theme-cli/bin/run.js check --path fixtures/starter
-node packages/theme-cli/bin/run.js package --path fixtures/starter --output /tmp/theme.zip
+node packages/cli/bin/run.js theme check --path fixtures/starter
+node packages/cli/bin/run.js theme package --path fixtures/starter --output /tmp/theme.zip
 ```
 
 `dev` needs a real theme project: Turbopack only resolves files inside the
@@ -91,14 +92,14 @@ packages):
 
 A **new blocking check rule** is a `minor` bump (it is backwards-compatible in
 API terms), but call it out explicitly in the changeset summary so theme
-authors are not surprised when `queek-theme check` starts failing on themes
+authors are not surprised when `queek theme check` starts failing on themes
 that used to pass — e.g. "`check` now errors on …".
 
 ## Commit and PR expectations
 
 - Keep PRs small and focused: one change, one changeset, one topic.
 - Write commits in the imperative mood with a clear subject line
-  (e.g. `Add --strict flag to queek-theme check`).
+  (e.g. `Add --strict flag to queek theme check`).
 - Explain the *why*, not just the *what*, in the PR description
   (the PR template prompts for this).
 - Add or update tests for behaviour changes, and update the relevant
@@ -112,19 +113,19 @@ that used to pass — e.g. "`check` now errors on …".
 
 Before releasing a new `@usequeek/create-theme` version, publish the matching
 starter. In the storefront, set `packages/theme-starter/package.json`'s
-`@usequeek/theme-cli` range to include the new version, then:
+`@usequeek/cli` range to include the new version, then:
 
 ```sh
 yarn starter:publish --tag v<new version>
 ```
 
 `create` downloads `github:usequeek/theme-starter#v<version>` and fails if the tag
-is missing, and a created project installs whatever `@usequeek/theme-cli` its
+is missing, and a created project installs whatever `@usequeek/cli` its
 starter's range allows (on 0.x, `^0.1.0` never reaches 0.2.0). Tags never move, so
 get the range right before tagging. `pnpm release` enforces both: it runs
 `scripts/check-starter-tag.mjs` first, which fails when the starter has no tag for
-create-theme's version, or when that tag's `@usequeek/theme-cli` range does not take
-the theme-cli being released. Run it yourself after tagging
+create-theme's version, or when that tag's `@usequeek/cli` range does not take
+the CLI being released. Run it yourself after tagging
 (`node scripts/check-starter-tag.mjs`) to find out before CI does.
 
 ## AI-assisted contributions

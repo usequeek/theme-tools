@@ -21,7 +21,8 @@ update with `npm update`, never touching your files.
 
 | Package | What it is |
 |---|---|
-| [`@usequeek/theme-cli`](packages/theme-cli) | The `queek-theme` command: `dev`, `check`, `package`, `init`. |
+| [`@usequeek/cli`](packages/cli) | The `queek` command: `queek theme dev`, `check`, `package`, `init`. |
+| [`@usequeek/theme-cli`](packages/theme-cli) | The theme commands `queek theme …` runs; `queek-theme` remains as an alias. |
 | [`@usequeek/create-theme`](packages/create-theme) | `npm create @usequeek/theme` — starts a theme from [usequeek/theme-starter](https://github.com/usequeek/theme-starter). |
 | [`@usequeek/theme-check`](packages/theme-check) | The rules a theme is checked against, as a library. |
 
@@ -31,7 +32,7 @@ runtime: data hooks, cart and checkout flows, framework blocks.
 ## Documentation
 
 - The theme contract: [docs/THEME.md in the starter](https://github.com/usequeek/theme-starter/blob/main/docs/THEME.md)
-- Each command: `npx queek-theme <command> --help`, and the [CLI README](packages/theme-cli)
+- Each command: `npx queek theme <command> --help`, and the [CLI README](packages/cli)
 
 ## Contributing
 

@@ -12,6 +12,7 @@ import {
 } from '@usequeek/theme-check';
 import yazl from 'yazl';
 import { BaseCommand } from '../lib/base-command.js';
+import { commandLine } from '../lib/command-line.js';
 import { resolveProject, type Project } from '../lib/project.js';
 import { resolveCommandVocabulary, vocabularyFlags } from '../lib/vocabulary.js';
 
@@ -99,6 +100,6 @@ export default class Package extends BaseCommand {
     if ((flags as { json?: boolean }).json) return report;
 
     this.log(`Packaged ${result.context.slug} → ${report.file}`);
-    if (report.errors > 0) this.warn(`${report.errors} error(s) will block this submission — run \`${this.config.bin} check\` to see them.`);
+    if (report.errors > 0) this.warn(`${report.errors} error(s) will block this submission — run \`${commandLine(this.config, 'check')}\` to see them.`);
   }
 }

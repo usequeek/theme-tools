@@ -1,5 +1,6 @@
 import { Args, Flags } from '@oclif/core';
 import { BaseCommand } from '../lib/base-command.js';
+import { commandLine } from '../lib/command-line.js';
 import { demoFilesOf, screenshotFile } from '@usequeek/theme-check';
 import { existsSync, mkdirSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
@@ -106,7 +107,7 @@ Needs a Chromium-based browser: Google Chrome, Microsoft Edge, Playwright's own 
     const boot = (): Promise<{ url: string; close: () => Promise<void> }> =>
       Promise.race([
         startPreview(project, dir, '127.0.0.1', port, { quiet: flags.json === true }),
-        new Promise<never>((_, fail) => setTimeout(() => fail(new Error(`The preview did not start within ${BOOT_TIMEOUT_MS / 60_000} minutes. Run \`npx queek-theme dev\` to see why.`)), BOOT_TIMEOUT_MS).unref()),
+        new Promise<never>((_, fail) => setTimeout(() => fail(new Error(`The preview did not start within ${BOOT_TIMEOUT_MS / 60_000} minutes. Run \`npx ${commandLine(this.config, 'dev')}\` to see why.`)), BOOT_TIMEOUT_MS).unref()),
       ]);
     const server = await (flags.json === true ? muteStdout(boot) : boot()).catch((error: Error & { code?: string }) =>
       this.error(error.code === 'EADDRINUSE' ? `Port ${port} is in use. Pass another --port, or leave --port out to use the next free one.` : error.message, { exit: 2 }));
@@ -159,7 +160,7 @@ Needs a Chromium-based browser: Google Chrome, Microsoft Edge, Playwright's own 
     }
 
     if (flags.json) this.logJson({ files });
-    else this.log('Next: npx queek-theme check');
+    else this.log(`Next: npx ${commandLine(this.config, 'check')}`);
     // Next's dev watchers keep the event loop alive after close() (dev exits
     // explicitly for the same reason), so a finished run would never
     // terminate on its own. Exit here: the JSON above is printed exactly

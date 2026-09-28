@@ -23,7 +23,7 @@ export function localEnv(dir: string, cwd = process.cwd()): CheckEnv {
     vocabulary: 'the business vocabulary (docs/business-vocabulary.json in the starter)',
     scaffold: '`npm create @usequeek/theme`',
     preview: (templateId) => `http://localhost:7833/${templateId}`,
-    capture: (designId) => designId === PRIMARY_DEMO_ID ? 'npx queek-theme screenshot' : `npx queek-theme screenshot ${designId}`,
+    capture: (designId) => designId === PRIMARY_DEMO_ID ? 'npx queek theme screenshot' : `npx queek theme screenshot ${designId}`,
     submission: false,
   };
 }
