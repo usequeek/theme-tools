@@ -1,11 +1,12 @@
 import { Args } from '@oclif/core';
-import { appApi, appFlags, requireToken } from '../../lib/app-command.js';
+import { LoginNeededError } from '../../lib/app-api.js';
+import { appFlags, appSession } from '../../lib/app-command.js';
 import { BaseCommand } from '../../lib/base-command.js';
 
 export default class AppSubmit extends BaseCommand {
   static override summary = 'Submit the current version for review.';
 
-  static override description = 'POSTs the existing vendor/developer/apps/{app}/submit: the version moves to in_review. There is no new endpoint — approval stays on the admin side.';
+  static override description = 'POSTs vendor/developer/apps/{app}/submit: development or rejected → in_review on the app and its latest unreleased version. The served listing does not move — approval is the admin side. In CI, QUEEK_APP_AUTOMATION_TOKEN authenticates with no login.';
 
   static override examples = ['<%= config.bin %> <%= command.id %> hello'];
 
@@ -15,12 +16,17 @@ export default class AppSubmit extends BaseCommand {
 
   static override flags = { ...appFlags };
 
-  async run(): Promise<{ app: string; review_status: string }> {
+  async run(): Promise<{ app: string; review_status: string; version: string | null }> {
     const { args, flags } = await this.parse(AppSubmit);
     this.setVerbose(flags.verbose as boolean | undefined);
-    const { token } = await requireToken().catch((error: Error) => this.error(error.message, { exit: 2 }));
-    await appApi().submitApp(token, args.app).catch((error: Error) => this.error(error.message, { exit: 1 }));
-    this.log(`Submitted ${args.app} — now in_review.`);
-    return { app: args.app, review_status: 'in_review' };
+    const { api } = await appSession({
+      noBrowser: flags['no-browser'],
+      log: (line) => this.log(line),
+      logError: (line) => this.logToStderr(line),
+      debug: (line) => this.debug(line),
+    }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
+    const result = await api.submitApp(args.app).catch((error: Error) => this.error(error.message, { exit: 1 }));
+    this.log(`Submitted ${args.app}${result.version ? ` version ${result.version}` : ''} — now ${result.review_status}.`);
+    return { app: args.app, review_status: result.review_status, version: result.version };
   }
 }

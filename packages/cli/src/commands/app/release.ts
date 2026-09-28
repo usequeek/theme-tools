@@ -1,11 +1,12 @@
 import { Args } from '@oclif/core';
-import { appApi, appFlags, requireToken } from '../../lib/app-command.js';
+import { LoginNeededError } from '../../lib/app-api.js';
+import { appFlags, appSession } from '../../lib/app-command.js';
 import { BaseCommand } from '../../lib/base-command.js';
 
 export default class AppRelease extends BaseCommand {
-  static override summary = 'Serve a previous version snapshot (revert).';
+  static override summary = 'Serve an approved version snapshot (release forward, revert backward).';
 
-  static override description = 'POSTs vendor/developer/apps/{app}/versions/{version}/release: installs keep serving the current version until the release moves the listing. Mirrors `shopify app release --version`.';
+  static override description = 'POSTs vendor/developer/apps/{app}/versions/{version}/release. Unapproved versions refuse 422 — every version ships through review first. In CI, QUEEK_APP_AUTOMATION_TOKEN authenticates with no login.';
 
   static override examples = ['<%= config.bin %> <%= command.id %> hello 1.2.0'];
 
@@ -19,8 +20,13 @@ export default class AppRelease extends BaseCommand {
   async run(): Promise<{ app: string; version: string }> {
     const { args, flags } = await this.parse(AppRelease);
     this.setVerbose(flags.verbose as boolean | undefined);
-    const { token } = await requireToken().catch((error: Error) => this.error(error.message, { exit: 2 }));
-    await appApi().releaseVersion(token, args.app, args.version).catch((error: Error) => this.error(error.message, { exit: 1 }));
+    const { api } = await appSession({
+      noBrowser: flags['no-browser'],
+      log: (line) => this.log(line),
+      logError: (line) => this.logToStderr(line),
+      debug: (line) => this.debug(line),
+    }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
+    await api.releaseVersion(args.app, args.version).catch((error: Error) => this.error(error.message, { exit: 1 }));
     this.log(`Released ${args.app} version ${args.version} — installs now serve it.`);
     return { app: args.app, version: args.version };
   }

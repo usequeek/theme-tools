@@ -1,7 +1,7 @@
 {
   "name": "@usequeek/cli",
   "version": "0.8.0",
-  "description": "The Queek developer CLI: themes (queek theme …) and installable apps (queek app …, queek login).",
+  "description": "The Queek developer CLI: themes (queek theme …) and installable apps (queek app …, queek auth login).",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -33,6 +33,9 @@
       },
       "app": {
         "description": "Build an installable Queek app: init, develop, deploy, release."
+      },
+      "auth": {
+        "description": "Developer sign-in for the app commands (usually automatic)."
       }
     },
     "commands": {

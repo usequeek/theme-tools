@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Args, Flags } from '@oclif/core';
-import { appApi, appFlags, requireToken } from '../../../lib/app-command.js';
+import { LoginNeededError } from '../../../lib/app-api.js';
+import { appFlags, appSession } from '../../../lib/app-command.js';
 import { fromManifest, tomlFileName } from '../../../lib/app-manifest.js';
 import { BaseCommand } from '../../../lib/base-command.js';
 
@@ -27,10 +28,14 @@ export default class AppConfigLink extends BaseCommand {
   async run(): Promise<{ file: string }> {
     const { args, flags } = await this.parse(AppConfigLink);
     this.setVerbose(flags.verbose as boolean | undefined);
-    const { token } = await requireToken().catch((error: Error) => this.error(error.message, { exit: 2 }));
-    const api = appApi();
+    const { api } = await appSession({
+      noBrowser: flags['no-browser'],
+      log: (line) => this.log(line),
+      logError: (line) => this.logToStderr(line),
+      debug: (line) => this.debug(line),
+    }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
 
-    const config = await api.appConfig(token, args.app).catch((error: Error) => this.error(error.message, { exit: 1 }));
+    const config = await api.appConfig(args.app).catch((error: Error) => this.error(error.message, { exit: 1 }));
     const target = resolve(flags.path, tomlFileName(flags.config));
     if (existsSync(target) && !flags.force) {
       this.error(`${tomlFileName(flags.config)} already exists — pass --force to overwrite it with the server manifest.`, { exit: 2 });

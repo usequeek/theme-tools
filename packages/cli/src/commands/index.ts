@@ -3,8 +3,8 @@ import Dev from './dev.js';
 import Init from './init.js';
 import Package from './package.js';
 import Screenshot from './screenshot.js';
-import Login from './login.js';
-import Logout from './logout.js';
+import AuthLogin from './auth/login.js';
+import AuthLogout from './auth/logout.js';
 import AppInit from './app/init.js';
 import AppDev from './app/dev.js';
 import AppDeploy from './app/deploy.js';
@@ -26,8 +26,8 @@ export const COMMANDS = {
   'theme:init': Init,
   'theme:package': Package,
   'theme:screenshot': Screenshot,
-  login: Login,
-  logout: Logout,
+  'auth:login': AuthLogin,
+  'auth:logout': AuthLogout,
   'app:init': AppInit,
   'app:dev': AppDev,
   'app:deploy': AppDeploy,

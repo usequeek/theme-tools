@@ -1,31 +1,30 @@
 import type { AppManifest } from './app-manifest.js';
 
 /**
- * The developer API the `app` commands talk to. Every route below is either
- * already on origin/master (`vendor/developer/*`, `oauth/*`) or the plan's
- * §2 contract the backend slice builds in parallel — the client sends exactly
- * the plan's shapes, and every guess is marked ASSUMPTION with its plan
- * section so the senior can diff it against the merged backend.
+ * The developer API the `app` commands talk to, verified against the S1
+ * backend slice (devflow-s1 @ 9de8c58c) — every row of the call→route table
+ * in the impl report names its serving route + file:line.
  *
- * Contract assumptions (see also open_questions in the impl report):
- * - A1 §Auth: API base defaults to `https://api.usequeek.com`
- *   (`QUEEK_API_BASE` overrides).
- * - A2 §Auth: browser login reuses `GET {api}/oauth/authorize` +
- *   `POST {api}/oauth/token` with `client_id=cli`, PKCE, and a loopback
- *   redirect. The token endpoint takes OAuth form fields.
- * - A3 §Auth: headless fallback is `POST {api}/developer/device/code`
- *   (unauthenticated issue) + `GET {api}/developer/device/status?code=`
- *   (202 pending, 200 approved with the token, 404 unknown).
- * - A4 §2.2–2.4 + Shopify check: `GET vendor/developer/test-stores`,
- *   `POST vendor/developer/apps/{app}/dev-installs {test_store_p_id}`,
- *   `GET vendor/developer/apps/{app}/config`, plus
- *   `GET vendor/developer/apps/{app}/versions` and
- *   `POST vendor/developer/apps/{app}/versions/{version}/release`
- *   on the existing AppVersion model (neither route exists on master today).
- * - A5: `@usequeek/app-sdk@^0.4.0` on npm (404 at implementation time).
+ * Two routers on one host (`QUEEK_API_BASE`): vendor API at
+ * `{base}/api/v1/biz/...`, OAuth at `{base}/oauth/...` (web router, no /api
+ * prefix). Every vendor response wears the `{status, message, data}`
+ * envelope (Controller.php:21); OAuth failures wear
+ * `{error, error_description}` (OAuthException.php:54).
+ *
+ * Auth kinds: a CI automation token (`QUEEK_APP_AUTOMATION_TOKEN`, per-app,
+ * dashboard-minted) is used as-is — a 403 names the app + action instead of
+ * dumping the envelope. A developer session refreshes its 60-minute access
+ * token transparently (pre-expiry + one retry on 401).
  */
 
 export type FetchImpl = (url: string, init?: RequestInit) => Promise<Response>;
+
+export type AuthKind = 'automation' | 'user';
+
+export interface AuthContext {
+  token: string;
+  kind: AuthKind;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -37,34 +36,51 @@ export class ApiError extends Error {
   }
 }
 
+/** A 403 under an automation token: wrong app or beyond its grant. */
+export class AutomationTokenError extends ApiError {}
+
+/** The session is gone (refresh refused): the user must log in again. */
+export class LoginNeededError extends Error {}
+
 export interface DeviceCode {
-  code: string;
-  verify_url: string;
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
   expires_in: number;
+  interval: number;
+}
+
+export interface TokenPair {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  scope: string;
 }
 
 export interface TestStore {
-  p_id: string;
+  p_id: number;
   name: string;
-  [key: string]: unknown;
+  slug: string;
 }
 
 export interface AppVersion {
   version: string;
   sequence: number;
   review_status: string;
+  changelog: string | null;
   current: boolean;
-  [key: string]: unknown;
+  created_at: string | null;
 }
 
 export interface DeployResult {
   p_id: string;
   slug: string;
+  name: string;
   version: string;
   sequence: number;
+  review_status: string;
   /** Shown ONCE on first registration — never returned again. */
-  secret?: string;
-  [key: string]: unknown;
+  signing_secret?: string;
 }
 
 export interface AppConfig {
@@ -76,131 +92,263 @@ export interface AppConfig {
   manifest: Record<string, unknown>;
 }
 
-const jsonHeaders = (token?: string): Record<string, string> => ({
-  'content-type': 'application/json',
-  accept: 'application/json',
-  ...(token ? { authorization: `Bearer ${token}` } : {}),
-});
+export interface DevInstallResult {
+  installation_p_id: string;
+  store_p_id: number;
+  app_p_id: string;
+  status: string;
+  installed_version: string;
+}
+
+const VENDOR_PREFIX = '/api/v1/biz/vendor/developer';
+const OAUTH_PREFIX = '/oauth';
+
+function messageOf(body: unknown, status: number): string {
+  if (body !== null && typeof body === 'object') {
+    const record = body as Record<string, unknown>;
+    // OAuth failures: {error, error_description} — the description is the sentence.
+    if (typeof record.error_description === 'string' && record.error_description !== '') return record.error_description;
+    if (typeof record.message === 'string' && record.message !== '') return record.message;
+    if (typeof record.error === 'string' && record.error !== '') return record.error;
+  }
+  return `Request failed with status ${status}.`;
+}
+
+export interface ClientOptions {
+  fetchImpl?: FetchImpl;
+  /** Current bearer + kind. Called per request so refreshes apply immediately. */
+  getAuth?: () => Promise<AuthContext>;
+  /** Force a session refresh; return the fresh access token or throw LoginNeededError. */
+  onRefresh?: () => Promise<string>;
+}
 
 export class DeveloperApi {
+  private readonly fetchImpl: FetchImpl;
+  private readonly getAuth: () => Promise<AuthContext>;
+  private readonly onRefresh?: () => Promise<string>;
+
   constructor(
     private readonly base: string,
-    private readonly fetchImpl: FetchImpl = fetch,
-  ) {}
+    options: ClientOptions = {},
+  ) {
+    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.getAuth = options.getAuth ?? (async () => { throw new LoginNeededError('Not logged in — run `queek auth login` first.'); });
+    this.onRefresh = options.onRefresh;
+  }
 
-  private async request<T>(method: string, path: string, token?: string, body?: unknown): Promise<T> {
+  private async raw(url: string, init: RequestInit): Promise<{ status: number; body: unknown }> {
     let response: Response;
     try {
-      response = await this.fetchImpl(`${this.base}${path}`, {
-        method,
-        headers: jsonHeaders(token),
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
+      response = await this.fetchImpl(url, init);
     } catch (error) {
       throw new ApiError(`Cannot reach ${this.base}: ${(error as Error).message}`, 0, null);
     }
-    let data: unknown = null;
+    let body: unknown = null;
     try {
-      data = await response.json();
+      body = await response.json();
     } catch {
-      data = null;
+      body = null;
     }
-    if (!response.ok) {
-      const message =
-        (data as { message?: unknown } | null)?.message ??
-        (data as { error?: unknown } | null)?.error ??
-        `Request failed with status ${response.status}.`;
-      throw new ApiError(typeof message === 'string' ? message : `Request failed with status ${response.status}.`, response.status, data);
-    }
+    return { status: response.status, body };
+  }
+
+  /**
+   * One vendor call: bearer from the session layer, `{data}` unwrapped,
+   * one transparent refresh-and-retry on 401 (user sessions only), and a
+   * plain-words 403 for automation tokens. `action` words the 403
+   * ("deploying", "releasing version 1.2.0 of", ...).
+   */
+  private async vendor<T>(method: string, path: string, action: string, body?: unknown): Promise<T> {
+    const attempt = async (token: string, kind: AuthKind, retried: boolean): Promise<{ data: unknown }> => {
+      const { status, body: raw } = await this.raw(`${this.base}${VENDOR_PREFIX}${path}`, {
+        method,
+        headers: { 'content-type': 'application/json', accept: 'application/json', authorization: `Bearer ${token}` },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      // One transparent refresh-and-retry on 401 (user sessions only): a
+      // second 401 throws below instead of looping.
+      if (status === 401 && kind === 'user' && !retried && this.onRefresh) {
+        const fresh = await this.onRefresh();
+        return attempt(fresh, kind, true);
+      }
+      if (status === 403 && kind === 'automation') {
+        const detail = messageOf(raw, status);
+        throw new AutomationTokenError(
+          `Access refused ${action} — this automation token belongs to a different app or cannot do that. (Server: ${detail})`,
+          status,
+          raw,
+        );
+      }
+      if (status < 200 || status >= 300) throw new ApiError(messageOf(raw, status), status, raw);
+      const data = (raw as { data?: unknown } | null)?.data ?? null;
+      return { data };
+    };
+
+    const auth = await this.getAuth();
+    const { data } = await attempt(auth.token, auth.kind, false);
     return data as T;
   }
 
-  /** A3: issue a headless device code (unauthenticated). */
-  deviceCode(): Promise<DeviceCode> {
-    return this.request<DeviceCode>('POST', '/developer/device/code');
+  // ── OAuth (web router, unauthenticated except by code/verifier) ──
+
+  /** Issue a headless device pair (AgentOAuthController.php:84). */
+  async deviceCode(): Promise<DeviceCode> {
+    const { status, body } = await this.raw(`${this.base}${OAUTH_PREFIX}/device/code`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ client_id: 'cli', scope: 'developer-cli' }),
+    });
+    if (status < 200 || status >= 300) throw new ApiError(messageOf(body, status), status, body);
+    const record = body as Record<string, unknown>;
+    if (typeof record.device_code !== 'string' || typeof record.user_code !== 'string' || typeof record.verification_uri !== 'string') {
+      throw new ApiError('The device endpoint returned an unexpected shape.', status, body);
+    }
+    return {
+      device_code: record.device_code,
+      user_code: record.user_code,
+      verification_uri: record.verification_uri,
+      expires_in: typeof record.expires_in === 'number' ? record.expires_in : 600,
+      interval: typeof record.interval === 'number' ? record.interval : 5,
+    };
   }
 
-  /** A3: poll until approval. 202 = still pending (null), 200 = approved. */
-  async deviceStatus(code: string): Promise<{ token: string } | null> {
-    let response: Response;
-    try {
-      response = await this.fetchImpl(`${this.base}/developer/device/status?code=${encodeURIComponent(code)}`, {
-        headers: { accept: 'application/json' },
-      });
-    } catch (error) {
-      throw new ApiError(`Cannot reach ${this.base}: ${(error as Error).message}`, 0, null);
-    }
-    if (response.status === 202) return null;
-    const data = (await response.json().catch(() => null)) as { token?: unknown; message?: unknown } | null;
-    if (!response.ok) {
-      const message = data?.message;
-      throw new ApiError(typeof message === 'string' ? message : `Request failed with status ${response.status}.`, response.status, data);
-    }
-    if (!data || typeof data.token !== 'string') throw new ApiError('The device approval returned no token.', response.status, data);
-    return { token: data.token };
+  /** Poll until approval: 202 pending → null, 200 → token pair (AgentOAuthController.php:97). */
+  async deviceStatus(deviceCode: string): Promise<TokenPair | null> {
+    const { status, body } = await this.raw(`${this.base}${OAUTH_PREFIX}/device/status?code=${encodeURIComponent(deviceCode)}`, {
+      headers: { accept: 'application/json' },
+    });
+    if (status === 202) return null;
+    if (status < 200 || status >= 300) throw new ApiError(messageOf(body, status), status, body);
+    return tokenPairOf(body, status);
   }
 
-  /** A2: PKCE code-for-token exchange against the reused OAuth machinery. */
-  async oauthToken(input: { code: string; code_verifier: string; redirect_uri: string }): Promise<{ token: string }> {
-    const params = new URLSearchParams({
+  /**
+   * PKCE code-for-token exchange (AgentOAuthController.php:54). Sent WITHOUT
+   * client_secret on purpose: the CLI is a public native client (RFC 8252) —
+   * a secret baked into npm tarballs is not a secret. If the backend keeps
+   * requiring one for `cli`, it 401s `invalid_client` and that is a backend
+   * must-fix (see open_questions), not something to smuggle in here.
+   */
+  async oauthToken(input: { code: string; code_verifier: string; redirect_uri: string }): Promise<TokenPair> {
+    return this.tokenGrant({
       grant_type: 'authorization_code',
       client_id: 'cli',
       code: input.code,
       code_verifier: input.code_verifier,
       redirect_uri: input.redirect_uri,
     });
-    let response: Response;
-    try {
-      response = await this.fetchImpl(`${this.base}/oauth/token`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
-        body: params.toString(),
-      });
-    } catch (error) {
-      throw new ApiError(`Cannot reach ${this.base}: ${(error as Error).message}`, 0, null);
-    }
-    const data = (await response.json().catch(() => null)) as { access_token?: unknown; token?: unknown; message?: unknown } | null;
-    if (!response.ok) {
-      const message = data?.message;
-      throw new ApiError(typeof message === 'string' ? message : `Request failed with status ${response.status}.`, response.status, data);
-    }
-    const token = data?.access_token ?? data?.token;
-    if (typeof token !== 'string') throw new ApiError('The login returned no token.', response.status, data);
-    return { token };
   }
 
-  /** A4: the owned test stores a `--store` selector reads. */
-  testStores(token: string): Promise<{ data: TestStore[] }> {
-    return this.request<{ data: TestStore[] }>('GET', '/vendor/developer/test-stores', token);
+  /** Rotate a refresh token into a fresh pair (AgentOAuthService.php:219). */
+  async refreshTokens(refreshToken: string): Promise<TokenPair> {
+    return this.tokenGrant({ grant_type: 'refresh_token', client_id: 'cli', refresh_token: refreshToken });
   }
 
-  /** A4: install an unreviewed dev build on an owned test store. */
-  devInstall(token: string, app: string, testStorePId: string): Promise<unknown> {
-    return this.request('POST', `/vendor/developer/apps/${encodeURIComponent(app)}/dev-installs`, token, { test_store_p_id: testStorePId });
+  private async tokenGrant(params: Record<string, string>): Promise<TokenPair> {
+    const form = new URLSearchParams(params);
+    const { status, body } = await this.raw(`${this.base}${OAUTH_PREFIX}/token`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
+      body: form.toString(),
+    });
+    if (status < 200 || status >= 300) throw new ApiError(messageOf(body, status), status, body);
+    return tokenPairOf(body, status);
   }
 
-  /** `deploy`: toml → version N+1. `development` stays off the listing. */
-  deploy(token: string, manifest: AppManifest): Promise<DeployResult> {
-    return this.request<DeployResult>('POST', '/vendor/developer/apps', token, manifest);
+  /**
+   * Best-effort revoke for `auth logout` (AgentOAuthController.php:72). The
+   * backend authenticates the client here too, so a public CLI without a
+   * secret is refused — the caller ignores the refusal and always clears
+   * local creds (secretless revoke is backend must-fix #2).
+   */
+  async revokeToken(token: string): Promise<boolean> {
+    const { status } = await this.raw(`${this.base}${OAUTH_PREFIX}/revoke`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ client_id: 'cli', token }),
+    });
+    return status >= 200 && status < 300;
   }
 
-  /** A4: server → toml (`config link`). */
-  appConfig(token: string, app: string): Promise<AppConfig> {
-    return this.request<AppConfig>('GET', `/vendor/developer/apps/${encodeURIComponent(app)}/config`, token);
+  // ── Developer surface (vendor router, bearer) ──
+
+  /** Deploy: toml → version N+1 (DeveloperAppController.php:180). */
+  async deploy(manifest: AppManifest, changelog?: string): Promise<DeployResult> {
+    const data = await this.vendor<Record<string, unknown>>('POST', '/apps', 'deploying this app', {
+      manifest,
+      ...(changelog !== undefined ? { changelog } : {}),
+    });
+    const version = (data.version ?? {}) as Record<string, unknown>;
+    return {
+      p_id: data.p_id as string,
+      slug: data.slug as string,
+      name: data.name as string,
+      version: version.version as string,
+      sequence: version.sequence as number,
+      review_status: version.review_status as string,
+      ...(typeof data.signing_secret === 'string' ? { signing_secret: data.signing_secret } : {}),
+    };
   }
 
-  /** A4: every version snapshot, newest first. */
-  appVersions(token: string, app: string): Promise<{ versions: AppVersion[] }> {
-    return this.request<{ versions: AppVersion[] }>('GET', `/vendor/developer/apps/${encodeURIComponent(app)}/versions`, token);
+  /** Owned test stores for the `--store` selector (DeveloperAppController.php:239). */
+  async testStores(): Promise<{ data: TestStore[]; total: number }> {
+    const data = await this.vendor<{ data: TestStore[]; meta: { total: number } }>('GET', '/test-stores?per_page=50', 'listing test stores');
+    return { data: data.data, total: data.meta.total };
   }
 
-  /** A4: revert serving to a previous version snapshot. */
-  releaseVersion(token: string, app: string, version: string): Promise<unknown> {
-    return this.request('POST', `/vendor/developer/apps/${encodeURIComponent(app)}/versions/${encodeURIComponent(version)}/release`, token);
+  /** Install an unreviewed dev build on an owned test store (DeveloperAppController.php:268). */
+  devInstall(app: string, testStorePId: number, settings?: Record<string, unknown>): Promise<DevInstallResult> {
+    return this.vendor('POST', `/apps/${encodeURIComponent(app)}/dev-installs`, `installing a dev build of '${app}'`, {
+      test_store_p_id: testStorePId,
+      ...(settings !== undefined ? { settings } : {}),
+    });
   }
 
-  /** Existing channel: version → `in_review`. */
-  submitApp(token: string, app: string): Promise<unknown> {
-    return this.request('POST', `/vendor/developer/apps/${encodeURIComponent(app)}/submit`, token);
+  /** Server → toml (DeveloperAppController.php:308). */
+  appConfig(app: string): Promise<AppConfig> {
+    return this.vendor('GET', `/apps/${encodeURIComponent(app)}/config`, `linking config of '${app}'`);
   }
+
+  /** Every version snapshot, newest first (DeveloperAppController.php:342). */
+  async appVersions(app: string): Promise<{ versions: AppVersion[] }> {
+    const rows = await this.vendor<Record<string, unknown>[]>('GET', `/apps/${encodeURIComponent(app)}/versions`, `listing versions of '${app}'`);
+    return {
+      versions: rows.map((row) => ({
+        version: row.version as string,
+        sequence: row.sequence as number,
+        review_status: row.review_status as string,
+        changelog: (row.changelog ?? null) as string | null,
+        current: row.is_current as boolean,
+        created_at: (row.created_at ?? null) as string | null,
+      })),
+    };
+  }
+
+  /** Serve an approved version snapshot (DeveloperAppController.php:374). */
+  releaseVersion(app: string, version: string): Promise<unknown> {
+    return this.vendor('POST', `/apps/${encodeURIComponent(app)}/versions/${encodeURIComponent(version)}/release`, `releasing version ${version} of '${app}'`);
+  }
+
+  /** Submit for review (DeveloperAppController.php:72). */
+  async submitApp(app: string): Promise<{ review_status: string; version: string | null }> {
+    const data = await this.vendor<Record<string, unknown>>('POST', `/apps/${encodeURIComponent(app)}/submit`, `submitting '${app}'`);
+    const submitted = (data.submitted_version ?? null) as Record<string, unknown> | null;
+    return {
+      review_status: submitted !== null ? (submitted.review_status as string) : (data.review_status as string),
+      version: submitted !== null ? (submitted.version as string) : null,
+    };
+  }
+}
+
+function tokenPairOf(body: unknown, status: number): TokenPair {
+  const record = body as Record<string, unknown>;
+  if (typeof record.access_token !== 'string' || typeof record.refresh_token !== 'string') {
+    throw new ApiError('The login returned no token pair.', status, body);
+  }
+  return {
+    access_token: record.access_token,
+    refresh_token: record.refresh_token,
+    expires_in: typeof record.expires_in === 'number' ? record.expires_in : 3600,
+    scope: typeof record.scope === 'string' ? record.scope : '',
+  };
 }

@@ -2,7 +2,7 @@
 
 The Queek developer CLI: build, preview, check and package themes for
 [Queek](https://usequeek.com) storefronts — and build installable apps
-(`queek login`, `queek app …`).
+(`queek auth login`, `queek app …`).
 
 ```bash
 npm install --save-dev @usequeek/cli
@@ -133,10 +133,9 @@ queek theme init my-theme --templates laundry,foods --primary laundry --tags min
 | `--force` | Allow a folder that is not empty. |
 | `--template <source>` | Another starter: a giget source or a local folder. |
 
-## Apps (`queek login`, `queek app …`)
+## Apps (`queek auth login`, `queek app …`)
 
 ```bash
-queek login                 # browser OAuth (device code with --device when headless)
 queek app init my-app       # from usequeek/queek-app-starter (== npm create @usequeek/app)
 queek app dev               # tunnel + owned test-store install, re-registers on save
 queek app deploy            # queek.app.toml → developer API → version N+1 (secret shown once)
@@ -144,6 +143,8 @@ queek app config link hello # server manifest → queek.app.toml (no config push
 queek app versions list hello
 queek app release hello 1.2.0
 queek app submit hello
+queek auth login            # rarely needed: app commands sign in automatically
+queek auth logout
 ```
 
 `queek.app.toml` is the local source of truth (same names as the server manifest,
@@ -151,8 +152,16 @@ grouped: `[listing]`, `[access]`, `[webhooks]`, `[app]`, `[[settings]]`,
 `[extensions]`, `[dashboard]`); `-c/--config <name>` reads `queek.app.<name>.toml`.
 `handle` is CLI-only sugar for `slug`. Secrets never live in the toml — deploy
 writes the registration secret to `.queek/.env.local` (gitignored). Apps are
-addressed by `p_id|slug`, never UUID. Auth: `QUEEK_CLI_TOKEN` overrides the stored
-token; `QUEEK_API_BASE` overrides the developer API host.
+addressed by `p_id|slug`, never UUID.
+
+Auth: commands sign in automatically when there is no valid session (browser
+OAuth; device code with `--no-browser` or when headless). The 60-minute access
+token refreshes transparently. In CI, `QUEEK_APP_AUTOMATION_TOKEN` (a per-app
+App Automation Token from the Developer page) authenticates `deploy`, `release`,
+`submit`, `versions list` and `config link` with no login — a 403 means the
+token belongs to a different app or cannot do the attempted action.
+`QUEEK_API_BASE` overrides the backend host (vendor API at `/api/v1/biz/…`,
+OAuth at `/oauth/…`).
 
 ## Project config (`.queek-theme.yml`)
 

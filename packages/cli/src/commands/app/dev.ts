@@ -1,7 +1,8 @@
 import { mkdirSync, watch } from 'node:fs';
 import { join } from 'node:path';
 import { Flags } from '@oclif/core';
-import { appApi, appFlags, requireToken } from '../../lib/app-command.js';
+import { LoginNeededError, type DeveloperApi } from '../../lib/app-api.js';
+import { appFlags, appSession } from '../../lib/app-command.js';
 import { loadApp, queekDir, resolveTomlPath, type AppManifest } from '../../lib/app-manifest.js';
 import { manualTunnel, startCloudflared, type Tunnel } from '../../lib/app-tunnel.js';
 import { BaseCommand } from '../../lib/base-command.js';
@@ -43,17 +44,17 @@ export default class AppDev extends BaseCommand {
 
   static override summary = 'Develop against an owned test store: tunnel + dev install + watch.';
 
-  static override description = `Brings up a tunnel, registers the toml as a development build (same-semver unreleased rides the in-place rule — no version spam), installs it on an owned test store, and re-registers whenever queek.app.toml changes. Run your app server (pnpm dev) in another terminal; this command owns the tunnel, the registration and the install. Ctrl+C stops the tunnel.`;
+  static override description = `Brings up a tunnel, registers the toml as a development build (same-semver unreleased rides the in-place rule — no version spam), installs it on an owned test store, and re-registers whenever queek.app.toml changes. Run your app server (npm start) in another terminal; this command owns the tunnel, the registration and the install. Automation tokens cannot run dev (test-store reads are outside their grant) — sign in as a developer. Ctrl+C stops the tunnel.`;
 
   static override examples = [
     '<%= config.bin %> <%= command.id %>',
-    '<%= config.bin %> <%= command.id %> --store test-store-1',
+    '<%= config.bin %> <%= command.id %> --store 12',
     '<%= config.bin %> <%= command.id %> --url https://my-tunnel.trycloudflare.com',
   ];
 
   static override flags = {
     ...appFlags,
-    store: Flags.string({ summary: 'The owned test store (p_id or name). The only store when you own exactly one.', env: 'QUEEK_APP_STORE' }),
+    store: Flags.string({ summary: 'The owned test store (numeric p_id or name). The only store when you own exactly one.', env: 'QUEEK_APP_STORE' }),
     port: Flags.integer({ summary: 'Your local app server port the tunnel forwards to.', default: 3000, min: 1, max: 65535 }),
     url: Flags.string({ summary: 'Your own tunnel URL (https). Skips starting cloudflared.' }),
   };
@@ -61,8 +62,15 @@ export default class AppDev extends BaseCommand {
   async run(): Promise<void> {
     const { flags } = await this.parse(AppDev);
     this.setVerbose(flags.verbose as boolean | undefined);
-    const { token } = await requireToken().catch((error: Error) => this.error(error.message, { exit: 2 }));
-    const api = appApi();
+    const { api, kind } = await appSession({
+      noBrowser: flags['no-browser'],
+      log: (line) => this.log(line),
+      logError: (line) => this.logToStderr(line),
+      debug: (line) => this.debug(line),
+    }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
+    if (kind === 'automation') {
+      this.error('`queek app dev` needs a developer session (test-store reads are outside the automation grant) — run it where `queek auth login` works.', { exit: 2 });
+    }
 
     const tomlPath = resolveTomlPath(flags.path, flags.config);
     const tunnel = await this.tunnel(flags.path, flags.url, flags.port);
@@ -73,14 +81,13 @@ export default class AppDev extends BaseCommand {
     process.once('SIGINT', stop);
     process.once('SIGTERM', stop);
 
-    const register = async (): Promise<{ slug: string; version: string }> => {
+    const register = async (): Promise<void> => {
       const { manifest } = loadApp(flags.path, flags.config);
       const devManifest = withDevUrls(manifest, tunnel.url);
-      const result = await api.deploy(token, devManifest).catch((error: Error) => this.error(error.message, { exit: 1 }));
-      const storePid = await this.pickStore(api, token, flags.store);
-      await api.devInstall(token, result.slug, storePid).catch((error: Error) => this.error(error.message, { exit: 1 }));
-      this.log(`Dev: ${result.slug} ${result.version} on test store ${storePid} ← ${tunnel.url}`);
-      return { slug: result.slug, version: result.version };
+      const result = await api.deploy(devManifest).catch((error: Error) => this.error(error.message, { exit: 1 }));
+      const storePid = await this.pickStore(api, flags.store);
+      const installed = await api.devInstall(result.slug, storePid).catch((error: Error) => this.error(error.message, { exit: 1 }));
+      this.log(`Dev: ${result.slug} ${result.version} on test store ${storePid} ← ${tunnel.url} (install ${installed.status})`);
     };
 
     await register();
@@ -103,17 +110,17 @@ export default class AppDev extends BaseCommand {
     return startCloudflared(port, join(queek, 'cloudflared.log')).catch((error: Error) => this.error(error.message, { exit: 2 }));
   }
 
-  private async pickStore(api: ReturnType<typeof appApi>, token: string, wanted: string | undefined): Promise<string> {
-    const { data: stores } = await api.testStores(token).catch((error: Error) => this.error(error.message, { exit: 1 }));
+  private async pickStore(api: DeveloperApi, wanted: string | undefined): Promise<number> {
+    const { data: stores, total } = await api.testStores().catch((error: Error) => this.error(error.message, { exit: 1 }));
     if (stores.length === 0) this.error('No owned test stores — create one on the dashboard first.', { exit: 2 });
     if (wanted) {
-      const found = stores.find((store) => store.p_id === wanted || store.name === wanted);
+      const found = stores.find((store) => String(store.p_id) === wanted || store.name === wanted);
       if (!found) {
-        this.error(`No owned test store '${wanted}'. Yours: ${stores.map((store) => store.p_id).join(', ')}.`, { exit: 2 });
+        this.error(`No owned test store '${wanted}'. Yours: ${stores.map((store) => store.p_id).join(', ')}.${total > stores.length ? ` (${total} total; refine by exact p_id)` : ''}`, { exit: 2 });
       }
       return found.p_id;
     }
-    if (stores.length === 1) return stores[0].p_id;
-    this.error(`You own ${stores.length} test stores — pass --store. Yours: ${stores.map((store) => store.p_id).join(', ')}.`, { exit: 2 });
+    if (stores.length === 1 && total === 1) return stores[0].p_id;
+    this.error(`You own ${total} test stores — pass --store. First page: ${stores.map((store) => `${store.p_id} (${store.name})`).join(', ')}.`, { exit: 2 });
   }
 }
