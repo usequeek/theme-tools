@@ -144,7 +144,7 @@ describe('theme/template-copy', () => {
   it('rejects schedules only the vendor can keep — response and delivery windows, weekday drops, daily freshness, 24/7', () => {
     for (const text of [
       'Delivery within the hour', 'We answer within the hour', 'We reply within the hour',
-      'same-day delivery', 'Same day', 'next day dispatch',
+      'Same day', 'Next-day', 'Overnight delivery',
       'New shirts land every Friday', 'New In Every Friday', 'Fresh drops on Fridays',
       'Cooked fresh every morning', 'Market-fresh every morning', 'Cooked fresh daily',
       'Chapman and zobo are mixed every morning',
@@ -170,6 +170,71 @@ describe('theme/template-copy', () => {
     ]) {
       expect(copyViolations(text, null), text).toEqual([]);
     }
+  });
+
+  it('counts same-day and next-day only about delivery, dispatch or pickup — never twice', () => {
+    expect(copyViolations('Bread baked the next day tastes better toasted', null)).toEqual([]);
+    expect(copyViolations('Sealed the same day', null)).toEqual([]);
+    for (const text of ['same-day delivery', 'next day dispatch', 'Delivered the same day', 'Same day', 'Next-day']) {
+      expect(copyViolations(text, null), text).toHaveLength(1);
+    }
+    expect(copyViolations('Ships the same day', null)).toHaveLength(1);
+    expect(copyViolations('Ships the same day', null)).toEqual([expect.stringMatching(/^makes a promise/)]);
+  });
+
+  // Ported from the storefront's tests/theme-templates.test.ts describe('template copy'):
+  // its review of 24/9/26 ran these through the gate, and a pattern change
+  // that breaks either list must fail here instead of in the storefront.
+  it('finds places, naira amounts and promises; not the craft', () => {
+    expect(copyViolations('Hot across Surulere and VI', null)).toEqual(['names places (VI, Surulere)']);
+    expect(copyViolations('Free delivery over ₦25,000', null)).toEqual(['states a naira amount', 'makes a promise ("Free delivery")']);
+    expect(copyViolations('Orders over N5,000 ship', null)).toEqual(['states a naira amount']);
+    expect(copyViolations('Lagos orders arrive in 1–2 days', null)).toEqual(['names a place (Lagos)', 'makes a promise ("arrive in 1–2 days")']);
+    for (const promise of ['Ships the same day', '30-day returns', 'Freshness Guaranteed', 'Delivery in 45 min', 'Resized free within 30 days']) {
+      expect(copyViolations(promise, null), promise).toHaveLength(1);
+    }
+    for (const history of ['Cooked over open flame since 2014', 'We started in 2019 with one table', 'Est. 2016']) {
+      expect(copyViolations(history, null), history).toEqual([expect.stringMatching(/^dates the store/)]);
+    }
+    expect(copyViolations('Email hello@zurijewellery.ng to see what we hold.', null)).toEqual(['gives the store’s contact details ("hello@zurijewellery.ng")']);
+    expect(copyViolations('**Phone:** +234 800 100 2000', null)).toEqual(['gives the store’s contact details ("+234 800 100 2000")']);
+    // Process, fabric, seasons and adjectives are not places, promises or history.
+    expect(copyViolations('Spring / Summer 2026', null)).toEqual([]);
+    for (const fine of ['Sourdough fermented for 36 hours', 'Ankara prints, cut to order', 'Nigerian kitchen classics', 'across the island', '2 minutes · 4 questions']) {
+      expect(copyViolations(fine, 'Bloom Bakehouse'), fine).toEqual([]);
+    }
+  });
+
+  // The review of 24/9/26 ran these through the gate: each list is what it must catch
+  // and what it must leave alone. A pattern change that breaks either fails here.
+  it.each([
+    'Save 20% with code RAINS20', 'code ADAORA10 takes 10% off', 'Up to 25% off duos and trios',
+    'Half-Price Luxury', 'Half price Friday', 'Shop the sale', 'The clearance sale is on', 'Sale ends Sunday midnight',
+    'Free shipping on orders over ₦200,000', 'Free delivery on orders over ₦15,000',
+    'Bring the jar back for a refill at a discount', 'Clip the coupon below',
+    'Six years, two stores', 'Established in 2016', 'In 2014 we opened the kitchen',
+    'Open daily from 11am', 'Doors open 11am to 10pm', 'Open early, from 6 AM', 'Weekdays 12–3pm',
+    'Delivered in 2 hours', 'Ships in 24 hours', '24-hour delivery', '30-minute delivery', '1–2 day delivery',
+    'Free doorstep delivery', 'We reply within a day',
+    'Orders over N5000 ship', '5,000 naira minimum',
+    'Call +234-803-123-4567', 'Call 0803 1234 567', 'wa.me/2348031234567',
+    'Computer Village prices', 'Made in China',
+    'Complimentary delivery on every order', 'Free samples with every order', 'Free styling on every unit',
+    'Made to measure in ten days', 'New drop every Friday, 7pm', 'Easy returns, always', 'One inbox, answered fast',
+  ])('flags %s', (text) => {
+    expect(copyViolations(text, null)).not.toEqual([]);
+  });
+
+  it.each([
+    'Cold brewed for 12–24 hours', 'Marinated 24-48 hours', 'Best eaten within 3 days', 'Noodles ready in 3 minutes',
+    'Bread baked the next day tastes better toasted', 'Sealed the same day', 'Collection VI', 'New York cheesecake',
+    'Dubai chocolate bar', 'London Dry gin', 'The Florence midi dress', 'Opened the 2026 season with linen',
+    'Glow before *8am*', 'Trace your feet after 6pm', 'UK size 8',
+    'Wholesale bags on request', 'Ask our salesperson for help', 'Beans sold for sale by the kilo',
+    'Free-range eggs', 'Hands-free cooking', 'Made to measure', 'Always in season: tomatoes and peppers',
+    'Open the box on Friday', 'Alterations on every trouser',
+  ])('leaves %s alone', (text) => {
+    expect(copyViolations(text, null)).toEqual([]);
   });
 
   it('leaves schedules in testimonials and reviews alone', async () => {
@@ -234,8 +299,8 @@ describe('theme/template-copy', () => {
     expect(found[0].found).toContain('claim only the vendor can make: "Cruelty free"');
     expect(found[1].found).toContain('claim only the vendor can make: "certification"');
     expect(found[2].found).toContain('states an offer ("save 15%")');
-    expect(found[3].found).toContain('promises a schedule: "Same-day"');
     expect(found[3].found).toContain('makes a promise ("Same-day dispatch")');
+    expect(found[3].found).not.toContain('promises a schedule');
     for (const f of found) {
       expect(f.rule).toBe('theme/template-copy');
       expect(f.severity).toBe('reject');

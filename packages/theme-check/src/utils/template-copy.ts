@@ -225,6 +225,12 @@ export const TEMPLATE_COPY_CLAIMS: readonly RegExp[] = [
 ];
 
 /**
+ * Words that make `same day` / `next day` a schedule: the store promising
+ * when a delivery, dispatch, shipment or pickup happens.
+ */
+const SCHEDULE_CARRIER = String.raw`(?:deliver\w*|dispatch\w*|ship\w*|pick[- ]?up|collection|courier)`;
+
+/**
  * Schedules only the vendor can keep (BE25): a response or delivery window,
  * a weekday drop, daily freshness, 24/7. Match case-insensitively (`i`),
  * with the `u` flag.
@@ -234,13 +240,20 @@ export const TEMPLATE_COPY_CLAIMS: readonly RegExp[] = [
  * so usage advice ("SPF every morning", "Two drops every morning") and
  * product purpose ("made for daily wear", "for daily cooking") are not
  * schedules; the weekday patterns need `every Friday` / `on Fridays`, so
- * "Open the box on Friday" and "Sunday best" are not.
+ * "Open the box on Friday" and "Sunday best" are not; `same day` /
+ * `next day` count only about a delivery, dispatch, shipment or pickup
+ * ("same-day delivery", "Delivered the same day") or as the whole text (a
+ * label cell, like roast's delivery table had), so product facts ("Bread
+ * baked the next day tastes better toasted", "Sealed the same day") are not
+ * schedules.
  */
 export const TEMPLATE_COPY_SCHEDULES: readonly RegExp[] = [
   // a response or delivery window
   /\bwithin (?:the|an|one|a few|\d+) (?:hour|hours|minutes|mins)\b/iu,
-  /\bsame[- ]day\b/iu,
-  /\bnext[- ]day\b/iu,
+  new RegExp(String.raw`\b${SCHEDULE_CARRIER}\b[^.!?\n]{0,20}?\bsame[- ]day\b|\bsame[- ]day\b[^.!?\n]{0,20}?\b${SCHEDULE_CARRIER}\b`, 'iu'),
+  new RegExp(String.raw`\b${SCHEDULE_CARRIER}\b[^.!?\n]{0,20}?\bnext[- ]day\b|\bnext[- ]day\b[^.!?\n]{0,20}?\b${SCHEDULE_CARRIER}\b`, 'iu'),
+  /^\s*same[- ]day\s*$/iu,
+  /^\s*next[- ]day\s*$/iu,
   /\bovernight (?:delivery|shipping)\b/iu,
   // a weekday drop
   /\bevery (?:mon|tues|wednes|thurs|fri|satur|sun)day\b/iu,
@@ -264,6 +277,15 @@ const first = (patterns: RegExp[], text: string): string | null => {
   return null;
 };
 
+/** The first match of any pattern, with its character span in the text. */
+const firstSpan = (patterns: RegExp[], text: string): { match: string; start: number; end: number } | null => {
+  for (const pattern of patterns) {
+    const match = pattern.exec(text);
+    if (match) return { match: match[0], start: match.index, end: match.index + match[0].length };
+  }
+  return null;
+};
+
 /** Why one copy string could not go live on another store unchanged; empty when it can. */
 export function copyViolations(text: string, storeName: string | null | undefined): string[] {
   const found: string[] = [];
@@ -276,16 +298,19 @@ export function copyViolations(text: string, storeName: string | null | undefine
   if (offer) found.push(`states an offer ("${offer}")`);
   const hours = HOURS.exec(text);
   if (hours) found.push(`states opening hours ("${hours[0]}")`);
-  const promise = first(PROMISE, text);
-  if (promise) found.push(`makes a promise ("${promise}")`);
+  const promise = firstSpan(PROMISE, text);
+  if (promise) found.push(`makes a promise ("${promise.match}")`);
   const history = first(STORE_HISTORY, text);
   if (history) found.push(`dates the store ("${history}")`);
   const contact = CONTACT.exec(text);
   if (contact) found.push(`gives the store’s contact details ("${contact[0]}")`);
   const claim = first([...TEMPLATE_COPY_CLAIMS], text);
   if (claim) found.push(`claim only the vendor can make: "${claim}"`);
-  const schedule = first([...TEMPLATE_COPY_SCHEDULES], text);
-  if (schedule) found.push(`promises a schedule: "${schedule}"`);
+  const schedule = firstSpan([...TEMPLATE_COPY_SCHEDULES], text);
+  // A phrase the promise check already reports is not reported twice: skip a
+  // schedule match overlapping the promise match's span.
+  const doubleReported = !!schedule && !!promise && schedule.start < promise.end && promise.start < schedule.end;
+  if (schedule && !doubleReported) found.push(`promises a schedule: "${schedule.match}"`);
   return found;
 }
 
