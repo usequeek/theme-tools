@@ -48,21 +48,64 @@ const userAuth = (token = 'tok'): (() => Promise<AuthContext>) => async () => ({
 const autoAuth = (token = 'auto'): (() => Promise<AuthContext>) => async () => ({ token, kind: 'automation' });
 
 describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
-  it('deploys {manifest, changelog} and reads signing_secret from the envelope', async () => {
+  it('deploys {manifest} bare (no version: backend auto-assigns) and reads signing_secret', async () => {
     const { fetchImpl, calls } = mockFetch({
       'POST /api/v1/biz/vendor/developer/apps': ok({
         p_id: 'app_1', slug: 'hello', name: 'Hello',
         version: { version: '1.0.1', sequence: 2, review_status: 'development' },
         signing_secret: 'whsec_once',
+        status: 'released',
       }),
     });
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
-    const result = await api.deploy(MANIFEST, 'A change');
+    const result = await api.deploy(MANIFEST);
     expect(result.slug).toBe('hello');
     expect(result.sequence).toBe(2);
     expect(result.signing_secret).toBe('whsec_once');
-    expect(calls[0].body).toEqual({ manifest: MANIFEST, changelog: 'A change' });
+    expect(result.status).toBe('released');
+    expect(result.unchanged).toBe(false);
+    expect(calls[0].body).toEqual({ manifest: MANIFEST });
     expect(calls[0].headers.authorization).toBe('Bearer tok');
+  });
+
+  it('sends --version/--message/--no-release through, and spots the no-change no-op', async () => {
+    const { fetchImpl, calls } = mockFetch({
+      'POST /api/v1/biz/vendor/developer/apps': ok({
+        p_id: 'app_1', slug: 'hello', name: 'Hello',
+        version: { version: '1.0.0', sequence: 1, review_status: 'live' },
+        status: 'released',
+      }),
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    await api.deploy(MANIFEST, { version: '1.2.0', message: 'Greeting', noRelease: true });
+    expect(calls[0].body).toEqual({ manifest: MANIFEST, version: '1.2.0', message: 'Greeting', changelog: 'Greeting', no_release: true });
+
+    const same = new DeveloperApi('https://api.test', {
+      fetchImpl: mockFetch({
+        'POST /api/v1/biz/vendor/developer/apps': [200, { status: 'success', message: 'No changes — version 1.0.0 is current.', data: {
+          p_id: 'app_1', slug: 'hello', name: 'Hello',
+          version: { version: '1.0.0', sequence: 1, review_status: 'live' },
+        } }],
+      }).fetchImpl,
+      getAuth: userAuth(),
+    });
+    expect((await same.deploy(MANIFEST)).unchanged).toBe(true);
+  });
+
+  it('marks in_review deploys for the command to word differently', async () => {
+    const api = new DeveloperApi('https://api.test', {
+      fetchImpl: mockFetch({
+        'POST /api/v1/biz/vendor/developer/apps': ok({
+          p_id: 'app_1', slug: 'hello', name: 'Hello',
+          version: { version: '1.1.0', sequence: 2, review_status: 'in_review' },
+          status: 'in_review',
+        }),
+      }).fetchImpl,
+      getAuth: userAuth(),
+    });
+    const result = await api.deploy(MANIFEST);
+    expect(result.status).toBe('in_review');
+    expect(result.unchanged).toBe(false);
   });
 
   it('reads the device pair: issue shape, 202 pending, 200 token pair, 404 unknown', async () => {
@@ -125,7 +168,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
       'GET /api/v1/biz/vendor/developer/apps/hello/versions': ok([
         { version: '1.0.0', sequence: 1, review_status: 'live', changelog: null, is_current: true, created_at: null },
       ]),
-      'POST /api/v1/biz/vendor/developer/apps/hello/versions/1.0.0/release': ok({ p_id: 'app_1', slug: 'hello' }),
+      'POST /api/v1/biz/vendor/developer/apps/hello/versions/1.0.0/release': ok({ status: 'released', version: { version: '1.0.0', sequence: 1 } }),
       'POST /api/v1/biz/vendor/developer/apps/hello/submit': ok({ p_id: 'app_1', slug: 'hello', review_status: 'in_review', submitted_version: { version: '1.0.1', sequence: 2, review_status: 'in_review' } }),
       'GET /api/v1/biz/vendor/developer/test-stores?per_page=50': ok({ data: [{ p_id: 12, name: 'Test', slug: 'test' }], meta: { current_page: 1, per_page: 50, total: 1 } }),
       'POST /api/v1/biz/vendor/developer/apps/hello/dev-installs': [201, { status: 'success', message: 'ok', data: { installation_p_id: 'ins_1', store_p_id: 12, app_p_id: 'app_1', status: 'active', installed_version: '1.0.1' } }],
@@ -134,7 +177,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect((await api.appConfig('hello')).review_status).toBe('live');
     const { versions } = await api.appVersions('hello');
     expect(versions).toEqual([{ version: '1.0.0', sequence: 1, review_status: 'live', changelog: null, current: true, created_at: null }]);
-    await api.releaseVersion('hello', '1.0.0');
+    expect(await api.releaseVersion('hello', '1.0.0')).toEqual({ status: 'released', version: '1.0.0' });
     const submitted = await api.submitApp('hello');
     expect(submitted).toEqual({ review_status: 'in_review', version: '1.0.1' });
     const stores = await api.testStores();

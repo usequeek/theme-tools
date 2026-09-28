@@ -72,6 +72,15 @@ export interface AppVersion {
   created_at: string | null;
 }
 
+export interface DeployOptions {
+  /** Optional X.Y.Z name (Shopify `--version`); absent → backend auto-assigns the next patch. */
+  version?: string;
+  /** Optional release note (Shopify `--message`). */
+  message?: string;
+  /** Create the version without releasing it (Shopify `--no-release`). */
+  noRelease?: boolean;
+}
+
 export interface DeployResult {
   p_id: string;
   slug: string;
@@ -79,8 +88,18 @@ export interface DeployResult {
   version: string;
   sequence: number;
   review_status: string;
+  /** `released` by default; `in_review` when the version needs admin review first. */
+  status: string;
+  /** True when the manifest was identical: no version was cut. */
+  unchanged: boolean;
   /** Shown ONCE on first registration — never returned again. */
   signing_secret?: string;
+}
+
+export interface ReleaseResult {
+  /** `released` (serving now) or `in_review` (releases when approved). */
+  status: string;
+  version: string | null;
 }
 
 export interface AppConfig {
@@ -158,8 +177,8 @@ export class DeveloperApi {
    * plain-words 403 for automation tokens. `action` words the 403
    * ("deploying", "releasing version 1.2.0 of", ...).
    */
-  private async vendor<T>(method: string, path: string, action: string, body?: unknown): Promise<T> {
-    const attempt = async (token: string, kind: AuthKind, retried: boolean): Promise<{ data: unknown }> => {
+  private async vendor<T>(method: string, path: string, action: string, body?: unknown): Promise<{ data: T; message: string }> {
+    const attempt = async (token: string, kind: AuthKind, retried: boolean): Promise<{ data: unknown; message: string }> => {
       const { status, body: raw } = await this.raw(`${this.base}${VENDOR_PREFIX}${path}`, {
         method,
         headers: { 'content-type': 'application/json', accept: 'application/json', authorization: `Bearer ${token}` },
@@ -180,13 +199,13 @@ export class DeveloperApi {
         );
       }
       if (status < 200 || status >= 300) throw new ApiError(messageOf(raw, status), status, raw);
-      const data = (raw as { data?: unknown } | null)?.data ?? null;
-      return { data };
+      const envelope = (raw ?? {}) as { data?: unknown; message?: unknown };
+      return { data: envelope.data ?? null, message: typeof envelope.message === 'string' ? envelope.message : '' };
     };
 
     const auth = await this.getAuth();
-    const { data } = await attempt(auth.token, auth.kind, false);
-    return data as T;
+    const { data, message } = await attempt(auth.token, auth.kind, false);
+    return { data: data as T, message };
   }
 
   // ── OAuth (web router, unauthenticated except by code/verifier) ──
@@ -272,13 +291,22 @@ export class DeveloperApi {
 
   // ── Developer surface (vendor router, bearer) ──
 
-  /** Deploy: toml → version N+1 (DeveloperAppController.php:180). */
-  async deploy(manifest: AppManifest, changelog?: string): Promise<DeployResult> {
-    const data = await this.vendor<Record<string, unknown>>('POST', '/apps', 'deploying this app', {
+  /**
+   * Deploy: toml → version N+1, released by default (DeveloperAppController.php:180).
+   * The manifest carries no `version` — `options.version` names one, otherwise
+   * the backend auto-assigns the next patch. `message` rides both `message`
+   * and `changelog` (S1 validated `changelog`; the parallel review-policy
+   * build reads `message` — harmless duplication, confirmed in open_questions).
+   */
+  async deploy(manifest: AppManifest, options: DeployOptions = {}): Promise<DeployResult> {
+    const { data, message } = await this.vendor<Record<string, unknown>>('POST', '/apps', 'deploying this app', {
       manifest,
-      ...(changelog !== undefined ? { changelog } : {}),
+      ...(options.version !== undefined ? { version: options.version } : {}),
+      ...(options.message !== undefined ? { message: options.message, changelog: options.message } : {}),
+      ...(options.noRelease ? { no_release: true } : {}),
     });
     const version = (data.version ?? {}) as Record<string, unknown>;
+    const unchanged = data.unchanged === true || /no changes/i.test(message);
     return {
       p_id: data.p_id as string,
       slug: data.slug as string,
@@ -286,32 +314,36 @@ export class DeveloperApi {
       version: version.version as string,
       sequence: version.sequence as number,
       review_status: version.review_status as string,
+      status: typeof data.status === 'string' ? data.status : 'released',
+      unchanged,
       ...(typeof data.signing_secret === 'string' ? { signing_secret: data.signing_secret } : {}),
     };
   }
 
   /** Owned test stores for the `--store` selector (DeveloperAppController.php:239). */
   async testStores(): Promise<{ data: TestStore[]; total: number }> {
-    const data = await this.vendor<{ data: TestStore[]; meta: { total: number } }>('GET', '/test-stores?per_page=50', 'listing test stores');
+    const { data } = await this.vendor<{ data: TestStore[]; meta: { total: number } }>('GET', '/test-stores?per_page=50', 'listing test stores');
     return { data: data.data, total: data.meta.total };
   }
 
   /** Install an unreviewed dev build on an owned test store (DeveloperAppController.php:268). */
-  devInstall(app: string, testStorePId: number, settings?: Record<string, unknown>): Promise<DevInstallResult> {
-    return this.vendor('POST', `/apps/${encodeURIComponent(app)}/dev-installs`, `installing a dev build of '${app}'`, {
+  async devInstall(app: string, testStorePId: number, settings?: Record<string, unknown>): Promise<DevInstallResult> {
+    const { data } = await this.vendor<DevInstallResult>('POST', `/apps/${encodeURIComponent(app)}/dev-installs`, `installing a dev build of '${app}'`, {
       test_store_p_id: testStorePId,
       ...(settings !== undefined ? { settings } : {}),
     });
+    return data;
   }
 
   /** Server → toml (DeveloperAppController.php:308). */
-  appConfig(app: string): Promise<AppConfig> {
-    return this.vendor('GET', `/apps/${encodeURIComponent(app)}/config`, `linking config of '${app}'`);
+  async appConfig(app: string): Promise<AppConfig> {
+    const { data } = await this.vendor<AppConfig>('GET', `/apps/${encodeURIComponent(app)}/config`, `linking config of '${app}'`);
+    return data;
   }
 
   /** Every version snapshot, newest first (DeveloperAppController.php:342). */
   async appVersions(app: string): Promise<{ versions: AppVersion[] }> {
-    const rows = await this.vendor<Record<string, unknown>[]>('GET', `/apps/${encodeURIComponent(app)}/versions`, `listing versions of '${app}'`);
+    const { data: rows } = await this.vendor<Record<string, unknown>[]>('GET', `/apps/${encodeURIComponent(app)}/versions`, `listing versions of '${app}'`);
     return {
       versions: rows.map((row) => ({
         version: row.version as string,
@@ -324,14 +356,17 @@ export class DeveloperApi {
     };
   }
 
-  /** Serve an approved version snapshot (DeveloperAppController.php:374). */
-  releaseVersion(app: string, version: string): Promise<unknown> {
-    return this.vendor('POST', `/apps/${encodeURIComponent(app)}/versions/${encodeURIComponent(version)}/release`, `releasing version ${version} of '${app}'`);
+  /** Serve a created version: released now, or held in review (review-policy §116). */
+  async releaseVersion(app: string, version: string): Promise<ReleaseResult> {
+    const { data } = await this.vendor<Record<string, unknown>>('POST', `/apps/${encodeURIComponent(app)}/versions/${encodeURIComponent(version)}/release`, `releasing version ${version} of '${app}'`);
+    const status = typeof data.status === 'string' ? data.status : 'released';
+    const released = (data.version ?? {}) as Record<string, unknown>;
+    return { status, version: typeof released.version === 'string' ? released.version : version };
   }
 
   /** Submit for review (DeveloperAppController.php:72). */
   async submitApp(app: string): Promise<{ review_status: string; version: string | null }> {
-    const data = await this.vendor<Record<string, unknown>>('POST', `/apps/${encodeURIComponent(app)}/submit`, `submitting '${app}'`);
+    const { data } = await this.vendor<Record<string, unknown>>('POST', `/apps/${encodeURIComponent(app)}/submit`, `submitting '${app}'`);
     const submitted = (data.submitted_version ?? null) as Record<string, unknown> | null;
     return {
       review_status: submitted !== null ? (submitted.review_status as string) : (data.review_status as string),

@@ -152,8 +152,21 @@ export function loadTomlFile(path: string): LoadedToml {
  * Throws `TomlError` (exit 2) on anything the backend would refuse —
  * the same names, the same limits, the same error text where it matters.
  */
-export function toManifest(doc: Record<string, unknown>): AppManifest {
+export interface TomlManifest {
+  manifest: AppManifest;
+  /** Non-fatal notices (e.g. an ignored `version`) for the command to print once. */
+  warnings: string[];
+}
+
+/**
+ * Map the grouped toml onto the flat manifest the API takes. `version` is
+ * deliberately NOT mapped: queek.app.toml carries no version (Shopify
+ * parity) — the backend auto-assigns the next patch, or `--version` names
+ * one. A leftover `version` warns once instead of failing old checkouts.
+ */
+export function toManifest(doc: Record<string, unknown>): TomlManifest {
   const problems: string[] = [];
+  const warnings: string[] = [];
 
   for (const key of Object.keys(doc)) {
     if (!TOP_LEVEL_TOML_KEYS.has(key)) problems.push(unknownField(key));
@@ -187,8 +200,9 @@ export function toManifest(doc: Record<string, unknown>): AppManifest {
   };
 
   const name = str(doc.name, 'name', 120, true) as string;
-  const version = doc.version === undefined ? '1.0.0' : (doc.version as string);
-  if (typeof version !== 'string' || !SEMVER_RE.test(version)) throw fail('The version must be strict X.Y.Z (default 1.0.0).');
+  if (doc.version !== undefined) {
+    warnings.push('`version` in queek.app.toml is ignored — the backend auto-assigns the next patch; name one with `queek app deploy --version X.Y.Z` instead.');
+  }
   const distribution = doc.distribution === undefined ? 'public' : (doc.distribution as string);
   if (!['public', 'development'].includes(distribution as string)) throw fail('The distribution must be one of: public, development.');
   if (doc.icon !== undefined && (typeof doc.icon !== 'string' || doc.icon.length > 64 || !ICON_RE.test(doc.icon))) {
@@ -253,7 +267,6 @@ export function toManifest(doc: Record<string, unknown>): AppManifest {
   });
 
   const manifest: AppManifest = { slug: resolvedSlug, name, scopes: scopes as string[], install_url: app.install_url as string, uninstall_url: app.uninstall_url as string };
-  if (version !== '1.0.0') manifest.version = version;
   if (distribution !== 'public') manifest.distribution = distribution;
   for (const key of ['icon', 'developer', 'category'] as const) {
     if (doc[key] !== undefined) manifest[key] = doc[key];
@@ -279,7 +292,12 @@ export function toManifest(doc: Record<string, unknown>): AppManifest {
   for (const key of Object.keys(manifest)) {
     if (!(MANIFEST_KEYS as readonly string[]).includes(key)) throw new TomlError(unknownField(key));
   }
-  return manifest;
+  return { manifest, warnings };
+}
+
+/** Strict X.Y.Z for `deploy --version` (the backend auto-assigns when absent). */
+export function assertSemver(version: string): void {
+  if (!SEMVER_RE.test(version)) throw new TomlError('The --version must be strict X.Y.Z (e.g. 1.2.0).');
 }
 
 function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (message: string) => never): void {
@@ -406,7 +424,9 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
  */
 export function fromManifest(manifest: Record<string, unknown>): string {
   const doc: Record<string, unknown> = {};
-  for (const key of ['slug', 'name', 'version', 'distribution', 'icon', 'developer', 'category']) {
+  // No `version`: the toml never carries one (Shopify parity) — the linked
+  // version is printed by `config link` itself.
+  for (const key of ['slug', 'name', 'distribution', 'icon', 'developer', 'category']) {
     if (manifest[key] !== undefined) doc[key] = manifest[key];
   }
   const listing: Record<string, unknown> = {};
@@ -431,10 +451,11 @@ export function fromManifest(manifest: Record<string, unknown>): string {
 }
 
 /** Load + validate in one step: what every `app` command starts from. */
-export function loadApp(dir: string, variant?: string): { path: string; manifest: AppManifest } {
+export function loadApp(dir: string, variant?: string): { path: string; manifest: AppManifest; warnings: string[] } {
   const path = resolveTomlPath(dir, variant);
   const { doc } = loadTomlFile(path);
-  return { path, manifest: toManifest(doc) };
+  const { manifest, warnings } = toManifest(doc);
+  return { path, manifest, warnings };
 }
 
 export function tomlFileName(variant?: string): string {

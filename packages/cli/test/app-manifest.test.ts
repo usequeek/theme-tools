@@ -42,14 +42,23 @@ function stage(files: Record<string, string>): string {
 }
 
 describe('queek.app.toml', () => {
-  it('maps a minimal toml onto the manifest (semver + distribution defaults)', () => {
+  it('maps a minimal toml onto the manifest (never a version; distribution defaults)', () => {
     const dir = stage({ [APP_TOML]: BASE });
-    const { manifest } = loadApp(dir);
+    const { manifest, warnings } = loadApp(dir);
     expect(manifest.slug).toBe('hello');
     expect(manifest.scopes).toEqual(['merchant-business_profile-read']);
     expect(manifest.version).toBeUndefined();
     expect(manifest.distribution).toBeUndefined();
     expect(manifest.install_url).toBe('https://hello.example.com/install');
+    expect(warnings).toEqual([]);
+  });
+
+  it('ignores a leftover toml version with a once-warning (use --version)', () => {
+    const { doc } = loadTomlFile(stageFile(top('version = "1.0.0"\n')));
+    const { manifest, warnings } = toManifest(doc);
+    expect(manifest.version).toBeUndefined();
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('--version');
   });
 
   it('resolves -c/--config variants (queek.app.<name>.toml)', () => {
@@ -61,7 +70,7 @@ describe('queek.app.toml', () => {
 
   it('accepts handle instead of slug, and refuses slug + handle together', () => {
     const { doc } = loadTomlFile(stageFile(`${BASE.replace('slug = "hello"', 'handle = "hello"')}`));
-    expect(toManifest(doc).slug).toBe('hello');
+    expect(toManifest(doc).manifest.slug).toBe('hello');
     const both = loadTomlFile(stageFile(top('handle = "other"\n')));
     expect(() => toManifest(both.doc)).toThrow('either');
   });
@@ -71,7 +80,7 @@ describe('queek.app.toml', () => {
     expect(() => toManifest(doc)).toThrow("Unknown field 'bogus' in manifest.");
   });
 
-  it('rejects a bad slug, semver and distribution', () => {
+  it('rejects a bad slug and distribution', () => {
     const bad = (toml: string): string => {
       try {
         toManifest(loadTomlFile(stageFile(toml)).doc);
@@ -81,7 +90,6 @@ describe('queek.app.toml', () => {
       }
     };
     expect(bad(`${BASE.replace('slug = "hello"', 'slug = "Hello!"')}`)).toContain('slug must be');
-    expect(bad(top('version = "1.0"\n'))).toContain('strict X.Y.Z');
     expect(bad(top('distribution = "private"\n'))).toContain('one of: public, development');
     expect(bad(`${BASE.replace('[access]', '[access]\n').replace('scopes = ["merchant-business_profile-read"]', 'scopes = ["merchant-apps-install"]')}`)).toContain(
       'can never be granted',
@@ -110,11 +118,13 @@ describe('queek.app.toml', () => {
     };
     const toml = fromManifest(server);
     expect(toml).toContain('queek.app.toml');
+    expect(toml).not.toContain('1.2.0');
     const back = toManifest(loadTomlFile(stageFile(toml)).doc);
-    expect(back.slug).toBe('hello');
-    expect(back.version).toBe('1.2.0');
-    expect(back.webhook_topics).toEqual(['orders/updated']);
-    expect(back.settings).toEqual([{ key: 'greeting', label: 'Greeting', type: 'string' }]);
+    expect(back.manifest.slug).toBe('hello');
+    expect(back.manifest.version).toBeUndefined();
+    expect(back.warnings).toEqual([]);
+    expect(back.manifest.webhook_topics).toEqual(['orders/updated']);
+    expect(back.manifest.settings).toEqual([{ key: 'greeting', label: 'Greeting', type: 'string' }]);
   });
 
   it('checks dashboard enums and the action-scope grant rule', () => {
@@ -131,7 +141,7 @@ notify_url = "https://hello.example.com/notify"
 `;
     expect(() => toManifest(loadTomlFile(stageFile(action('merchant-orders-write'))).doc)).toThrow('never grants');
     const ok = toManifest(loadTomlFile(stageFile(action('merchant-business_profile-read'))).doc);
-    expect((ok.dashboard as { actions: unknown[] }).actions).toHaveLength(1);
+    expect((ok.manifest.dashboard as { actions: unknown[] }).actions).toHaveLength(1);
     expect(() => toManifest(loadTomlFile(stageFile(action('merchant-business_profile-read').replace('order_appointment', 'teleport'))).doc)).toThrow(
       'order_appointment',
     );

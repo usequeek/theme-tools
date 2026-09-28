@@ -138,10 +138,12 @@ queek theme init my-theme --templates laundry,foods --primary laundry --tags min
 ```bash
 queek app init my-app       # from usequeek/queek-app-starter (== npm create @usequeek/app)
 queek app dev               # tunnel + owned test-store install, re-registers on save
-queek app deploy            # queek.app.toml → developer API → version N+1 (secret shown once)
+queek app deploy            # queek.app.toml → version N+1, released (secret shown once)
+queek app deploy --version 1.2.0 --message "Greeting"   # name the version + note
+queek app deploy --no-release                           # create without serving
 queek app config link hello # server manifest → queek.app.toml (no config push: deploy carries config)
 queek app versions list hello
-queek app release hello 1.2.0
+queek app release hello 1.2.0   # or: queek app release hello --version 1.2.0
 queek app submit hello
 queek auth login            # rarely needed: app commands sign in automatically
 queek auth logout
@@ -150,9 +152,10 @@ queek auth logout
 `queek.app.toml` is the local source of truth (same names as the server manifest,
 grouped: `[listing]`, `[access]`, `[webhooks]`, `[app]`, `[[settings]]`,
 `[extensions]`, `[dashboard]`); `-c/--config <name>` reads `queek.app.<name>.toml`.
-`handle` is CLI-only sugar for `slug`. Secrets never live in the toml — deploy
-writes the registration secret to `.queek/.env.local` (gitignored). Apps are
-addressed by `p_id|slug`, never UUID.
+The toml carries no `version` — the backend auto-assigns the next patch (a leftover
+`version` warns once and is ignored). `handle` is CLI-only sugar for `slug`.
+Secrets never live in the toml — deploy writes the registration secret to
+`.queek/.env.local` (gitignored). Apps are addressed by `p_id|slug`, never UUID.
 
 Auth: commands sign in automatically when there is no valid session (browser
 OAuth; device code with `--no-browser` or when headless). The 60-minute access

@@ -81,8 +81,13 @@ export default class AppDev extends BaseCommand {
     process.once('SIGINT', stop);
     process.once('SIGTERM', stop);
 
+    let warned = false;
     const register = async (): Promise<void> => {
-      const { manifest } = loadApp(flags.path, flags.config);
+      const { manifest, warnings } = loadApp(flags.path, flags.config);
+      if (!warned) {
+        warned = true;
+        for (const warning of warnings) this.logToStderr(`Warning: ${warning}`);
+      }
       const devManifest = withDevUrls(manifest, tunnel.url);
       const result = await api.deploy(devManifest).catch((error: Error) => this.error(error.message, { exit: 1 }));
       const storePid = await this.pickStore(api, flags.store);
