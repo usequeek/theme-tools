@@ -1,0 +1,447 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
+
+/**
+ * `queek.app.toml` — the local source of truth for an app's manifest, mapped
+ * EXACTLY to the backend's `AppManifestValidator::topLevelKeys()` (25 keys).
+ * The server never fetches a live manifest URL; `deploy` pushes this file.
+ *
+ * Secrets NEVER live here: the registration secret (`whsec_…`) goes to
+ * `.queek/.env.local` (gitignored), `type=secret` settings declare a slot
+ * only. Anything secret-shaped in the toml is refused before it can ship.
+ */
+
+export const APP_TOML = 'queek.app.toml';
+export const APP_TOML_VARIANT = (name: string): string => `queek.app.${name}.toml`;
+
+/** The 25 manifest keys the backend accepts — nothing else is sent. */
+export const MANIFEST_KEYS = [
+  'slug', 'name', 'description', 'icon', 'developer', 'version', 'distribution',
+  'category', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing',
+  'developer_url', 'privacy_url', 'support_url', 'scopes', 'webhook_topics',
+  'settings', 'install_url', 'uninstall_url', 'settings_url', 'webhook_url',
+  'extensions', 'dashboard',
+] as const;
+
+export type ManifestKey = (typeof MANIFEST_KEYS)[number];
+export type AppManifest = Partial<Record<ManifestKey, unknown>> & { slug: string; name: string; scopes: string[]; install_url: string; uninstall_url: string };
+
+export class TomlError extends Error {
+  readonly exitCode = 2;
+}
+
+/** `Unknown field 'x' in manifest.` — byte-identical to the backend's `rejectUnknown`. */
+export const unknownField = (key: string, where = 'manifest'): string => `Unknown field '${key}' in ${where}.`;
+
+const TOP_LEVEL_TOML_KEYS = new Set([
+  'slug', 'handle', 'name', 'version', 'distribution', 'icon', 'developer', 'category',
+  'listing', 'access', 'webhooks', 'app', 'settings', 'extensions', 'dashboard',
+]);
+
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,63}$/;
+const SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+const ICON_RE = /^[a-z0-9_-]+$/;
+const SETTING_KEY_RE = /^[a-z0-9_]{1,64}$/;
+
+/** Scopes the CLI refuses without asking the server (plan: never `merchant-apps-*`). */
+const NON_DELEGABLE_PREFIXES = ['merchant-apps-', 'merchant-api_keys-', 'merchant-roles-', 'merchant-users-', 'merchant-employees-', 'merchant-pos-'];
+
+const DASHBOARD_BLOCK_TARGETS = ['order-details', 'product-details'];
+const DASHBOARD_ACTION_TARGETS = ['order-details'];
+const DASHBOARD_PRINT_TARGETS = ['order-print'];
+const DASHBOARD_PRIMITIVES = ['date', 'time', 'select', 'text', 'slot-list'];
+const DASHBOARD_WHEN_FIELDS = ['order.has_appointment', 'order.is_paid', 'product.has_files'];
+const EXTENSION_BLOCK_TARGETS = ['product'];
+const EXTENSION_PRIMITIVES = ['date', 'time', 'select'];
+const EXTENSION_BLOCK_TYPES = ['app_block', 'app_embed'];
+
+/** Key/value shapes that smell like a secret and are refused in the toml. */
+function secretProblem(path: string, key: string, value: unknown): string | null {
+  const lower = key.toLowerCase();
+  if (lower.includes('secret') || lower.includes('private_key') || lower === 'kid' || lower === 'database_url' || lower === 'app_encryption_key') {
+    return `${path}: '${key}' looks like a secret — secrets never live in ${APP_TOML}; deploy writes them to .queek/.env.local instead.`;
+  }
+  if (typeof value === 'string' && (value.startsWith('whsec_') || /sk-(live|test)-/.test(value))) {
+    return `${path}: '${key}' holds a secret value — secrets never live in ${APP_TOML}.`;
+  }
+  return null;
+}
+
+function scanSecrets(node: unknown, path: string, problems: string[]): void {
+  if (Array.isArray(node)) {
+    node.forEach((item, index) => scanSecrets(item, `${path}[${index}]`, problems));
+    return;
+  }
+  if (node !== null && typeof node === 'object') {
+    for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+      const hit = secretProblem(path || 'manifest', key, value);
+      if (hit) problems.push(hit);
+      scanSecrets(value, path ? `${path}.${key}` : key, problems);
+    }
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function httpsProblem(field: string, value: unknown): string | null {
+  if (typeof value !== 'string' || !value.startsWith('https://')) {
+    return `The ${field} must be an https URL.`;
+  }
+  return null;
+}
+
+function checkSchemaFields(list: unknown, where: string, primitives: string[], problems: string[]): void {
+  if (!Array.isArray(list)) {
+    problems.push(`The ${where} schema must be a list.`);
+    return;
+  }
+  if (list.length > 12) problems.push(`The ${where} schema must not have more than 12 fields.`);
+  list.forEach((field, index) => {
+    if (!isRecord(field)) {
+      problems.push(`Unknown field '${index}' in ${where}.schema.`);
+      return;
+    }
+    for (const key of Object.keys(field)) {
+      if (!['key', 'label', 'type', 'required', 'options'].includes(key)) problems.push(unknownField(key, `${where}.schema[${index}]`));
+    }
+    if (typeof field.key !== 'string' || !SETTING_KEY_RE.test(field.key)) problems.push(`The ${where}.schema[${index}].key must match [a-z0-9_]{1,64}.`);
+    if (typeof field.label !== 'string' || field.label.length > 120) problems.push(`The ${where}.schema[${index}].label is required (max 120).`);
+    if (!primitives.includes(field.type as string)) problems.push(`The schema primitive must be one of: ${primitives.join(', ')}.`);
+    if (field.type === 'select' && (!Array.isArray(field.options) || field.options.length < 1)) {
+      problems.push('A select primitive needs at least one option.');
+    }
+  });
+}
+
+/**
+ * Resolve which toml file to read: `-c/--config <name>` picks
+ * `queek.app.<name>.toml` (Shopify parity), otherwise `queek.app.toml`,
+ * looked up in `dir`.
+ */
+export function resolveTomlPath(dir: string, variant?: string): string {
+  const file = variant ? APP_TOML_VARIANT(variant) : APP_TOML;
+  const full = resolve(dir, file);
+  if (!existsSync(full)) {
+    throw new TomlError(variant ? `No ${file} in ${dir} (from --config ${variant}).` : `No ${APP_TOML} in ${dir} — run \`queek app init\` first or pass --path.`);
+  }
+  return full;
+}
+
+export interface LoadedToml {
+  path: string;
+  doc: Record<string, unknown>;
+}
+
+/** Parse (but do not validate) a toml file. */
+export function loadTomlFile(path: string): LoadedToml {
+  let doc: unknown;
+  try {
+    doc = parseToml(readFileSync(path, 'utf8'));
+  } catch (error) {
+    throw new TomlError(`Cannot parse ${path}: ${(error as Error).message}`);
+  }
+  if (!isRecord(doc)) throw new TomlError(`Cannot parse ${path}: the top level must be a table.`);
+  return { path, doc };
+}
+
+/**
+ * Map the grouped toml onto the flat 25-key manifest the API takes.
+ * Throws `TomlError` (exit 2) on anything the backend would refuse —
+ * the same names, the same limits, the same error text where it matters.
+ */
+export function toManifest(doc: Record<string, unknown>): AppManifest {
+  const problems: string[] = [];
+
+  for (const key of Object.keys(doc)) {
+    if (!TOP_LEVEL_TOML_KEYS.has(key)) problems.push(unknownField(key));
+  }
+  scanSecrets(doc, '', problems);
+  if (problems.length > 0) throw new TomlError(problems.join('\n'));
+
+  // `handle` is CLI-only sugar, translated to `slug` before POST (the
+  // backend rejects unknown keys including `handle`).
+  const handle = doc.handle as unknown;
+  const slug = doc.slug as unknown;
+  if (handle !== undefined && slug !== undefined) {
+    throw new TomlError("Use either 'slug' or 'handle', not both — they mean the same thing.");
+  }
+  const resolvedSlug = (handle ?? slug) as unknown;
+  if (typeof resolvedSlug !== 'string' || !SLUG_RE.test(resolvedSlug)) {
+    throw new TomlError('The slug must be 2-64 lowercase letters, digits or dashes.');
+  }
+
+  const fail = (message: string): never => {
+    throw new TomlError(message);
+  };
+
+  const str = (value: unknown, field: string, max: number, required: boolean): string | undefined => {
+    if (value === undefined) {
+      if (required) throw fail(`The ${field} field is required.`);
+      return undefined;
+    }
+    if (typeof value !== 'string' || value.length > max) throw fail(`The ${field} field is required (max ${max}).`);
+    return value as string;
+  };
+
+  const name = str(doc.name, 'name', 120, true) as string;
+  const version = doc.version === undefined ? '1.0.0' : (doc.version as string);
+  if (typeof version !== 'string' || !SEMVER_RE.test(version)) throw fail('The version must be strict X.Y.Z (default 1.0.0).');
+  const distribution = doc.distribution === undefined ? 'public' : (doc.distribution as string);
+  if (!['public', 'development'].includes(distribution as string)) throw fail('The distribution must be one of: public, development.');
+  if (doc.icon !== undefined && (typeof doc.icon !== 'string' || doc.icon.length > 64 || !ICON_RE.test(doc.icon))) {
+    throw fail('The icon must be an icon name (letters, digits, dash, underscore) — never a URL or image.');
+  }
+
+  const listing = (doc.listing ?? {}) as Record<string, unknown>;
+  const access = (doc.access ?? {}) as Record<string, unknown>;
+  const webhooks = (doc.webhooks ?? {}) as Record<string, unknown>;
+  const app = (doc.app ?? {}) as Record<string, unknown>;
+  for (const [group, allowed, where] of [
+    [listing, ['description', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing', 'developer_url', 'privacy_url', 'support_url'], 'manifest.listing'],
+    [access, ['scopes'], 'manifest.access'],
+    [webhooks, ['topics', 'url'], 'manifest.webhooks'],
+    [app, ['install_url', 'uninstall_url', 'settings_url'], 'manifest.app'],
+  ] as const) {
+    if (!isRecord(group)) throw fail(`The ${where} section must be a table.`);
+    for (const key of Object.keys(group)) {
+      if (!(allowed as readonly string[]).includes(key)) problems.push(unknownField(key, where));
+    }
+  }
+  if (problems.length > 0) throw new TomlError(problems.join('\n'));
+
+  const scopes = access.scopes as unknown;
+  if (!Array.isArray(scopes) || scopes.length < 1) throw fail('The scopes field is required (at least one).');
+  for (const scope of scopes as unknown[]) {
+    if (typeof scope !== 'string' || scope === '') throw fail('Each scope must be a Laratrust permission name.');
+    if (scope.startsWith('merchant-apps-')) throw fail(`The '${scope}' scope can never be granted to an app: an installation key must never install apps, manage keys or read the team directory.`);
+    if (NON_DELEGABLE_PREFIXES.some((prefix) => (scope as string).startsWith(prefix))) {
+      throw fail(`The '${scope}' scope can never be granted to an app: an installation key must never install apps, manage keys or read the team directory.`);
+    }
+  }
+
+  const topics = (webhooks.topics ?? []) as unknown;
+  if (!Array.isArray(topics)) throw fail('The webhooks.topics field must be a list.');
+  const webhookUrl = webhooks.url as unknown;
+  if ((topics as unknown[]).length > 0 && webhookUrl === undefined) throw fail('The webhook_url field is required when webhook_topics is present.');
+  for (const urlField of [['install_url', app.install_url], ['uninstall_url', app.uninstall_url], ['settings_url', app.settings_url], ['webhook_url', webhookUrl]] as const) {
+    if (urlField[1] === undefined) {
+      if (urlField[0] === 'install_url' || urlField[0] === 'uninstall_url') throw fail(`The ${urlField[0]} field is required.`);
+      continue;
+    }
+    const problem = httpsProblem(urlField[0], urlField[1]);
+    if (problem) throw fail(problem);
+  }
+
+  const settings = (doc.settings ?? []) as unknown;
+  if (!Array.isArray(settings)) throw fail('The settings section must be a list of [[settings]] tables.');
+  (settings as unknown[]).forEach((field, index) => {
+    if (!isRecord(field)) throw fail(unknownField(String(index), 'manifest.settings'));
+    for (const key of Object.keys(field)) {
+      if (!['key', 'label', 'type', 'required', 'options', 'help'].includes(key)) problems.push(unknownField(key, `manifest.settings[${index}]`));
+    }
+    if (typeof field.key !== 'string' || !SETTING_KEY_RE.test(field.key)) throw fail(`The settings[${index}].key must match [a-z0-9_]{1,64}.`);
+    if (typeof field.label !== 'string' || field.label.length > 120) throw fail(`The settings[${index}].label is required (max 120).`);
+    if (!['string', 'secret', 'number', 'boolean', 'select'].includes(field.type as string)) {
+      throw fail(`The settings[${index}].type must be one of: string, secret, number, boolean, select.`);
+    }
+    if (field.type === 'select' && (!Array.isArray(field.options) || (field.options as unknown[]).length < 1)) {
+      throw fail('A select setting needs at least one option.');
+    }
+  });
+
+  const manifest: AppManifest = { slug: resolvedSlug, name, scopes: scopes as string[], install_url: app.install_url as string, uninstall_url: app.uninstall_url as string };
+  if (version !== '1.0.0') manifest.version = version;
+  if (distribution !== 'public') manifest.distribution = distribution;
+  for (const key of ['icon', 'developer', 'category'] as const) {
+    if (doc[key] !== undefined) manifest[key] = doc[key];
+  }
+  const listingOut: Record<string, unknown> = {};
+  for (const key of ['description', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing', 'developer_url', 'privacy_url', 'support_url']) {
+    if (listing[key] !== undefined) listingOut[key] = listing[key];
+  }
+  if ((listingOut.description_long as string)?.length > 2000) throw fail('The description_long field must be plain text (max 2000).');
+  Object.assign(manifest, listingOut);
+  manifest.webhook_topics = topics as string[];
+  if (webhookUrl !== undefined) manifest.webhook_url = webhookUrl as string;
+  if (app.settings_url !== undefined) manifest.settings_url = app.settings_url as string;
+  if ((settings as unknown[]).length > 0) manifest.settings = settings as AppManifest['settings'];
+
+  checkExtensions(doc.extensions, manifest, fail);
+  checkDashboard(doc.dashboard, manifest, fail, manifest.scopes);
+
+  if (problems.length > 0) throw new TomlError(problems.join('\n'));
+
+  // Closed-world guard: the mapped object carries only the 25 keys, so a
+  // typo can never smuggle an unknown field past this point.
+  for (const key of Object.keys(manifest)) {
+    if (!(MANIFEST_KEYS as readonly string[]).includes(key)) throw new TomlError(unknownField(key));
+  }
+  return manifest;
+}
+
+function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (message: string) => never): void {
+  if (extensions === undefined) return;
+  if (!isRecord(extensions)) throw fail('The extensions section must be a table.');
+  const out: Record<string, unknown> = {};
+  if (extensions.proxy !== undefined) {
+    if (!isRecord(extensions.proxy)) throw fail('The extensions.proxy section must be a table.');
+    const proxy = extensions.proxy;
+    if (typeof proxy.url !== 'string') throw fail('The extensions.proxy.url field is required.');
+    const urlProblem = httpsProblem('extensions.proxy.url', proxy.url);
+    if (urlProblem) throw fail(urlProblem);
+    if (typeof proxy.subpath !== 'string' || !/^[a-z0-9][a-z0-9-]{1,39}$/.test(proxy.subpath)) {
+      throw fail('The proxy subpath must be 2-40 lowercase letters, digits or dashes.');
+    }
+    out.proxy = { url: proxy.url, subpath: proxy.subpath, ...(proxy.share_customer_id !== undefined ? { share_customer_id: proxy.share_customer_id } : {}) };
+  }
+  if (extensions.merchant_page_url !== undefined) {
+    const urlProblem = httpsProblem('extensions.merchant_page_url', extensions.merchant_page_url);
+    if (urlProblem) throw fail(urlProblem);
+    out.merchant_page_url = extensions.merchant_page_url;
+  }
+  const blocks = (extensions.blocks ?? []) as unknown;
+  if (!Array.isArray(blocks)) throw fail('The extensions.blocks section must be a list of [[extensions.blocks]] tables.');
+  if ((blocks as unknown[]).length > 10) throw fail('The extensions.blocks list must not have more than 10 blocks.');
+  const checked: unknown[] = [];
+  const problems: string[] = [];
+  (blocks as Record<string, unknown>[]).forEach((block, index) => {
+    const where = `manifest.extensions.blocks[${index}]`;
+    if (!isRecord(block)) throw fail(unknownField(String(index), 'manifest.extensions.blocks'));
+    for (const key of Object.keys(block)) {
+      if (!['key', 'type', 'title', 'description', 'targets', 'schema', 'link_url', 'image'].includes(key)) problems.push(unknownField(key, where));
+    }
+    if (typeof block.key !== 'string' || !SETTING_KEY_RE.test(block.key)) throw fail(`The ${where}.key must match [a-z0-9_]{1,64}.`);
+    if (block.type !== undefined && !EXTENSION_BLOCK_TYPES.includes(block.type as string)) {
+      throw fail(`The block type must be one of: ${EXTENSION_BLOCK_TYPES.join(', ')}.`);
+    }
+    if (!Array.isArray(block.targets) || (block.targets as unknown[]).length < 1) throw fail(`The ${where}.targets field is required (at least one).`);
+    for (const target of block.targets as unknown[]) {
+      if (!EXTENSION_BLOCK_TARGETS.includes(target as string)) throw fail(`The block target must be one of: ${EXTENSION_BLOCK_TARGETS.join(', ')}.`);
+    }
+    if (block.schema !== undefined) checkSchemaFields(block.schema, where, EXTENSION_PRIMITIVES, problems);
+    checked.push(block);
+  });
+  if (problems.length > 0) throw new TomlError(problems.join('\n'));
+  if (Object.keys(out).length > 0 || (blocks as unknown[]).length > 0) {
+    manifest.extensions = { ...out, ...(((blocks as unknown[]).length > 0) ? { blocks: checked } : {}) };
+  }
+}
+
+function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (message: string) => never, scopes: string[]): void {
+  if (dashboard === undefined) return;
+  if (!isRecord(dashboard)) throw fail('The dashboard section must be a table.');
+  const problems: string[] = [];
+  const out: Record<string, unknown> = {};
+  const checkList = (key: 'blocks' | 'actions' | 'print', max: number): Record<string, unknown>[] => {
+    const list = (dashboard[key] ?? []) as unknown;
+    if (!Array.isArray(list)) throw fail(`The dashboard.${key} section must be a list.`);
+    if ((list as unknown[]).length > max) throw fail(`The dashboard.${key} list must not have more than ${max} entries.`);
+    return list as Record<string, unknown>[];
+  };
+  for (const block of checkList('blocks', 10)) {
+    const where = 'manifest.dashboard.blocks';
+    for (const key of Object.keys(block)) {
+      if (!['key', 'title', 'target', 'schema', 'when', 'link_url', 'image'].includes(key)) problems.push(unknownField(key, where));
+    }
+    if (!DASHBOARD_BLOCK_TARGETS.includes(block.target as string)) {
+      throw fail(`The dashboard block target must be one of: ${DASHBOARD_BLOCK_TARGETS.join(', ')}.`);
+    }
+    if (block.schema !== undefined) checkSchemaFields(block.schema, where, DASHBOARD_PRIMITIVES, problems);
+    if (block.when !== undefined) {
+      for (const when of block.when as unknown[]) {
+        if (!DASHBOARD_WHEN_FIELDS.includes(when as string)) throw fail(`The dashboard \`when\` field must be one of: ${DASHBOARD_WHEN_FIELDS.join(', ')}.`);
+      }
+    }
+  }
+  for (const action of checkList('actions', 10)) {
+    const where = 'manifest.dashboard.actions';
+    for (const key of Object.keys(action)) {
+      if (!['key', 'title', 'target', 'scope', 'effect', 'schema', 'when', 'notify_url'].includes(key)) problems.push(unknownField(key, where));
+    }
+    if (!DASHBOARD_ACTION_TARGETS.includes(action.target as string)) {
+      throw fail(`The dashboard action target must be one of: ${DASHBOARD_ACTION_TARGETS.join(', ')}.`);
+    }
+    if (typeof action.scope !== 'string' || action.scope === '') throw fail(`The ${where} scope field is required.`);
+    if (action.effect !== 'order_appointment') throw fail('The dashboard action effect must be one of: order_appointment.');
+    if (typeof action.notify_url !== 'string') throw fail(`The ${where} notify_url field is required.`);
+    if (!scopes.includes(action.scope)) {
+      throw fail(`Dashboard action '${action.key}' declares scope '${action.scope}' the manifest never grants.`);
+    }
+    if (action.schema !== undefined) checkSchemaFields(action.schema, where, DASHBOARD_PRIMITIVES, problems);
+    if (action.when !== undefined) {
+      for (const when of action.when as unknown[]) {
+        if (!DASHBOARD_WHEN_FIELDS.includes(when as string)) throw fail(`The dashboard \`when\` field must be one of: ${DASHBOARD_WHEN_FIELDS.join(', ')}.`);
+      }
+    }
+  }
+  for (const row of checkList('print', 5)) {
+    const where = 'manifest.dashboard.print';
+    for (const key of Object.keys(row)) {
+      if (!['key', 'title', 'target', 'fields'].includes(key)) problems.push(unknownField(key, where));
+    }
+    if (!DASHBOARD_PRINT_TARGETS.includes(row.target as string)) {
+      throw fail(`The dashboard print target must be one of: ${DASHBOARD_PRINT_TARGETS.join(', ')}.`);
+    }
+  }
+  if (problems.length > 0) throw new TomlError(problems.join('\n'));
+  const blocks = dashboard.blocks as unknown[] | undefined;
+  const actions = dashboard.actions as unknown[] | undefined;
+  const print = dashboard.print as unknown[] | undefined;
+  // Absent-when-undeclared parity: no [dashboard] tables, no dashboard key.
+  if ((blocks?.length ?? 0) + (actions?.length ?? 0) + (print?.length ?? 0) > 0) {
+    out.blocks = blocks ?? [];
+    out.actions = actions ?? [];
+    out.print = print ?? [];
+    // Keep only the original row objects (already shape-checked above).
+    manifest.dashboard = { blocks: blocks ?? [], actions: actions ?? [], print: print ?? [] };
+  }
+}
+
+/**
+ * Render a server manifest back to grouped toml (`app config link`).
+ * The inverse of `toManifest` — same groups, same names.
+ */
+export function fromManifest(manifest: Record<string, unknown>): string {
+  const doc: Record<string, unknown> = {};
+  for (const key of ['slug', 'name', 'version', 'distribution', 'icon', 'developer', 'category']) {
+    if (manifest[key] !== undefined) doc[key] = manifest[key];
+  }
+  const listing: Record<string, unknown> = {};
+  for (const key of ['description', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing', 'developer_url', 'privacy_url', 'support_url']) {
+    if (manifest[key] !== undefined) listing[key] = manifest[key];
+  }
+  if (Object.keys(listing).length > 0) doc.listing = listing;
+  doc.access = { scopes: manifest.scopes ?? [] };
+  const webhooks: Record<string, unknown> = {};
+  if (manifest.webhook_topics !== undefined) webhooks.topics = manifest.webhook_topics;
+  if (manifest.webhook_url !== undefined) webhooks.url = manifest.webhook_url;
+  if (Object.keys(webhooks).length > 0) doc.webhooks = webhooks;
+  const app: Record<string, unknown> = {};
+  for (const [tomlKey, manifestKey] of [['install_url', 'install_url'], ['uninstall_url', 'uninstall_url'], ['settings_url', 'settings_url']] as const) {
+    if (manifest[manifestKey] !== undefined) app[tomlKey] = manifest[manifestKey];
+  }
+  if (Object.keys(app).length > 0) doc.app = app;
+  if (manifest.settings !== undefined) doc.settings = manifest.settings;
+  if (manifest.extensions !== undefined) doc.extensions = manifest.extensions;
+  if (manifest.dashboard !== undefined) doc.dashboard = manifest.dashboard;
+  return `# queek.app.toml — local source of truth for \`queek app deploy\`. Secrets never live here.\n${stringifyToml(doc)}`;
+}
+
+/** Load + validate in one step: what every `app` command starts from. */
+export function loadApp(dir: string, variant?: string): { path: string; manifest: AppManifest } {
+  const path = resolveTomlPath(dir, variant);
+  const { doc } = loadTomlFile(path);
+  return { path, manifest: toManifest(doc) };
+}
+
+export function tomlFileName(variant?: string): string {
+  return variant ? APP_TOML_VARIANT(variant) : APP_TOML;
+}
+
+/** Where `app dev`/`deploy` keep local-only state (never committed). */
+export function queekDir(dir: string): string {
+  return join(resolve(dir), '.queek');
+}

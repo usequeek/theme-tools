@@ -1,13 +1,15 @@
 # @usequeek/cli
 
 The Queek developer CLI: build, preview, check and package themes for
-[Queek](https://usequeek.com) storefronts.
+[Queek](https://usequeek.com) storefronts — and build installable apps
+(`queek login`, `queek app …`).
 
 ```bash
 npm install --save-dev @usequeek/cli
 ```
 
 New theme? Start with `npm create @usequeek/theme my-theme`; it installs this for you.
+New app? Start with `npm create @usequeek/app my-app` (== `queek app init`).
 
 Requires Node.js 22.12 or later, and in your project: `@usequeek/theme-kit`, `next` 16,
 `react` and `react-dom` 19.
@@ -130,6 +132,27 @@ queek theme init my-theme --templates laundry,foods --primary laundry --tags min
 | `--dry-run` | Print what would be written; write nothing. |
 | `--force` | Allow a folder that is not empty. |
 | `--template <source>` | Another starter: a giget source or a local folder. |
+
+## Apps (`queek login`, `queek app …`)
+
+```bash
+queek login                 # browser OAuth (device code with --device when headless)
+queek app init my-app       # from usequeek/queek-app-starter (== npm create @usequeek/app)
+queek app dev               # tunnel + owned test-store install, re-registers on save
+queek app deploy            # queek.app.toml → developer API → version N+1 (secret shown once)
+queek app config link hello # server manifest → queek.app.toml (no config push: deploy carries config)
+queek app versions list hello
+queek app release hello 1.2.0
+queek app submit hello
+```
+
+`queek.app.toml` is the local source of truth (same names as the server manifest,
+grouped: `[listing]`, `[access]`, `[webhooks]`, `[app]`, `[[settings]]`,
+`[extensions]`, `[dashboard]`); `-c/--config <name>` reads `queek.app.<name>.toml`.
+`handle` is CLI-only sugar for `slug`. Secrets never live in the toml — deploy
+writes the registration secret to `.queek/.env.local` (gitignored). Apps are
+addressed by `p_id|slug`, never UUID. Auth: `QUEEK_CLI_TOKEN` overrides the stored
+token; `QUEEK_API_BASE` overrides the developer API host.
 
 ## Project config (`.queek-theme.yml`)
 
