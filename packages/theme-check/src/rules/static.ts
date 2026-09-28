@@ -1300,7 +1300,7 @@ function copyStrings(value: unknown, path = ''): Array<[string, string]> {
 
 export const templateCopyRule: Rule = {
   id: 'theme/template-copy',
-  summary: 'Template copy is true of any store in its business: no store name, place, naira amount, promise or founding date',
+  summary: 'Template copy is true of any store in its business: no store name, place, naira amount, promise, claim or founding date',
   kind: 'static',
   run(context) {
     if (context.retired || !context.manifest) return [];
@@ -1317,7 +1317,7 @@ export const templateCopyRule: Rule = {
           findings.push(finding(context, 'theme/template-copy', 'reject', {
             where: `${context.env.root}${store.file} → config.header.announcement.text`,
             found: `text: ${why.join('; ')} — "${announcement.length > 80 ? `${announcement.slice(0, 77)}…` : announcement}"`,
-            fix: 'The setup wizard publishes this copy onto real stores unchanged. Write it for any store in the business: the store\'s name becomes a role ("our kitchen", "the studio"), a place becomes generic ("across the city") or goes, and prices, delivery windows, guarantees and founding dates go — they are the vendor’s to state. Testimonials and reviews are exempt.',
+            fix: 'The setup wizard publishes this copy onto real stores unchanged. Write it for any store in the business: the store\'s name becomes a role ("our kitchen", "the studio"), a place becomes generic ("across the city") or goes, and prices, delivery windows, guarantees, claims only the vendor can make and founding dates go — they are the vendor’s to state. Say what the section is, not what the product is certified or free from — e.g. "Every skin type welcome" instead of "Dermatologist-tested". Testimonials and reviews are exempt.',
             docs: `${context.env.docs}#templates`,
           }));
         }
@@ -1335,7 +1335,7 @@ export const templateCopyRule: Rule = {
           findings.push(finding(context, 'theme/template-copy', 'reject', {
             where: `${context.env.root}${store.file} → pages.${pageKey}.content[${index}] (${section.type}.${variant})`,
             found: lines.join('\n'),
-            fix: 'The setup wizard publishes this copy onto real stores unchanged. Write it for any store in the business: the store\'s name becomes a role ("our kitchen", "the studio"), a place becomes generic ("across the city") or goes, and prices, delivery windows, guarantees and founding dates go — they are the vendor’s to state. Testimonials and reviews are exempt.',
+            fix: 'The setup wizard publishes this copy onto real stores unchanged. Write it for any store in the business: the store\'s name becomes a role ("our kitchen", "the studio"), a place becomes generic ("across the city") or goes, and prices, delivery windows, guarantees, claims only the vendor can make and founding dates go — they are the vendor’s to state. Say what the section is, not what the product is certified or free from — e.g. "Every skin type welcome" instead of "Dermatologist-tested". Testimonials and reviews are exempt.',
             docs: `${context.env.docs}#templates`,
           }));
         });

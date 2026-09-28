@@ -6,9 +6,11 @@
  * no demo store name ("…at Mama Tee's"), no place ("delivered across Lekki"),
  * no naira amount ("free delivery over ₦5,000"), no offer or coupon code, no
  * opening hours, no promise only the vendor can make (a delivery window, a
- * return period, a guarantee), no founding date or store age, and no email or
- * phone number. Testimonials and reviews are exempt; the backend never places
- * their copy on a real store.
+ * return period, a guarantee), no claim only the vendor can make
+ * (certifications, testing, free-from and ingredient claims, dietary and faith
+ * labels, eco labels and medical effects), no founding date or store age, and
+ * no email or phone number. Testimonials and reviews are exempt; the backend
+ * never places their copy on a real store.
  *
  * Each pattern is shaped by what it must NOT catch as much as what it must: a
  * review ran real demo lines through it (24/9/26) — "Cold brewed for 12–24
@@ -155,6 +157,68 @@ const STORE_HISTORY = [
 /** The demo store's email or phone written into the words ("Email hello@zuri.ng", "wa.me/234…"). */
 const CONTACT = /[\w.+-]+@[\w-]+\.[a-z]{2,}|\+234[\s\d-]{6,}|\b0[789][01]\d(?:[\s-]?\d){7}\b|\bwa\.me\/\d+/i;
 
+/**
+ * Claims only the vendor can make (BE24): a certification, a test, an
+ * ingredient or free-from promise, a dietary or faith label, an eco or ethics
+ * label, a medical effect. Verbatim from the claim-words list the storefront
+ * sweep shares — match case-insensitively (`i`), with the `u` flag.
+ *
+ * Each pattern is shaped by what it must NOT catch: `\bcures?\b` is "cure" or
+ * "cures", never "cured" (bacon is cured in-house) or "manicure"; `\bheals?\b`
+ * is "heal" or "heals", never "heels"; `\borganic\b` never "organise".
+ */
+export const TEMPLATE_COPY_CLAIMS: readonly RegExp[] = [
+  // certification
+  /\bcertif(?:ied|ication|ications)\b/iu,
+  /\baccredited\b/iu,
+  /\bapproved by\b/iu,
+  /\bfda\b/iu,
+  /\bnafdac\b/iu,
+  /\bleaping bunny\b/iu,
+  // testing
+  /\bdermatolog\w*/iu,
+  /\bclinically\b/iu,
+  /\blab[- ]tested\b/iu,
+  /\bpatch[- ]tested\b/iu,
+  /\bhypoallergenic\b/iu,
+  // free-from / ingredients
+  /\bcruelty[- ]free\b/iu,
+  /\bparabens?\b/iu,
+  /\bparaben[- ]free\b/iu,
+  /\bsul(?:f|ph)ates?\b/iu,
+  /\bsilicone[- ]free\b/iu,
+  /\borganic\b/iu,
+  /\ball[- ]natural\b/iu,
+  /\b100% natural\b/iu,
+  /\bnon[- ]toxic\b/iu,
+  /\bchemical[- ]free\b/iu,
+  /\btoxin[- ]free\b/iu,
+  // diet / faith
+  /\bvegan\b/iu,
+  /\bgluten[- ]free\b/iu,
+  /\bdairy[- ]free\b/iu,
+  /\bsugar[- ]free\b/iu,
+  /\bnut[- ]free\b/iu,
+  /\bhalal\b/iu,
+  /\bkosher\b/iu,
+  /\bnon[- ]gmo\b/iu,
+  /\bgmo[- ]free\b/iu,
+  // eco / ethics
+  /\brecyclable\b/iu,
+  /\brecycled\b/iu,
+  /\bbiodegradable\b/iu,
+  /\bcompostable\b/iu,
+  /\bplastic[- ]free\b/iu,
+  /\beco[- ]friendly\b/iu,
+  /\bsustainabl\w*/iu,
+  /\bcarbon[- ]neutral\b/iu,
+  /\bfair[- ]trade\b/iu,
+  /\bethically sourced\b/iu,
+  // medical
+  /\bcures?\b/iu,
+  /\bheals?\b/iu,
+];
+
 const first = (patterns: RegExp[], text: string): string | null => {
   for (const pattern of patterns) {
     const match = pattern.exec(text);
@@ -181,6 +245,8 @@ export function copyViolations(text: string, storeName: string | null | undefine
   if (history) found.push(`dates the store ("${history}")`);
   const contact = CONTACT.exec(text);
   if (contact) found.push(`gives the store’s contact details ("${contact[0]}")`);
+  const claim = first([...TEMPLATE_COPY_CLAIMS], text);
+  if (claim) found.push(`claim only the vendor can make: "${claim}"`);
   return found;
 }
 

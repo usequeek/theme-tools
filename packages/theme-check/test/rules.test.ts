@@ -110,11 +110,47 @@ describe('theme/template-copy', () => {
     }
     for (const text of [
       'Wholesale bags on request', 'Ask our salesperson for help', 'Beans sold for sale by the kilo',
-      'Gluten-free and sugar-free bakes', 'Free-range eggs', 'Hands-free cooking', 'Made to measure',
+      'Free-range eggs', 'Hands-free cooking', 'Made to measure',
       'Always in season: tomatoes and peppers', 'Open the box on Friday', 'Alterations on every trouser',
     ]) {
       expect(copyViolations(text, null), text).toEqual([]);
     }
+  });
+
+  it('rejects claims only the vendor can make — certifications, testing, free-from, diet and faith, eco, medical', () => {
+    for (const text of [
+      'Cruelty-Free || Paraben-Free || Dermatologist-Tested',
+      'Cruelty-Free', 'Paraben-Free', 'Dermatologist-Tested',
+      'certified by Leaping Bunny', 'Recyclable glass', '100% natural', 'Halal',
+      'Gluten-free and sugar-free bakes', 'clinically proven', 'cures acne',
+    ]) {
+      expect(copyViolations(text, null), text).not.toEqual([]);
+      expect(copyViolations(text, null)[0], text).toMatch(/^claim only the vendor can make: "/);
+    }
+  });
+
+  it('does not mistake ordinary words for claims', () => {
+    for (const text of [
+      'Sweet treats', 'manicure', 'Organise your wardrobe',
+      'Cured in-house', 'high heels',
+      'Every skin type welcome', 'Glass bottles you can refill',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual([]);
+    }
+  });
+
+  it('leaves claims in testimonials and reviews alone', async () => {
+    const found = await templateCopyRule.run(context({
+      manifest: { slug: 'x', variants } as unknown as ThemeContext['manifest'],
+      demos: [store([
+        { type: 'content', variant: 'testimonials', data: { items: [{ quote: 'Truly cruelty-free, my skin loves it', author: 'Tolu' }] } },
+        { type: 'content', variant: 'steps', data: { heading: 'Our routine', items: [{ title: 'Cleanse', text: 'Cruelty-free, always.' }] } },
+      ])],
+    }));
+    expect(found).toHaveLength(1);
+    expect(found[0].where).toBe('theme/demos/food.json → pages.home.content[1] (content.steps)');
+    expect(found[0].found).toContain('claim only the vendor can make: "Cruelty-free"');
+    expect(found[0].fix).toContain('Say what the section is, not what the product is certified or free from');
   });
 
   it('rejects the header announcement like section copy, whether the bar is enabled or not', async () => {

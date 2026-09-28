@@ -19,7 +19,7 @@ export {
 export { editDistance, closestRuleId } from './utils/closest-id.js';
 export type { CheckEnv, Finding, Rule, Severity, ThemeContext, DemoStore, DeclaredDemo } from './types.js';
 export { BUSINESS_KEYS, SERVICE_SLUGS, CATALOGUE, SUBCATEGORIES, ROOT_SERVICE, BUNDLED_VERSION, bundledVocabularyView, vocabularyViewOf, isBusinessKey, businessRoot, type VocabularyView } from './utils/business-vocabulary.js';
-export { TEMPLATE_COPY_PLACES, copyViolations, isTestimonialSection, storeNameForms } from './utils/template-copy.js';
+export { TEMPLATE_COPY_PLACES, TEMPLATE_COPY_CLAIMS, copyViolations, isTestimonialSection, storeNameForms } from './utils/template-copy.js';
 export { PRIMARY_DEMO_ID, DEMO_ID_FORMAT, demoFilesOf } from './utils/theme-demos.js';
 // Theme → template → design (contract R2.8): the resolver the registry, the
 // preview and these rules share. Also published alone as `@usequeek/theme-check/designs`.
