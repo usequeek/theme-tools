@@ -1,5 +1,11 @@
 # @usequeek/theme-check
 
+## 0.8.0
+
+### Minor Changes
+
+- Template copy may not carry claims only the vendor can make: certifications, testing, free-from and ingredient claims, dietary and faith labels, eco labels and medical effects.
+
 ## 0.7.0
 
 ### Patch Changes
