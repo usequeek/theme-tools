@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUSINESS_KEYS, businessRoot, isBusinessKey, vocabularyViewOf } from '../src/utils/business-vocabulary.js';
 import { demoStoresRule, fontsSelfHostedRule, frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templateDesignsRule, templatePagesRule, templateVersionsRule, compositionVariantsRule } from '../src/rules/static.js';
-import { copyViolations } from '../src/utils/template-copy.js';
+import { copyViolations, manifestViolations } from '../src/utils/template-copy.js';
 import { checkTheme } from '../src/run.js';
 import type { DeclaredDemo, DemoStore, ThemeContext } from '../src/types.js';
 
@@ -206,7 +206,7 @@ describe('theme/template-copy', () => {
           },
           {
             id: 'offer',
-            purpose: 'A strip inviting shoppers to save 15% today',
+            purpose: 'A strip inviting shoppers to "save 15% today"',
             fields: {},
           },
         ],
@@ -235,11 +235,71 @@ describe('theme/template-copy', () => {
     expect(found[1].found).toContain('claim only the vendor can make: "certification"');
     expect(found[2].found).toContain('states an offer ("save 15%")');
     expect(found[3].found).toContain('promises a schedule: "Same-day"');
+    expect(found[3].found).toContain('makes a promise ("Same-day dispatch")');
     for (const f of found) {
       expect(f.rule).toBe('theme/template-copy');
       expect(f.severity).toBe('reject');
       expect(f.fix).toContain('Name the section, not when the store does things');
     }
+  });
+
+  it('lets manifest prose describe the section; offers and promises count only in quoted examples', async () => {
+    const prose = {
+      slug: 'x',
+      variants: {
+        content: [
+          { id: 'grid', purpose: 'Four cards across with the price and the strike-through on sale.', fields: {} },
+          { id: 'badges', purpose: 'Icons in a row: delivery, returns, a guarantee, how it is made.', fields: {} },
+          { id: 'code', purpose: 'A strip', fields: { code: { type: 'string', note: 'A discount code shown as a chip.' } } },
+        ],
+      },
+    } as unknown as ThemeContext['manifest'];
+    expect(await templateCopyRule.run(context({ manifest: prose }))).toEqual([]);
+    const quoted = {
+      slug: 'x',
+      variants: {
+        content: [
+          { id: 'grid', purpose: 'Four cards across, e.g. "Sale ends Sunday".', fields: {} },
+          { id: 'badges', purpose: 'Icons in a row, e.g. "Free delivery and a lifetime guarantee".', fields: {} },
+          { id: 'code', purpose: 'A strip', fields: { code: { type: 'string', note: 'The chip, e.g. "20% off the set".' } } },
+        ],
+      },
+    } as unknown as ThemeContext['manifest'];
+    const found = await templateCopyRule.run(context({ manifest: quoted }));
+    expect(found.map((f) => f.where)).toEqual([
+      'theme/manifest.ts → content/grid → purpose',
+      'theme/manifest.ts → content/badges → purpose',
+      'theme/manifest.ts → content/code → fields.code',
+    ]);
+    expect(found[0].found).toContain('states an offer ("Sale")');
+    expect(found[1].found).toContain('makes a promise ("Free delivery")');
+    expect(found[2].found).toContain('states an offer ("20% off")');
+  });
+
+  it('flags claims and schedules anywhere in manifest text', () => {
+    expect(manifestViolations('A line icon, a title and one line each — materials, certification, a service.')).toEqual([
+      'claim only the vendor can make: "certification"',
+    ]);
+    expect(manifestViolations('Shelves restocked every week.')).toEqual([
+      'promises a schedule: "restocked every week"',
+    ]);
+    // each finding once, even when the example repeats the prose
+    expect(manifestViolations('Certified picks, e.g. "certified picks".')).toEqual([
+      'claim only the vendor can make: "Certified"',
+    ]);
+  });
+
+  it('names manifest findings under env.root, theme-relative', async () => {
+    const manifest = {
+      slug: 'x',
+      variants: { content: [{ id: 'hero', purpose: 'Badges, certification and more', fields: {} }] },
+    } as unknown as ThemeContext['manifest'];
+    const ctx = context({ manifest });
+    ctx.env.root = 'themes/carat/';
+    const found = await templateCopyRule.run(ctx);
+    expect(found).toHaveLength(1);
+    expect(found[0].where).toBe('themes/carat/manifest.ts → content/hero → purpose');
+    expect(found[0].where?.startsWith(`${ctx.env.root}manifest.ts →`)).toBe(true);
   });
 
   it('leaves claims in testimonials and reviews alone', async () => {

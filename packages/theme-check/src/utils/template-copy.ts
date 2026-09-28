@@ -289,6 +289,34 @@ export function copyViolations(text: string, storeName: string | null | undefine
   return found;
 }
 
+/**
+ * A quoted example inside manifest prose: a substring in straight (`"…"`)
+ * or curly (`"…"`) double quotes. The builder copies these verbatim into
+ * fields, so an offer, promise, amount, place or date inside one is template
+ * copy; the prose around them only describes the section.
+ */
+const QUOTED_EXAMPLE = /"([^"]*)"|"([^"]*)"/g;
+
+/** Claims and schedules count anywhere in manifest text — no section's job is to certify or keep a schedule. */
+const anywhereInManifest = (violation: string): boolean =>
+  violation.startsWith('claim only the vendor can make: "') || violation.startsWith('promises a schedule: "');
+
+/**
+ * Why one manifest string (a variant `purpose`, a field `note`) could not go
+ * live on a real store unchanged; empty when it can. Claims and schedules
+ * count anywhere in the text; every other category counts only inside a
+ * quoted example. Each finding once (deduped by category and match).
+ */
+export function manifestViolations(text: string): string[] {
+  const found = copyViolations(text, null).filter(anywhereInManifest);
+  for (const match of text.matchAll(QUOTED_EXAMPLE)) {
+    for (const violation of copyViolations(match[1] ?? match[2], null)) {
+      if (!anywhereInManifest(violation)) found.push(violation);
+    }
+  }
+  return [...new Set(found)];
+}
+
 /** A section whose type or variant id is a testimonials/reviews one — whole words, so "preview" is not. */
 const TESTIMONIAL_NAME = /(?:^|[\s_-])(?:testimonials?|reviews?)(?:$|[\s_-])/i;
 /** Keys that make a list a set of customer quotes. */

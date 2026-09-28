@@ -4,7 +4,7 @@ import { foreignImageRefs } from '../utils/theme-demo-images.js';
 import { DEMO_ID_FORMAT, PRIMARY_DEMO_ID } from '../utils/theme-demos.js';
 import { designsOf, groupTemplates, mainTemplateKey, type DesignDeclaration, type ThemeDesign, type ThemeDesignsConfig } from '../utils/theme-designs.js';
 import { SCREENSHOT_LOCK, TEMPLATE_DESCRIPTION_MAX, TEMPLATE_DESCRIPTION_PLACEHOLDER, declaredFieldsByVariant, isPresentationalField, screenshotFile, screenshotUrl, sectionCopy } from '../utils/theme-templates.js';
-import { copyViolations, isTestimonialSection } from '../utils/template-copy.js';
+import { copyViolations, isTestimonialSection, manifestViolations } from '../utils/template-copy.js';
 import { bundledVocabularyView, type VocabularyView } from '../utils/business-vocabulary.js';
 import { themeSourceFiles } from '../context.js';
 import { finding, type DemoStore, type Finding, type Rule, type ThemeContext } from '../types.js';
@@ -1309,9 +1309,11 @@ const TEMPLATE_COPY_FIX = 'The setup wizard publishes this copy onto real stores
  * `note` — the backend's builder fills fields from them, so their words are
  * template copy too. A field is `{ type, note }` or the string form
  * (`sticker: 'string (words…, e.g. "Cruelty free")'`: the whole string).
- * Naming the category of claim as a thing the section holds still counts —
- * carat's "materials, certification, a service" steers the builder to write
- * a certification.
+ * Each string reads through `manifestViolations`: claims and schedules count
+ * anywhere (carat's "materials, certification, a service" steers the builder
+ * to write a certification), every other category only inside a quoted
+ * example — prose describing the section ("products for a sale") is
+ * legitimate.
  */
 function manifestCopy(variants: unknown): Array<{ scope: string; id: string; path: string; text: string }> {
   const out: Array<{ scope: string; id: string; path: string; text: string }> = [];
@@ -1345,9 +1347,10 @@ export const templateCopyRule: Rule = {
     const declared = declaredFieldsByVariant(context.manifest.variants);
     const findings: Finding[] = [];
     // A manifest names no store, and its words steer the builder — so they
-    // read by the same rules with the store name null.
+    // read by the same rules with the store name null, scoped to quoted
+    // examples except for claims and schedules (see `manifestViolations`).
     for (const { scope, id, path, text } of manifestCopy(context.manifest.variants)) {
-      const why = copyViolations(text, null);
+      const why = manifestViolations(text);
       if (why.length === 0) continue;
       findings.push(finding(context, 'theme/template-copy', 'reject', {
         where: `${context.env.root}manifest.ts → ${scope}/${id} → ${path}`,
