@@ -187,6 +187,8 @@ export const TEMPLATE_COPY_CLAIMS: readonly RegExp[] = [
   /\bparaben[- ]free\b/iu,
   /\bsul(?:f|ph)ates?\b/iu,
   /\bsilicone[- ]free\b/iu,
+  /\bfragrance[- ]free\b/iu,
+  /\bunscented\b/iu,
   /\borganic\b/iu,
   /\ball[- ]natural\b/iu,
   /\b100% natural\b/iu,
@@ -214,6 +216,7 @@ export const TEMPLATE_COPY_CLAIMS: readonly RegExp[] = [
   /\bcarbon[- ]neutral\b/iu,
   /\bfair[- ]trade\b/iu,
   /\bethically sourced\b/iu,
+  /\bethically made\b/iu,
   // medical
   /\bcures?\b/iu,
   /\bheals?\b/iu,

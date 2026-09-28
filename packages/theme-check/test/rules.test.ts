@@ -123,6 +123,7 @@ describe('theme/template-copy', () => {
       'Cruelty-Free', 'Paraben-Free', 'Dermatologist-Tested',
       'certified by Leaping Bunny', 'Recyclable glass', '100% natural', 'Halal',
       'Gluten-free and sugar-free bakes', 'clinically proven', 'cures acne',
+      'Fragrance-free', 'left unscented', 'ethically made',
     ]) {
       expect(copyViolations(text, null), text).not.toEqual([]);
       expect(copyViolations(text, null)[0], text).toMatch(/^claim only the vendor can make: "/);
@@ -134,6 +135,7 @@ describe('theme/template-copy', () => {
       'Sweet treats', 'manicure', 'Organise your wardrobe',
       'Cured in-house', 'high heels',
       'Every skin type welcome', 'Glass bottles you can refill',
+      'scented candles', 'made to order',
     ]) {
       expect(copyViolations(text, null), text).toEqual([]);
     }
