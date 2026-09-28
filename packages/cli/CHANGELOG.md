@@ -1,4 +1,6 @@
-# @usequeek/theme-cli
+# @usequeek/cli
+
+Formerly `@usequeek/theme-cli` (bin `queek-theme`); from 0.7.0 the CLI is `@usequeek/cli`, bin `queek`, with the theme commands under `queek theme`.
 
 ## 0.6.0
 
