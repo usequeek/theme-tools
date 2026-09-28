@@ -63,7 +63,7 @@ export const structureRule: Rule = {
         where: `${context.env.root}`,
         found: `no theme screenshot (${SCREENSHOTS.join(' or ')})`,
         fix: `Run \`${context.env.capture('default')}\` — it captures the homepage at 1280×800 into theme.jpg.`,
-        docs: `${context.env.docs}#theme-png`,
+        docs: `${context.env.docs}#themepng`,
       }));
     }
 
@@ -178,7 +178,7 @@ export const demoStoresRule: Rule = {
     const findings: Finding[] = [];
     const at = `${context.env.root}theme.config.ts`;
     const add = (where: string, found: string, fix: string): void => {
-      findings.push(finding(context, 'theme/demo-stores', 'reject', { where, found, fix, docs: `${context.env.docs}#alternative-demo-stores` }));
+      findings.push(finding(context, 'theme/demo-stores', 'reject', { where, found, fix, docs: `${context.env.docs}#designs-more-than-one-demo-store` }));
     };
 
     const declared = context.declaredDemos ?? [];
