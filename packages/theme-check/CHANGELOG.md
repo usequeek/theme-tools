@@ -1,5 +1,11 @@
 # @usequeek/theme-check
 
+## 0.9.1
+
+### Patch Changes
+
+- Same-day and next-day count as schedule promises only about delivery, dispatch or pickup; a phrase the promise check already reports is not reported twice.
+
 ## 0.9.0
 
 ### Minor Changes
