@@ -34,10 +34,9 @@ This is a pnpm workspaces monorepo (`pnpm-workspace.yaml` → `packages/*`).
 | Path | Package | What it is |
 |---|---|---|
 | `packages/cli` | `@usequeek/cli` | The `queek` CLI: `queek theme dev`, `check`, `package`, `init` |
-| `packages/theme-cli` | `@usequeek/theme-cli` | The theme commands `queek theme …` runs; `queek-theme` remains as an alias |
 | `packages/theme-check` | `@usequeek/theme-check` | Theme validator library (the check rules live here) |
 | `packages/create-theme` | `@usequeek/create-theme` | Scaffolder, run via `npm create @usequeek/theme` |
-| `packages/theme-cli/preview` | — | The preview app `queek theme dev` serves (TypeScript source, compiled to `templates/preview` as plain JavaScript by `pnpm build`) |
+| `packages/cli/preview` | — | The preview app `queek theme dev` serves (TypeScript source, compiled to `templates/preview` as plain JavaScript by `pnpm build`) |
 | `fixtures/starter` | — | A theme project as a developer has it (the Queek skeleton theme), used by the tests |
 | `scripts/e2e.mjs` | — | End-to-end test: packs the packages, installs them into a fresh project outside the repo, runs `check`, `package` and `dev` |
 | `.changeset/` | — | Changesets config and pending version bumps |
@@ -81,7 +80,7 @@ changeset.
 ## SemVer: what counts as major / minor / patch
 
 We follow Semantic Versioning per package. Use this table when choosing a
-changeset bump for `@usequeek/theme-cli` (and, by analogy, the other
+changeset bump for `@usequeek/cli` (and, by analogy, the other
 packages):
 
 | Bump | CLI change |

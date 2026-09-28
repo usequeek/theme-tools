@@ -10,7 +10,7 @@ import { join, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const PORT = 3217;
-const work = mkdtempSync(join(tmpdir(), 'queek-theme-e2e-'));
+const work = mkdtempSync(join(tmpdir(), 'queek-e2e-'));
 const project = join(work, 'my-theme');
 const packs = join(work, 'packs');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
@@ -31,18 +31,17 @@ function jpegSize(bytes) {
 }
 
 function sh(cmd, args, cwd, allowFail = false) {
-  const result = spawnSync(cmd, args, { cwd, encoding: 'utf8', shell: process.platform === 'win32', env: { ...process.env, NO_COLOR: '1', QUEEK_THEME_SKIP_NEW_VERSION_CHECK: 'true', QUEEK_SKIP_NEW_VERSION_CHECK: 'true' } });
+  const result = spawnSync(cmd, args, { cwd, encoding: 'utf8', shell: process.platform === 'win32', env: { ...process.env, NO_COLOR: '1', QUEEK_SKIP_NEW_VERSION_CHECK: 'true' } });
   if (result.status !== 0 && !allowFail) throw new Error(`${cmd} ${args.join(' ')} failed (${result.status}):\n${result.stdout}\n${result.stderr}`);
   return result;
 }
 
-// Both bins, as installed from the tarballs into the throwaway project.
+// The CLI bin, as installed from the tarballs into the throwaway project.
 const queek = () => join(project, 'node_modules/@usequeek/cli/bin/run.js');
-const queekTheme = () => join(project, 'node_modules/@usequeek/theme-cli/bin/run.js');
 
 try {
   mkdirSync(packs);
-  for (const pkg of ['theme-check', 'create-theme', 'theme-cli', 'cli']) sh('pnpm', ['pack', '--pack-destination', packs], join(ROOT, 'packages', pkg));
+  for (const pkg of ['theme-check', 'create-theme', 'cli']) sh('pnpm', ['pack', '--pack-destination', packs], join(ROOT, 'packages', pkg));
   const tarballs = readdirSync(packs).map((file) => join(packs, file));
   console.log(`e2e: packed ${tarballs.length} packages`);
 
@@ -53,7 +52,7 @@ try {
   sh(npm, ['install', '--no-audit', '--no-fund', ...tarballs], tools);
   const starter = join(work, 'starter');
   cpSync(join(ROOT, 'fixtures/starter'), starter, { recursive: true });
-  writeFileSync(join(starter, 'package.json'), JSON.stringify({ name: 'queek-theme-starter', private: true, type: 'module' }, null, 2));
+  writeFileSync(join(starter, 'package.json'), JSON.stringify({ name: 'queek-starter', private: true, type: 'module' }, null, 2));
   for (const file of ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md']) writeFileSync(join(starter, file), file === 'AGENTS.md' ? '# Queek theme\n' : '@AGENTS.md\n');
   sh(process.execPath, [join(tools, 'node_modules/@usequeek/create-theme/dist/cli.js'), project, '--yes', '--template', starter, '--name', 'My Theme', '--templates', 'laundry,foods', '--primary', 'laundry', '--tags', 'minimal', '--pages', 'contact', '--ai', 'claude', '--no-install', '--no-git'], work);
   console.log('e2e: create ✓');
@@ -88,7 +87,7 @@ try {
   sh(process.execPath, [queek(), 'theme', 'package'], project);
   console.log('e2e: package ✓');
 
-  const dev = spawn(process.execPath, [queek(), 'theme', 'dev', '--port', String(PORT)], { cwd: project, stdio: 'pipe', env: { ...process.env, QUEEK_THEME_SKIP_NEW_VERSION_CHECK: 'true', QUEEK_SKIP_NEW_VERSION_CHECK: 'true' } });
+  const dev = spawn(process.execPath, [queek(), 'theme', 'dev', '--port', String(PORT)], { cwd: project, stdio: 'pipe', env: { ...process.env, QUEEK_SKIP_NEW_VERSION_CHECK: 'true' } });
   let log = '';
   dev.stdout.on('data', (chunk) => { log += chunk; });
   dev.stderr.on('data', (chunk) => { log += chunk; });
@@ -133,18 +132,6 @@ try {
   const expected = todo.filter((rule) => rule !== 'theme/structure' && rule !== 'theme/template-screenshot');
   if (JSON.stringify(left) !== JSON.stringify(expected)) throw new Error(`check after screenshot: expected ${expected.join(', ')}, got ${left.join(', ')}`);
   console.log(`e2e: check after screenshot ✓ (left: ${expected.join(', ')})`);
-
-  // The old bin stays as an alias: its `check --json` prints the same report
-  // on stdout (still parseable JSON) with the alias notice on stderr, and the
-  // same exit code as `queek theme check --json`.
-  const umbrella = sh(process.execPath, [queek(), 'theme', 'check', '--json'], project, true);
-  const alias = sh(process.execPath, [queekTheme(), 'check', '--json'], project, true);
-  JSON.parse(alias.stdout);
-  if (JSON.stringify(JSON.parse(alias.stdout)) !== JSON.stringify(JSON.parse(umbrella.stdout))) throw new Error('alias check --json stdout differs from queek theme check --json');
-  if (!alias.stderr.includes('`queek-theme` is now `queek theme`')) throw new Error(`alias check has no notice on stderr:\n${alias.stderr}`);
-  if (umbrella.stderr.includes('`queek-theme` is now `queek theme`')) throw new Error('umbrella bin must not print the alias notice');
-  if (alias.status !== umbrella.status) throw new Error(`alias exit ${alias.status} differs from umbrella exit ${umbrella.status}`);
-  console.log('e2e: alias ✓ (queek-theme check --json matches queek theme check --json, notice on stderr only)');
   console.log('e2e: all passed');
 } finally {
   rmSync(work, { recursive: true, force: true });

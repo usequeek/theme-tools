@@ -56,7 +56,7 @@ describe('setupTheme', () => {
   it('keeps AGENTS.md and the chosen assistants only', () => {
     expect(existsSync(join(dir, 'AGENTS.md'))).toBe(true);
     expect(existsSync(join(dir, 'CLAUDE.md'))).toBe(true);
-    expect(existsSync(join(dir, '.claude/skills/queek-theme/SKILL.md'))).toBe(true);
+    expect(existsSync(join(dir, '.claude/skills/queek/SKILL.md'))).toBe(true);
     expect(existsSync(join(dir, 'GEMINI.md'))).toBe(false);
   });
 

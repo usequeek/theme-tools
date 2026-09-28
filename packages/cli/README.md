@@ -12,9 +12,6 @@ New theme? Start with `npm create @usequeek/theme my-theme`; it installs this fo
 Requires Node.js 22.12 or later, and in your project: `@usequeek/theme-kit`, `next` 16,
 `react` and `react-dom` 19.
 
-`queek-theme` remains as an alias for existing projects: it runs the same commands and
-prints `` `queek-theme` is now `queek theme` — npm install -D @usequeek/cli `` to stderr.
-
 ## Commands
 
 ### `queek theme dev`

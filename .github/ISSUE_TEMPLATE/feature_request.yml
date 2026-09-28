@@ -30,7 +30,7 @@ body:
     attributes:
       label: Which area?
       options:
-        - theme-cli (`queek theme` commands/flags)
+        - cli (`queek theme` commands/flags)
         - theme-check (validation rules/library API)
         - create-theme (scaffolder)
         - docs / repo tooling

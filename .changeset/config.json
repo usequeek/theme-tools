@@ -3,7 +3,7 @@
   "changelog": ["@changesets/changelog-github", { "repo": "usequeek/theme-tools" }],
   "commit": false,
   "fixed": [],
-  "linked": [["@usequeek/cli", "@usequeek/theme-cli", "@usequeek/theme-check", "@usequeek/create-theme"]],
+  "linked": [["@usequeek/cli", "@usequeek/theme-check", "@usequeek/create-theme"]],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",

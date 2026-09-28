@@ -29,7 +29,7 @@
  * it did.
  *
  * One resolver for every consumer: the registry, the design index the proxy
- * and the preview read, both copies of theme-check, and theme-cli. So it
+ * and the preview read, both copies of theme-check, and the CLI. So it
  * imports nothing. `yarn tools:sync-lists` copies this file byte for byte to
  * theme-tools (packages/theme-check/src/utils/theme-designs.ts), and a copy
  * that drifts fails `yarn tools:sync-lists --check`. Change it here, then sync.

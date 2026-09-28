@@ -25,10 +25,10 @@ describe('startersCliRange', () => {
     expect(startersCliRange({})).toBeUndefined();
   });
 
-  it('ignores the old theme-cli range', () => {
+  it('ignores unrelated dependencies', () => {
     expect(
       startersCliRange({
-        devDependencies: { '@usequeek/theme-cli': '^0.6.0' },
+        devDependencies: { '@usequeek/theme-check': '^0.6.0' },
       }),
     ).toBeUndefined();
   });

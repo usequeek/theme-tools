@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execute } from '@oclif/core';
-import { applyUpdateCheckEnv } from '@usequeek/theme-cli/commands';
+import { applyUpdateCheckEnv } from '../dist/lib/update-check.js';
 
 applyUpdateCheckEnv(process.env);
 

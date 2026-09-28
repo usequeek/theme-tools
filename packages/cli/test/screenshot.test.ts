@@ -63,15 +63,15 @@ describe('screenshotTargets', () => {
   });
 });
 
-describe('queek-theme screenshot', () => {
+describe('queek theme screenshot', () => {
   const BIN = resolve(import.meta.dirname, '../bin/run.js');
   const FIXTURE = resolve(import.meta.dirname, '../../../fixtures/starter');
 
   it('exits 2 and lists the valid designs for an unknown id', () => {
-    const result = spawnSync(process.execPath, [BIN, 'screenshot', 'nope'], {
+    const result = spawnSync(process.execPath, [BIN, 'theme', 'screenshot', 'nope'], {
       cwd: FIXTURE,
       encoding: 'utf8',
-      env: { ...process.env, NO_COLOR: '1', QUEEK_THEME_SKIP_NEW_VERSION_CHECK: 'true' },
+      env: { ...process.env, NO_COLOR: '1', QUEEK_SKIP_NEW_VERSION_CHECK: 'true' },
     });
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('"nope"');
@@ -79,10 +79,10 @@ describe('queek-theme screenshot', () => {
   }, 60_000);
 
   it('documents the capture size and the browser lookup in --help', () => {
-    const result = spawnSync(process.execPath, [BIN, 'screenshot', '--help'], {
+    const result = spawnSync(process.execPath, [BIN, 'theme', 'screenshot', '--help'], {
       cwd: FIXTURE,
       encoding: 'utf8',
-      env: { ...process.env, NO_COLOR: '1', QUEEK_THEME_SKIP_NEW_VERSION_CHECK: 'true' },
+      env: { ...process.env, NO_COLOR: '1', QUEEK_SKIP_NEW_VERSION_CHECK: 'true' },
     });
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('1280×800');

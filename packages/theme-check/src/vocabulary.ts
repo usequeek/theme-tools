@@ -1,6 +1,6 @@
 /**
  * The live business vocabulary: one resolver, one cache, shared by
- * theme-check, theme-cli and create-theme.
+ * theme-check, the CLI and create-theme.
  *
  * Production serves `{ status, data }` at VOCABULARY_URL, where `data` holds
  * the vocabulary (`version`, `services`, `catalogue`, `subcategories`,

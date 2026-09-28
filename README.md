@@ -1,7 +1,7 @@
 # Queek theme tools
 
 [![CI](https://github.com/usequeek/theme-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/usequeek/theme-tools/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/@usequeek/theme-cli.svg)](https://www.npmjs.com/package/@usequeek/theme-cli)
+[![npm](https://img.shields.io/npm/v/@usequeek/cli.svg)](https://www.npmjs.com/package/@usequeek/cli)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Tools for building themes for [Queek](https://usequeek.com) storefronts: preview a theme as a
@@ -22,7 +22,6 @@ update with `npm update`, never touching your files.
 | Package | What it is |
 |---|---|
 | [`@usequeek/cli`](packages/cli) | The `queek` command: `queek theme dev`, `check`, `package`, `init`. |
-| [`@usequeek/theme-cli`](packages/theme-cli) | The theme commands `queek theme …` runs; `queek-theme` remains as an alias. |
 | [`@usequeek/create-theme`](packages/create-theme) | `npm create @usequeek/theme` — starts a theme from [usequeek/theme-starter](https://github.com/usequeek/theme-starter). |
 | [`@usequeek/theme-check`](packages/theme-check) | The rules a theme is checked against, as a library. |
 

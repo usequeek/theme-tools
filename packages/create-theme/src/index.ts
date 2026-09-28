@@ -134,7 +134,7 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
   const log = options.log ?? ((line: string) => console.log(line));
   const { target, state } = checkTarget(dir, options.force);
 
-  const stage = mkdtempSync(join(tmpdir(), 'queek-theme-'));
+  const stage = mkdtempSync(join(tmpdir(), 'queek-create-'));
   try {
     await fetchStarter(options.template ?? STARTER, stage);
     setupTheme(stage, answers);
@@ -259,7 +259,7 @@ function startingLists(flags: Flags): BusinessLists {
 }
 
 /**
- * Flags → answers (prompting when a prompter is given) → the theme. Shared by the CLI and `queek-theme init`.
+ * Flags → answers (prompting when a prompter is given) → the theme. Shared by the CLI and `queek theme init`.
  * With no folder argument, a person at the prompts gets a folder named after the theme's slug (checked
  * with the name, before the next question); a script gets `my-theme`.
  *
