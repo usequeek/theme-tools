@@ -1,5 +1,11 @@
 # @usequeek/theme-check
 
+## 0.11.0
+
+### Minor Changes
+
+- Template copy may not claim how a store makes things (by hand, in our studio, small batches, we test…) or promise a turnaround (ten days, ready in 3 days).
+
 ## 0.9.1
 
 ### Patch Changes
