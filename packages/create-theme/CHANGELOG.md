@@ -1,5 +1,12 @@
 # @usequeek/create-theme
 
+## 0.13.0
+
+### Patch Changes
+
+- Updated dependencies [`ad72fa1`]:
+  - @usequeek/theme-check@0.13.0
+
 ## 0.12.0
 
 ### Patch Changes
