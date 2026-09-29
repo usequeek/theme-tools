@@ -270,6 +270,10 @@ export default class AppDev extends BaseCommand {
     }
     const projectEnv = readEnvFile(join(appDir, '.env'));
     const env: NodeJS.ProcessEnv = {
+      // The dashboard that frames the app's embedded pages (CSP frame-ancestors,
+      // postMessage peer) — injected like Shopify injects its host values;
+      // a value in the shell or the project .env still wins.
+      QUEEK_DASHBOARD_ORIGINS: new URL(DASHBOARD_URL).origin,
       ...process.env,
       ...projectEnv,
       APP_BASE_URL: new URL(tunnelUrl).origin,
