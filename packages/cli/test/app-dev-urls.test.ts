@@ -12,9 +12,11 @@ describe('dev ready block helpers (Shopify parity)', () => {
     expect(handoffLine('app', '[app] listening on 3000', at)).toBe('09:04:07 │ app │ listening on 3000');
   });
 
-  it('builds the Preview URL from the served admin_url, null without one', () => {
-    expect(previewUrl('https://admin.example.com/store/hello-dev/', 'app_1')).toBe('https://admin.example.com/store/hello-dev/apps/app_1');
-    expect(previewUrl(null, 'app_1')).toBeNull();
+  it('builds the Preview URL as admin_url + &app={slug} (D4), null without an admin_url', () => {
+    expect(previewUrl('https://dashboard.usequeek.com/open-store?store=12', 'hello')).toBe(
+      'https://dashboard.usequeek.com/open-store?store=12&app=hello',
+    );
+    expect(previewUrl(null, 'hello')).toBeNull();
   });
 
   it('refuses a non-dev --store with the wrong-kind copy, never bare not-found', () => {

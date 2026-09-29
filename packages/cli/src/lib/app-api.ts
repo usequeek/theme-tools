@@ -530,11 +530,11 @@ export class DeveloperApi {
   }
 
   /**
-   * Create a dev store (S-A contract): POST /dev-stores
-   * {name (≤60), sample_data} → 201 the store. Idempotency-Key is
+   * Create a dev store (S-A contract, D1): POST /dev-stores
+   * {name (≤60), test_data} → 201 the store. Idempotency-Key is
    * caller-owned like submit (fresh per store, reused on retry).
    */
-  async createDevStore(name: string, sampleData: boolean, idempotencyKey: string): Promise<DevStore> {
+  async createDevStore(name: string, testData: boolean, idempotencyKey: string): Promise<DevStore> {
     const trimmed = name.trim();
     if (trimmed === '') throw new Error('A dev store needs a name.');
     if (trimmed.length > 60) throw new Error(`Dev store name '${trimmed}' is ${trimmed.length} characters — the dashboard allows 60.`);
@@ -542,7 +542,7 @@ export class DeveloperApi {
       'POST',
       '/dev-stores',
       `creating dev store '${trimmed}'`,
-      { name: trimmed, sample_data: sampleData },
+      { name: trimmed, test_data: testData },
       undefined,
       { 'Idempotency-Key': idempotencyKey },
     );

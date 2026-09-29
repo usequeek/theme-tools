@@ -63,13 +63,14 @@ export function handoffLine(source: string, line: string, at: Date = new Date())
 }
 
 /**
- * The Preview URL: the app's page inside its dev store's dashboard, from the
- * served `admin_url` — never constructed from a slug. Null when the backend
- * sent no admin_url (the caller falls back to the dashboard links).
+ * The Preview URL (D4): the served `admin_url` (`/open-store?store={p_id}`,
+ * which switches into the dev store) plus `&app={slug}`, which routes to the
+ * embedded app. Null when the backend sent no admin_url (the caller falls
+ * back to the dashboard links) — never constructed from anything else.
  */
-export function previewUrl(adminUrl: string | null, appPid: string): string | null {
+export function previewUrl(adminUrl: string | null, appSlug: string): string | null {
   if (!adminUrl) return null;
-  return `${adminUrl.replace(/\/+$/, '')}/apps/${appPid}`;
+  return `${adminUrl}&app=${appSlug}`;
 }
 
 export function formatDevStores(stores: DevStore[]): string {
@@ -110,7 +111,7 @@ export default class AppDev extends BaseCommand {
 
   static override summary = 'Develop an app end to end: tunnel + dev install + your app running with injected env.';
 
-  static override description = `Brings up a tunnel, registers the toml as a development build (same-semver unreleased rides the in-place rule — no version spam), installs it on an owned DEV store with scopes auto-granted (no consent screen), then starts the app from the toml's CLI-only \`[dev]\` table (\`command\`, e.g. "tsx watch src/index.ts") with the dev env injected (APP_BASE_URL=<tunnel origin>, PORT, NODE_ENV=development, QUEEK_API_BASE, plus the signing secret / keypair / encryption key from .queek/.env.local, minted on first run). With no dev store, the command asks once to create one named after the app with sample data (--create-dev-store in CI). The ready block prints the tunnel URL and the Preview URL (the app open inside the dev store's dashboard); every install and app line logs with time + source. Saves to queek.app.toml re-register; \`[dev]\` changes need a restart. Automation tokens cannot run dev (dev-store reads are outside their grant) — sign in as a developer. Ctrl+C stops the app and the tunnel.`;
+  static override description = `Brings up a tunnel, registers the toml as a development build (same-semver unreleased rides the in-place rule — no version spam), installs it on an owned DEV store with scopes auto-granted (no consent screen), then starts the app from the toml's CLI-only \`[dev]\` table (\`command\`, e.g. "tsx watch src/index.ts") with the dev env injected (APP_BASE_URL=<tunnel origin>, PORT, NODE_ENV=development, QUEEK_API_BASE, plus the signing secret / keypair / encryption key from .queek/.env.local, minted on first run). With no dev store, the command asks once to create one named after the app with test data (--create-dev-store in CI). The ready block prints the tunnel URL and the Preview URL (the app open inside the dev store's dashboard); every install and app line logs with time + source. Saves to queek.app.toml re-register; \`[dev]\` changes need a restart. Automation tokens cannot run dev (dev-store reads are outside their grant) — sign in as a developer. Ctrl+C stops the app and the tunnel.`;
 
   static override examples = [
     '<%= config.bin %> <%= command.id %>',
@@ -122,7 +123,7 @@ export default class AppDev extends BaseCommand {
   static override flags = {
     ...appFlags,
     store: Flags.string({ summary: 'The owned dev store (numeric p_id, slug or name). The only store when you own exactly one. Merchant and test stores are refused.', env: 'QUEEK_APP_STORE' }),
-    'create-dev-store': Flags.boolean({ summary: 'With no dev store, create one named after the app with sample data instead of asking (CI).', default: false }),
+    'create-dev-store': Flags.boolean({ summary: 'With no dev store, create one named after the app with test data instead of asking (CI).', default: false }),
     port: Flags.integer({ summary: 'Your local app server port the tunnel forwards to (default: [dev].port, else 3000).', min: 1, max: 65535 }),
     url: Flags.string({ summary: 'Your own tunnel URL (https). Skips starting cloudflared.' }),
   };
@@ -207,7 +208,7 @@ export default class AppDev extends BaseCommand {
           this.error(error.message, { exit: 1 });
         });
         this.log(handoffLine('queek', `Dev install: ${result.slug} ${result.version} on dev store '${store.name}' ← ${tunnel.url} (install ${installed.status})`));
-        return { store, appPid: result.p_id };
+        return { store, slug: result.slug, appPid: result.p_id };
       };
 
       let current = await cycle();
@@ -215,13 +216,13 @@ export default class AppDev extends BaseCommand {
       if (!healthy) {
         this.logToStderr(`The app did not answer http://127.0.0.1:${port}/health within 90s — its [app] log above says why. The tunnel and install are live; fix the app and it restarts.`);
       } else {
-        this.readyBlock(tunnel.url, current.store, current.appPid);
+        this.readyBlock(tunnel.url, current.store, current.slug, current.appPid);
       }
       this.log(`Watching ${tomlPath} — save it to re-register ([dev] changes need a restart). Ctrl+C to stop.`);
       watch(tomlPath, { persistent: true }, async () => {
         try {
           current = await cycle();
-          this.readyBlock(tunnel.url, current.store, current.appPid);
+          this.readyBlock(tunnel.url, current.store, current.slug, current.appPid);
         } catch (error) {
           this.logToStderr(`Re-register failed: ${(error as Error).message}`);
         }
@@ -289,10 +290,10 @@ export default class AppDev extends BaseCommand {
    * dashboard links stand in — the storefront comes from the API, never
    * constructed here.
    */
-  private readyBlock(tunnelUrl: string, store: DevStore, appPid: string): void {
+  private readyBlock(tunnelUrl: string, store: DevStore, appSlug: string, appPid: string): void {
     this.log('✅ Ready, watching for changes');
     this.log(`Tunnel: ${tunnelUrl}`);
-    const preview = previewUrl(store.admin_url, appPid);
+    const preview = previewUrl(store.admin_url, appSlug);
     if (preview) this.log(`Preview URL: ${preview}`);
     else for (const line of devLinks(store, appPid)) this.log(line);
   }
@@ -309,7 +310,7 @@ export default class AppDev extends BaseCommand {
    * The dev-store selector. `--store` takes a p_id, slug or name and only
    * ever matches a dev store (anything else reads as wrong-kind, Shopify's
    * refusal shape). With no dev store at all: --create-dev-store (CI) or one
-   * TTY question creates it named after the app with sample data; a
+   * TTY question creates it named after the app with test data; a
    * non-interactive run without the flag errors with the dashboard path.
    */
   private async pickDevStore(
@@ -320,14 +321,14 @@ export default class AppDev extends BaseCommand {
     const { data: stores } = await api.devStores().catch((error: Error) => this.error(error.message, { exit: 1 }));
     if (stores.length === 0) {
       const ask = options.create || (options.interactive && this.answer<boolean>(await p.confirm({
-        message: `No dev stores yet — create one named '${options.appName}' with sample data?`,
+        message: `No dev stores yet — create one named '${options.appName}' with test data?`,
       })));
       if (ask) {
         const created = await api.createDevStore(options.appName, true, randomUUID()).catch((error: Error) => this.error(error.message, { exit: 1 }));
-        this.log(`Created dev store '${created.name}' with sample data.`);
+        this.log(`Created dev store '${created.name}' with test data.`);
         return created;
       }
-      this.error('No dev stores — create one on the dashboard (Developers → Dev stores), or pass --create-dev-store to make one named after this app with sample data.', { exit: 2 });
+      this.error('No dev stores — create one on the dashboard (Developers → Dev stores), or pass --create-dev-store to make one named after this app with test data.', { exit: 2 });
     }
     if (wanted) {
       const found = stores.find((store) => String(store.p_id) === wanted || store.name === wanted || store.slug === wanted);

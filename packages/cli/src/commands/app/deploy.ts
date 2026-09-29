@@ -18,11 +18,12 @@ export function printSecretToStdout(): boolean {
 /**
  * Shopify deploy parity: "New version released — <slug>-N · <message> · <link
  * to the version page>". The message segment drops out when no --message was
- * passed; the link is the app's Versions page on the Developer dashboard.
+ * passed; the link is the one-version page (D5:
+ * `/developers?app={p_id}&section=versions&version={sequence}`).
  */
 export function deploySuccessLine(input: { slug: string; pId: string; sequence: number; message?: string }): string {
   const note = input.message ? ` · ${input.message}` : '';
-  return `New version released — ${input.slug}-${input.sequence}${note} · https://dashboard.usequeek.com/developers?section=versions&app=${input.pId}`;
+  return `New version released — ${input.slug}-${input.sequence}${note} · https://dashboard.usequeek.com/developers?app=${input.pId}&section=versions&version=${input.sequence}`;
 }
 
 export default class AppDeploy extends BaseCommand {

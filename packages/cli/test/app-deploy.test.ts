@@ -26,15 +26,15 @@ describe('deploy secret disclosure (shown-once never lands in CI logs)', () => {
 });
 
 describe('deploySuccessLine (Shopify output parity)', () => {
-  it('prints slug-N · message · version page link', () => {
+  it('prints slug-N · message · one-version page link (D5)', () => {
     expect(deploySuccessLine({ slug: 'hello', pId: 'app_1', sequence: 2, message: 'New greeting setting' })).toBe(
-      'New version released — hello-2 · New greeting setting · https://dashboard.usequeek.com/developers?section=versions&app=app_1',
+      'New version released — hello-2 · New greeting setting · https://dashboard.usequeek.com/developers?app=app_1&section=versions&version=2',
     );
   });
 
   it('drops the message segment when no --message was passed', () => {
     expect(deploySuccessLine({ slug: 'hello', pId: 'app_1', sequence: 2 })).toBe(
-      'New version released — hello-2 · https://dashboard.usequeek.com/developers?section=versions&app=app_1',
+      'New version released — hello-2 · https://dashboard.usequeek.com/developers?app=app_1&section=versions&version=2',
     );
   });
 });

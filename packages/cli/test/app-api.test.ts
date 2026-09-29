@@ -219,7 +219,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(slowed).toBe(2);
   });
 
-  it('lists dev stores + creates one with sample_data and Idempotency-Key (S-A contract)', async () => {
+  it('lists dev stores + creates one with test_data and Idempotency-Key (S-A contract, D1)', async () => {
     const store = { id: 7, p_id: 12, name: 'Hello dev', slug: 'hello-dev', storefront_url: 'https://hello-dev.example.com', admin_url: 'https://admin.example.com/store/hello-dev', created_at: '2026-09-29T00:00:00Z' };
     const { fetchImpl, calls } = mockFetch({
       'GET /api/v1/biz/vendor/developer/dev-stores': [200, { status: 'success', message: 'ok', data: [store] }],
@@ -229,7 +229,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(await api.devStores()).toEqual({ data: [store] });
     expect(await api.createDevStore('Hello dev', true, 'key-1')).toEqual(store);
     const post = calls.find((call) => call.method === 'POST');
-    expect(post?.body).toEqual({ name: 'Hello dev', sample_data: true });
+    expect(post?.body).toEqual({ name: 'Hello dev', test_data: true });
     expect(post?.headers['Idempotency-Key']).toBe('key-1');
     await expect(api.createDevStore('x'.repeat(61), true, 'key-2')).rejects.toThrow('allows 60');
   });
