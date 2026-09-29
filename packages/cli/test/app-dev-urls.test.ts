@@ -1,6 +1,48 @@
 import { describe, expect, it } from 'vitest';
-import { devLinks, withDevUrls } from '../src/commands/app/dev.js';
+import { devLinks, devStoreRefusal, handoffLine, previewUrl, withDevResources, withDevUrls } from '../src/commands/app/dev.js';
+import type { DevStore } from '../src/lib/app-api.js';
 import type { AppManifest } from '../src/lib/app-manifest.js';
+
+const STORE: DevStore = { id: 7, p_id: 12, name: 'Hello dev', slug: 'hello-dev', storefront_url: null, admin_url: 'https://admin.example.com/store/hello-dev', created_at: null };
+
+describe('dev ready block helpers (Shopify parity)', () => {
+  it('logs handoff lines as HH:MM:SS │ source │ line, folding the [app] prefix into the source', () => {
+    const at = new Date(2026, 8, 29, 9, 4, 7);
+    expect(handoffLine('queek', 'Dev install: hello 1.0.0', at)).toBe('09:04:07 │ queek │ Dev install: hello 1.0.0');
+    expect(handoffLine('app', '[app] listening on 3000', at)).toBe('09:04:07 │ app │ listening on 3000');
+  });
+
+  it('builds the Preview URL from the served admin_url, null without one', () => {
+    expect(previewUrl('https://admin.example.com/store/hello-dev/', 'app_1')).toBe('https://admin.example.com/store/hello-dev/apps/app_1');
+    expect(previewUrl(null, 'app_1')).toBeNull();
+  });
+
+  it('refuses a non-dev --store with the wrong-kind copy, never bare not-found', () => {
+    const refusal = devStoreRefusal('live-shop', [STORE]);
+    expect(refusal).toContain("Could not find dev store 'live-shop'");
+    expect(refusal).toContain('Ensure the store is a dev store');
+  });
+});
+
+describe('withDevResources (B2: the tunnel stops on every error path)', () => {
+  it('stops everything when the task throws, then rethrows', async () => {
+    const stopped: string[] = [];
+    await expect(withDevResources(
+      [() => { stopped.push('tunnel'); }, () => { stopped.push('app'); }],
+      async () => { throw new Error('deploy refused'); },
+    )).rejects.toThrow('deploy refused');
+    expect(stopped).toEqual(['tunnel', 'app']);
+  });
+
+  it('stops everything on success too, and a throwing stopper never fails the run', async () => {
+    const stopped: string[] = [];
+    await withDevResources(
+      [() => { stopped.push('tunnel'); }, () => { throw new Error('already dead'); }],
+      async () => {},
+    );
+    expect(stopped).toEqual(['tunnel']);
+  });
+});
 
 describe('devLinks (the two links after /health answers)', () => {
   it('prints the Developer test section for the app p_id and the served storefront URL', () => {
