@@ -1218,7 +1218,7 @@ export const templateDesignsRule: Rule = {
     for (const design of designs) {
       if (design.designLabel === null) continue;
       const name = (context.demos.find((store) => store.id === design.id)?.data?.profile as { name?: unknown } | undefined)?.name;
-      const why = copyViolations(design.designLabel, typeof name === 'string' ? name : null);
+      const why = copyViolations(design.designLabel, typeof name === 'string' ? name : null, 'section');
       if (why.length === 0) continue;
       add(where(design.id, 'design_label'), `design "${design.id}" design_label: ${why.join('; ')}`, 'Write it true of any store in the business: no store name, place, naira amount, promise or date ("Neighbourhood buka", never "Lekki buka" or "Mama Tee\'s buka").');
     }
@@ -1302,6 +1302,13 @@ function copyStrings(value: unknown, path = ''): Array<[string, string]> {
  * What to do about template copy any store in the business cannot publish
  * unchanged — shared by the page-copy, announcement and manifest findings.
  */
+/**
+ * Demo section copy (BE32): hidden from a real store's shoppers until the
+ * store rewrites it, so it may persuade — claims, services and how things are
+ * made are the demo's to tell. Only the demo store's identity must not carry.
+ */
+const SECTION_COPY_FIX = 'A real store rewrites this copy in its own words before shoppers see it, but the demo store\'s identity must not carry over: the store\'s name becomes a role ("our kitchen", "the studio"), a place becomes generic ("across the city") or goes, and prices, offers, delivery windows, guarantees, opening hours, contact details, founding dates and schedules go — they are the vendor’s to state. Name the section, not when the store does things — "Freshly baked bread" is the vendor\'s to time; say "Bread and pastries". Testimonials and reviews are exempt.';
+
 const TEMPLATE_COPY_FIX = 'The setup wizard publishes this copy onto real stores unchanged. Write it for any store in the business: the store\'s name becomes a role ("our kitchen", "the studio"), a place becomes generic ("across the city") or goes, and prices, delivery windows, guarantees, claims only the vendor can make and founding dates go — they are the vendor’s to state. Say what the section is, not what the product is certified or free from — e.g. "Every skin type welcome" instead of "Dermatologist-tested". Name the section, not when the store does things — "Freshly baked bread" is the vendor\'s to time; say "Bread and pastries". Testimonials and reviews are exempt.';
 
 /**
@@ -1340,7 +1347,7 @@ function manifestCopy(variants: unknown): Array<{ scope: string; id: string; pat
 
 export const templateCopyRule: Rule = {
   id: 'theme/template-copy',
-  summary: 'Template copy is true of any store in its business: no store name, place, naira amount, promise, claim, schedule or founding date',
+  summary: 'Template copy carries no demo store identity — name, place, naira amount, promise, schedule or founding date; manifest notes carry no claim, service or turnaround either',
   kind: 'static',
   run(context) {
     if (context.retired || !context.manifest) return [];
@@ -1365,12 +1372,12 @@ export const templateCopyRule: Rule = {
       // whether the bar is enabled or not — so it reads by the same rules.
       const announcement = (store.data?.config as { header?: { announcement?: { text?: unknown } } } | undefined)?.header?.announcement?.text;
       if (typeof announcement === 'string' && announcement !== '') {
-        const why = copyViolations(announcement, typeof name === 'string' ? name : null);
+        const why = copyViolations(announcement, typeof name === 'string' ? name : null, 'section');
         if (why.length > 0) {
           findings.push(finding(context, 'theme/template-copy', 'reject', {
             where: `${context.env.root}${store.file} → config.header.announcement.text`,
             found: `text: ${why.join('; ')} — "${announcement.length > 80 ? `${announcement.slice(0, 77)}…` : announcement}"`,
-            fix: TEMPLATE_COPY_FIX,
+            fix: SECTION_COPY_FIX,
             docs: `${context.env.docs}#templates`,
           }));
         }
@@ -1381,14 +1388,14 @@ export const templateCopyRule: Rule = {
           const variant = section.variant ?? 'default';
           if (isTestimonialSection(section.type, variant, declared[section.type]?.[variant])) return;
           const lines = copyStrings(sectionCopy(section, declared) ?? {}).flatMap(([path, text]) => {
-            const why = copyViolations(text, typeof name === 'string' ? name : null);
+            const why = copyViolations(text, typeof name === 'string' ? name : null, 'section');
             return why.length > 0 ? [`${path}: ${why.join('; ')} — "${text.length > 80 ? `${text.slice(0, 77)}…` : text}"`] : [];
           });
           if (lines.length === 0) return;
           findings.push(finding(context, 'theme/template-copy', 'reject', {
             where: `${context.env.root}${store.file} → pages.${pageKey}.content[${index}] (${section.type}.${variant})`,
             found: lines.join('\n'),
-            fix: TEMPLATE_COPY_FIX,
+            fix: SECTION_COPY_FIX,
             docs: `${context.env.docs}#templates`,
           }));
         });
