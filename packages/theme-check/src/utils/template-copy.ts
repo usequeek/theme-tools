@@ -110,11 +110,14 @@ const NAIRA_AMOUNT = [
 const OFFER = [
   /\b(?:code|coupon|promo(?: code)?)\s*:?\s*[A-Z][A-Z0-9]{3,}\b/,
   /\b\d{1,3}\s?%\s?(?:off|discount)\b|\bsave\s+(?:up to\s+)?\d{1,3}\s?%|\bup to\s+\d{1,3}\s?%/i,
-  // the same offer spelled out: "Twenty percent off", "save fifteen per cent" ("100 percent cotton" is no offer)
-  /\b(?:\d{1,3}|five|ten|fifteen|twenty(?:[- ]five)?|thirty|forty|fifty|sixty|seventy)\s?per\s?cent\s?(?:off|discount)\b|\bsave\s+(?:up to\s+)?(?:\d{1,3}|five|ten|fifteen|twenty(?:[- ]five)?|thirty|forty|fifty|sixty|seventy)\s?per\s?cent\b/i,
   /\bhalf[\s-]price\b/i,
   /\b(?<!for )sale\b(?! by the kilo)/i,
   /\b(?:coupon|discount)s?\b/i,
+];
+/** Manifest notes only (BE32): the same offer spelled out. */
+const OFFER_SPELLED = [
+  // the same offer spelled out: "Twenty percent off", "save fifteen per cent" ("100 percent cotton" is no offer)
+  /\b(?:\d{1,3}|five|ten|fifteen|twenty(?:[- ]five)?|thirty|forty|fifty|sixty|seventy)\s?per\s?cent\s?(?:off|discount)\b|\bsave\s+(?:up to\s+)?(?:\d{1,3}|five|ten|fifteen|twenty(?:[- ]five)?|thirty|forty|fifty|sixty|seventy)\s?per\s?cent\b/i,
 ];
 
 /**
@@ -143,16 +146,19 @@ const PROMISE = [
   new RegExp(String.raw`\b${SERVICE}\b[^.!?\n]{0,40}?${WINDOW}\b|${WINDOW}\b[^.!?\n]{0,40}?\b${SERVICE}\b`, 'i'),
   /\b\d+[\s-](?:minute|min|hour|hr|day|week)s?\s+(?:delivery|dispatch|shipping|turnaround|returns?|exchanges?|refunds?|adjustments?|service)\b/i,
   /\b(?:free|complimentary)\s+(?:\w+\s+)?(?:delivery|shipping|returns?|pick[- ]?up|collection|alterations?|installation|install|resizing|exchanges?|samples?|styling|gifts?|consultations?|fittings?|refills?)\b/i,
+  // a service promised without end, or a reply promised fast
+  /\b(?:returns?|exchanges?|refunds?|delivery|shipping)\b[^.!?\n|]{0,20}\balways\b/i,
+  /\b(?:answer\w*|repl(?:y|ies|ied)|respond\w*)\s+(?:fast|quickly|promptly|right away)\b|\b(?:fast|quick|prompt)\s+(?:repl(?:y|ies)|answers?|responses?)\b/i,
+  /\b(?:guarantee[ds]?|money[- ]back|warrant(?:y|ies)|no questions asked)\b/i,
+];
+/** Manifest notes only (BE32). */
+const PROMISE_FREE_AFTER = [
   // a service on the house, or handwork thrown in free (BE30b): "A fitting,
   // *on the house*", "Off the peg, altered free", "Every trouser is hemmed
   // free". The free word follows the work, so the free-before pattern above
   // never sees it; "Hemming tape and sewing kits" names no free work.
   /\bon[ -]the[ -]house\b/iu,
   /\b(?:altered|hemmed)\s+free\b/iu,
-  // a service promised without end, or a reply promised fast
-  /\b(?:returns?|exchanges?|refunds?|delivery|shipping)\b[^.!?\n|]{0,20}\balways\b/i,
-  /\b(?:answer\w*|repl(?:y|ies|ied)|respond\w*)\s+(?:fast|quickly|promptly|right away)\b|\b(?:fast|quick|prompt)\s+(?:repl(?:y|ies)|answers?|responses?)\b/i,
-  /\b(?:guarantee[ds]?|money[- ]back|warrant(?:y|ies)|no questions asked)\b/i,
 ];
 
 /** The store's history, not the business's: "since 2014", "started in 2019", "six years, two stores". */
@@ -287,7 +293,7 @@ const SCHEDULE_CARRIER = String.raw`(?:deliver\w*|dispatch\w*|ship\w*|pick[- ]?u
  * baked the next day tastes better toasted", "Sealed the same day") are not
  * schedules.
  */
-export const TEMPLATE_COPY_SCHEDULES: readonly RegExp[] = [
+const SCHEDULES_BASE: readonly RegExp[] = [
   // a response or delivery window
   /\bwithin (?:the|an|one|a few|\d+) (?:hour|hours|minutes|mins)\b/iu,
   new RegExp(String.raw`\b${SCHEDULE_CARRIER}\b[^.!?\n]{0,20}?\bsame[- ]day\b|\bsame[- ]day\b[^.!?\n]{0,20}?\b${SCHEDULE_CARRIER}\b`, 'iu'),
@@ -307,6 +313,10 @@ export const TEMPLATE_COPY_SCHEDULES: readonly RegExp[] = [
   /\bround[- ]the[- ]clock\b/iu,
   // a reply promised fast
   /\bwe (?:reply|answer|respond)\b[^.!?\n]{0,30}\b(?:within|in under)\b/iu,
+];
+
+/** Turnarounds, restock days and working-day promises (BE30, BE30b) — manifest notes only since BE32. */
+const SCHEDULES_TURNAROUND: readonly RegExp[] = [
   // a turnaround only the vendor can keep (BE30): ready, fitted, altered or
   // made to order in days or weeks; a dispatch or delivery range; an N-week
   // turnaround. Each needs a service word, so process durations stay out:
@@ -332,6 +342,8 @@ export const TEMPLATE_COPY_SCHEDULES: readonly RegExp[] = [
   /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)[\s-]*hours?\s+notice\b/iu,
 ];
 
+export const TEMPLATE_COPY_SCHEDULES: readonly RegExp[] = [...SCHEDULES_BASE, ...SCHEDULES_TURNAROUND];
+
 const first = (patterns: RegExp[], text: string): string | null => {
   for (const pattern of patterns) {
     const match = pattern.exec(text);
@@ -350,32 +362,45 @@ const firstSpan = (patterns: RegExp[], text: string): { match: string; start: nu
 };
 
 /** Why one copy string could not go live on another store unchanged; empty when it can. */
-export function copyViolations(copy: string, storeName: string | null | undefined): string[] {
+/**
+ * Where copy is read (BE32). A demo section's copy — and the header
+ * announcement, and a design label — is hidden from a real store's shoppers
+ * until the store rewrites it, so it only has to keep the demo store's
+ * identity out: its name, places, prices, offers, hours, promises, dates,
+ * contact details and schedules. It may persuade: claims, services, how
+ * things are made and founding stories are the demo's to tell. Manifest notes
+ * and their quoted examples are written into fields directly and never
+ * hidden, so they meet every rule, read without emphasis asterisks.
+ */
+export type CopyScope = 'manifest' | 'section';
+
+export function copyViolations(copy: string, storeName: string | null | undefined, scope: CopyScope = 'manifest'): string[] {
+  const strict = scope === 'manifest';
   // Headings mark emphasis with asterisks ("Built by *hand*", "Cut *in-house*");
-  // read the words without them, or every pattern misses an emphasised phrase.
-  const text = copy.replace(/\*+/g, '');
+  // manifest text is read without them, or every pattern misses an emphasised phrase.
+  const text = strict ? copy.replace(/\*+/g, '') : copy;
   const found: string[] = [];
   const name = storeNameForms(storeName).find((form) => wordPattern(form).test(text));
   if (name) found.push(`names the store ("${name}")`);
   const places = PLACE_PATTERNS.filter(([, pattern]) => pattern.test(text)).map(([place]) => place);
   if (places.length > 0) found.push(`names ${places.length === 1 ? 'a place' : 'places'} (${places.join(', ')})`);
   if (first(NAIRA_AMOUNT, text)) found.push('states a naira amount');
-  const offer = first(OFFER, text);
+  const offer = first(strict ? [...OFFER, ...OFFER_SPELLED] : OFFER, text);
   if (offer) found.push(`states an offer ("${offer}")`);
   const hours = HOURS.exec(text);
   if (hours) found.push(`states opening hours ("${hours[0]}")`);
-  const promise = firstSpan(PROMISE, text);
+  const promise = firstSpan(strict ? [...PROMISE, ...PROMISE_FREE_AFTER] : PROMISE, text);
   if (promise) found.push(`makes a promise ("${promise.match}")`);
   const history = first(STORE_HISTORY, text);
   if (history) found.push(`dates the store ("${history}")`);
   const contact = CONTACT.exec(text);
   if (contact) found.push(`gives the store’s contact details ("${contact[0]}")`);
-  const claim = firstSpan([...TEMPLATE_COPY_CLAIMS], text);
+  const claim = strict ? firstSpan([...TEMPLATE_COPY_CLAIMS], text) : null;
   // A phrase the promise check already reports is not reported twice either:
   // "Made to measure in ten days" reads once, through the promise.
   const claimDoubleReported = !!claim && !!promise && claim.start < promise.end && promise.start < claim.end;
   if (claim && !claimDoubleReported) found.push(`claim only the vendor can make: "${claim.match}"`);
-  const schedule = firstSpan([...TEMPLATE_COPY_SCHEDULES], text);
+  const schedule = firstSpan([...(strict ? TEMPLATE_COPY_SCHEDULES : SCHEDULES_BASE)], text);
   // A phrase the promise check already reports is not reported twice: skip a
   // schedule match overlapping the promise match's span.
   const doubleReported = !!schedule && !!promise && schedule.start < promise.end && promise.start < schedule.end;

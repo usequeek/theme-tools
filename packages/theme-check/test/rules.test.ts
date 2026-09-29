@@ -371,18 +371,30 @@ describe('theme/template-copy', () => {
     expect(found[0].where?.startsWith(`${ctx.env.root}manifest.ts →`)).toBe(true);
   });
 
-  it('leaves claims in testimonials and reviews alone', async () => {
+  it('lets demo sections persuade — claims pass in section copy, the store\'s identity does not (BE32)', async () => {
     const found = await templateCopyRule.run(context({
       manifest: { slug: 'x', variants } as unknown as ThemeContext['manifest'],
       demos: [store([
         { type: 'content', variant: 'testimonials', data: { items: [{ quote: 'Truly cruelty-free, my skin loves it', author: 'Tolu' }] } },
-        { type: 'content', variant: 'steps', data: { heading: 'Our routine', items: [{ title: 'Cleanse', text: 'Cruelty-free, always.' }] } },
+        { type: 'content', variant: 'steps', data: { heading: 'Our routine', items: [{ title: 'Cleanse', text: 'Cruelty-free, always.' }, { title: 'Made by hand', text: 'Every jar is filled by hand in our studio. Book a *fitting*.' }, { title: 'Delivery', text: 'Free delivery over ₦25,000' }] } },
       ])],
     }));
     expect(found).toHaveLength(1);
     expect(found[0].where).toBe('theme/demos/food.json → pages.home.content[1] (content.steps)');
-    expect(found[0].found).toContain('claim only the vendor can make: "Cruelty-free"');
-    expect(found[0].fix).toContain('Say what the section is, not what the product is certified or free from');
+    expect(found[0].found).toContain('states a naira amount');
+    expect(found[0].found).not.toContain('claim only the vendor can make');
+    expect(found[0].fix).toContain('the demo store\'s identity must not carry over');
+    expect(found[0].fix).not.toContain('certified or free from');
+  });
+
+  it('reads section copy by the section scope and manifest text by every rule (BE32)', () => {
+    for (const text of ['Cruelty-free, always', 'Book a *fitting*', 'Made in small *batches*', 'New sets added weekly', 'Twenty percent off every set', 'Off the peg, altered free']) {
+      expect(copyViolations(text, null, 'section'), text).toEqual([]);
+      expect(copyViolations(text, null), text).not.toEqual([]);
+    }
+    for (const text of ['Zuri Lagos favourites', 'Free delivery over ₦25,000', 'Open daily 8am–10pm', 'Since 2014', 'Email hello@zuri.ng', 'New drop every Friday, 7pm', '20% off every set']) {
+      expect(copyViolations(text, null, 'section'), text).not.toEqual([]);
+    }
   });
 
   it('rejects the header announcement like section copy, whether the bar is enabled or not', async () => {

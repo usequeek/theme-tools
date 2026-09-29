@@ -2,6 +2,14 @@
 
 Formerly `@usequeek/theme-cli` (bin `queek-theme`); from 0.7.0 the CLI is `@usequeek/cli`, bin `queek`, with the theme commands under `queek theme`.
 
+## 0.13.0
+
+### Patch Changes
+
+- Updated dependencies [`ad72fa1`]:
+  - @usequeek/theme-check@0.13.0
+  - @usequeek/create-theme@0.13.0
+
 ## 0.12.0
 
 ### Patch Changes
