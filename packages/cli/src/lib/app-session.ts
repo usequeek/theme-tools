@@ -118,22 +118,40 @@ export async function browserLogin(api: DeveloperApi, base: string, io: FlowIO):
   return stored;
 }
 
+/** Injectable clock so the backoff is testable without real minutes. */
+export interface DeviceClock {
+  now: () => number;
+  sleep: (ms: number) => Promise<void>;
+}
+
+const realClock: DeviceClock = {
+  now: () => Date.now(),
+  sleep: (ms: number) => new Promise((done) => setTimeout(done, ms)),
+};
+
 /**
  * Headless device fallback (routes/web.php:122-123 → AgentOAuthController
  * deviceCode:84 / deviceStatus:97): the dashboard approves the shown
- * user code; the poll returns the token pair once, single-use.
+ * user code; the poll returns the token pair once, single-use. RFC 8628
+ * §3.5: `slow_down`/429 grows the interval by 5s (capped) and the poll
+ * keeps waiting until expiry — neither ever throws (B1).
  */
-export async function deviceLogin(api: DeveloperApi, io: FlowIO): Promise<'keychain' | 'file'> {
+export async function deviceLogin(api: DeveloperApi, io: FlowIO, clock: DeviceClock = realClock): Promise<'keychain' | 'file'> {
   const issued = await api.deviceCode();
   io.log(`Open ${issued.verification_uri} and enter code:\n\n  ${issued.user_code}\n`);
-  const deadline = Date.now() + issued.expires_in * 1000;
-  const step = Math.max(1, issued.interval) * 1000;
+  const deadline = clock.now() + issued.expires_in * 1000;
+  let step = Math.max(1, issued.interval) * 1000;
   for (;;) {
-    await new Promise((done) => setTimeout(done, step));
+    await clock.sleep(step);
     // deviceStatus ends the wait itself: DeniedError on dashboard deny
     // (RFC 8628 access_denied), expired message on 404/expired_token;
-    // anything else is transient and the poll continues.
-    const pair: TokenPair | null = await api.deviceStatus(issued.device_code).catch((error: Error) => {
+    // slow_down/429 only widens the step via the hook — anything else is
+    // transient and the poll continues.
+    const pair: TokenPair | null = await api.deviceStatus(issued.device_code, {
+      onSlowDown: () => {
+        step = Math.min(step + 5000, 30_000);
+      },
+    }).catch((error: Error) => {
       if (error instanceof DeniedError) throw new Error('Sign-in was denied in the dashboard.');
       if (error instanceof ApiError) throw error;
       io.debug(`device poll: ${error.message}`);
@@ -144,7 +162,7 @@ export async function deviceLogin(api: DeveloperApi, io: FlowIO): Promise<'keych
       io.log(`Logged in (session stored in ${stored === 'keychain' ? 'the OS keychain' : 'a 0600 session file'}).`);
       return stored;
     }
-    if (Date.now() > deadline) throw new Error('The code expired before approval — run the login again for a fresh one.');
+    if (clock.now() > deadline) throw new Error('The code expired before approval — run the login again for a fresh one.');
   }
 }
 
