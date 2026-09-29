@@ -2,6 +2,12 @@
 
 Formerly `@usequeek/theme-cli` (bin `queek-theme`); from 0.7.0 the CLI is `@usequeek/cli`, bin `queek`, with the theme commands under `queek theme`.
 
+## 0.9.2
+
+### Patch Changes
+
+- Runs on @oclif/core 5 and the version-check plugin 4; commands, flags and output are unchanged.
+
 ## 0.9.0
 
 ### Patch Changes
