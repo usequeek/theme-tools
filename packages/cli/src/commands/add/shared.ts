@@ -37,7 +37,8 @@ export function designFile(id: string): string {
 
 /** A plan's files, relative to where the command ran (like `package --json`). */
 export function relativeFiles(plan: AddPlan): string[] {
-  return plan.files.map((file) => relative(process.cwd(), file));
+  // `/` on every OS, like every path the checker prints (Windows would give `theme\demos\x.json`).
+  return plan.files.map((file) => relative(process.cwd(), file).replace(/\\/g, '/'));
 }
 
 const CHECK_LINE = 'Then run: queek theme check';
