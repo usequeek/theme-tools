@@ -42,6 +42,9 @@ export class AutomationTokenError extends ApiError {}
 /** The session is gone (refresh refused): the user must log in again. */
 export class LoginNeededError extends Error {}
 
+/** The dashboard user denied the device approval (RFC 8628 §3.5 access_denied). */
+export class DeniedError extends ApiError {}
+
 export interface DeviceCode {
   device_code: string;
   user_code: string;
@@ -100,6 +103,7 @@ export interface ReleaseResult {
   /** `released` (serving now) or `in_review` (releases when approved). */
   status: string;
   version: string | null;
+  sequence: number | null;
 }
 
 export interface AppConfig {
@@ -231,12 +235,23 @@ export class DeveloperApi {
     };
   }
 
-  /** Poll until approval: 202 pending → null, 200 → token pair (AgentOAuthController.php:97). */
+  /**
+   * Poll until approval (AgentOAuthController.php:97): 202 pending → null,
+   * 200 → token pair, 403 access_denied → DeniedError (user denied, stop
+   * polling), 404 / expired_token → expired message (fetch a fresh code).
+   */
   async deviceStatus(deviceCode: string): Promise<TokenPair | null> {
     const { status, body } = await this.raw(`${this.base}${OAUTH_PREFIX}/device/status?code=${encodeURIComponent(deviceCode)}`, {
       headers: { accept: 'application/json' },
     });
     if (status === 202) return null;
+    const errorCode = (body as { error?: unknown } | null)?.error;
+    if (errorCode === 'access_denied') {
+      throw new DeniedError('Sign-in was denied in the dashboard.', status, body);
+    }
+    if (status === 404 || errorCode === 'expired_token') {
+      throw new ApiError('Code expired, run `queek auth login` again.', status, body);
+    }
     if (status < 200 || status >= 300) throw new ApiError(messageOf(body, status), status, body);
     return tokenPairOf(body, status);
   }
@@ -276,9 +291,8 @@ export class DeveloperApi {
 
   /**
    * Best-effort revoke for `auth logout` (AgentOAuthController.php:72). The
-   * backend authenticates the client here too, so a public CLI without a
-   * secret is refused — the caller ignores the refusal and always clears
-   * local creds (secretless revoke is backend must-fix #2).
+   * `cli` client is public (PKCE, no secret), so this succeeds secretless —
+   * but logout never depends on it: the caller always clears local creds.
    */
   async revokeToken(token: string): Promise<boolean> {
     const { status } = await this.raw(`${this.base}${OAUTH_PREFIX}/revoke`, {
@@ -307,23 +321,51 @@ export class DeveloperApi {
     });
     const version = (data.version ?? {}) as Record<string, unknown>;
     const unchanged = data.unchanged === true || /no changes/i.test(message);
+    const reviewStatus = version.review_status as string;
+    // The review-policy build answers data.status (released|in_review|created);
+    // until then derive it: review_status carries in_review, and a --no-release
+    // create that answers no status is a bare create.
+    const status =
+      typeof data.status === 'string'
+        ? data.status
+        : options.noRelease
+          ? 'created'
+          : reviewStatus === 'in_review'
+            ? 'in_review'
+            : 'released';
     return {
       p_id: data.p_id as string,
       slug: data.slug as string,
       name: data.name as string,
       version: version.version as string,
       sequence: version.sequence as number,
-      review_status: version.review_status as string,
-      status: typeof data.status === 'string' ? data.status : 'released',
+      review_status: reviewStatus,
+      status,
       unchanged,
       ...(typeof data.signing_secret === 'string' ? { signing_secret: data.signing_secret } : {}),
     };
   }
 
-  /** Owned test stores for the `--store` selector (DeveloperAppController.php:239). */
-  async testStores(): Promise<{ data: TestStore[]; total: number }> {
-    const { data } = await this.vendor<{ data: TestStore[]; meta: { total: number } }>('GET', '/test-stores?per_page=50', 'listing test stores');
+  /** One page of owned test stores (DeveloperAppController.php:239). */
+  async testStores(page = 1): Promise<{ data: TestStore[]; total: number }> {
+    const { data } = await this.vendor<{ data: TestStore[]; meta: { total: number } }>(
+      'GET',
+      `/test-stores?per_page=50&page=${page}`,
+      'listing test stores',
+    );
     return { data: data.data, total: data.meta.total };
+  }
+
+  /** Every owned test store, across pages (the `--store` selector never strands large owners). */
+  async allTestStores(): Promise<{ data: TestStore[]; total: number }> {
+    const first = await this.testStores(1);
+    const all = [...first.data];
+    const pages = Math.ceil(first.total / 50);
+    for (let page = 2; page <= pages; page += 1) {
+      const next = await this.testStores(page);
+      all.push(...next.data);
+    }
+    return { data: all, total: first.total };
   }
 
   /** Install an unreviewed dev build on an owned test store (DeveloperAppController.php:268). */
@@ -356,12 +398,37 @@ export class DeveloperApi {
     };
   }
 
-  /** Serve a created version: released now, or held in review (review-policy §116). */
-  async releaseVersion(app: string, version: string): Promise<ReleaseResult> {
-    const { data } = await this.vendor<Record<string, unknown>>('POST', `/apps/${encodeURIComponent(app)}/versions/${encodeURIComponent(version)}/release`, `releasing version ${version} of '${app}'`);
+  /**
+   * Serve a created version: released now, or held in review (review-policy
+   * §116). The route takes the version SEQUENCE (ReleaseVersionRequest
+   * ctype_digit gate — a semver reads as 404): a semver input is resolved
+   * via the versions list first. Unknown input errors listing what exists.
+   */
+  async releaseVersion(app: string, input: string): Promise<ReleaseResult> {
+    let sequence: number;
+    if (/^\d+$/.test(input)) {
+      sequence = Number(input);
+    } else {
+      const { versions } = await this.appVersions(app);
+      const found = versions.find((row) => row.version === input);
+      if (!found) {
+        throw new Error(
+          `Unknown version '${input}' for '${app}'. Available: ${versions.map((row) => row.version).join(', ') || 'none yet — `queek app deploy` cuts the first one'}.`,
+        );
+      }
+      sequence = found.sequence;
+    }
+    const { data } = await this.vendor<Record<string, unknown>>(
+      'POST',
+      `/apps/${encodeURIComponent(app)}/versions/${sequence}/release`,
+      `releasing version ${input} of '${app}'`,
+    );
     const status = typeof data.status === 'string' ? data.status : 'released';
-    const released = (data.version ?? {}) as Record<string, unknown>;
-    return { status, version: typeof released.version === 'string' ? released.version : version };
+    return {
+      status,
+      version: typeof data.version === 'string' ? data.version : input,
+      sequence: typeof data.sequence === 'number' ? data.sequence : sequence,
+    };
   }
 
   /** Submit for review (DeveloperAppController.php:72). */

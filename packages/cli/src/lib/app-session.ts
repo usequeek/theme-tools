@@ -1,6 +1,7 @@
+import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
-import { DeveloperApi, LoginNeededError, type AuthContext, type TokenPair } from './app-api.js';
+import { ApiError, DeniedError, DeveloperApi, LoginNeededError, type AuthContext, type TokenPair } from './app-api.js';
 import {
   apiBase,
   automationToken,
@@ -10,7 +11,16 @@ import {
   writeSession,
   type CliSession,
 } from './app-auth.js';
-import { openUrl } from './app-browser.js';
+/**
+ * Open a URL in the person's browser (the OAuth approve step). Platform
+ * opener via stdlib only — no extra dependency, no headless guessing.
+ * (lib/browser.ts is unrelated: it launches Playwright for screenshots.)
+ */
+export function openUrl(url: string): void {
+  const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+  const child = spawn(opener, [url], { detached: true, stdio: 'ignore' });
+  child.unref();
+}
 
 export interface FlowIO {
   log: (line: string) => void;
@@ -106,12 +116,12 @@ export async function deviceLogin(api: DeveloperApi, io: FlowIO): Promise<'keych
   const step = Math.max(1, issued.interval) * 1000;
   for (;;) {
     await new Promise((done) => setTimeout(done, step));
-    const pair: TokenPair | null = await api.deviceStatus(issued.device_code).catch((error: Error & { status?: number }) => {
-      // Unknown-or-expired codes read as 404 — that ends the wait; anything
-      // else is transient and the poll continues.
-      if ((error as { status?: number }).status === 404) {
-        throw new Error('That code is unknown or expired — run the login again for a fresh one.');
-      }
+    // deviceStatus ends the wait itself: DeniedError on dashboard deny
+    // (RFC 8628 access_denied), expired message on 404/expired_token;
+    // anything else is transient and the poll continues.
+    const pair: TokenPair | null = await api.deviceStatus(issued.device_code).catch((error: Error) => {
+      if (error instanceof DeniedError) throw new Error('Sign-in was denied in the dashboard.');
+      if (error instanceof ApiError) throw error;
       io.debug(`device poll: ${error.message}`);
       return null;
     });

@@ -7,16 +7,25 @@ import { loadApp, queekDir, resolveTomlPath, type AppManifest } from '../../lib/
 import { manualTunnel, startCloudflared, type Tunnel } from '../../lib/app-tunnel.js';
 import { BaseCommand } from '../../lib/base-command.js';
 
-const URL_KEYS = ['install_url', 'uninstall_url', 'settings_url', 'webhook_url', 'logo_url', 'developer_url', 'privacy_url', 'support_url'] as const;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
 
-/** Point every https URL in the manifest at the tunnel origin (paths kept). */
+/**
+ * Point the manifest at the tunnel: every https URL leaf anywhere in the
+ * manifest (dashboard notify_url/link_url/image.url, extension block
+ * link_url/image.url, proxy, …) whose origin is the app's production origin
+ * moves to the tunnel origin, paths kept. Off-origin URLs (a CDN logo, the
+ * docs site) are left alone — rewriting those would break them, not dev.
+ */
 export function withDevUrls(manifest: AppManifest, tunnelUrl: string): AppManifest {
   const tunnel = new URL(tunnelUrl);
-  const swap = (value: unknown): unknown => {
+  const production = new URL(manifest.install_url).origin;
+  const swapLeaf = (value: unknown): unknown => {
     if (typeof value !== 'string') return value;
     try {
       const url = new URL(value);
-      if (url.protocol !== 'https:') return value;
+      if (url.protocol !== 'https:' || url.origin !== production) return value;
       url.protocol = tunnel.protocol;
       url.host = tunnel.host;
       return url.toString();
@@ -24,18 +33,16 @@ export function withDevUrls(manifest: AppManifest, tunnelUrl: string): AppManife
       return value;
     }
   };
-  const out: AppManifest = { ...manifest, distribution: 'development' };
-  for (const key of URL_KEYS) {
-    if (out[key] !== undefined) (out as Record<string, unknown>)[key] = swap(out[key]);
-  }
-  if (out.extensions !== undefined) {
-    const extensions = JSON.parse(JSON.stringify(out.extensions)) as Record<string, unknown>;
-    const proxy = extensions.proxy as Record<string, unknown> | undefined;
-    if (proxy?.url) proxy.url = swap(proxy.url);
-    if (typeof extensions.merchant_page_url === 'string') extensions.merchant_page_url = swap(extensions.merchant_page_url);
-    out.extensions = extensions as AppManifest['extensions'];
-  }
-  return out;
+  const deep = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(deep);
+    if (isRecord(node)) {
+      const out: Record<string, unknown> = {};
+      for (const [key, entry] of Object.entries(node)) out[key] = deep(entry);
+      return out;
+    }
+    return swapLeaf(node);
+  };
+  return { ...(deep(manifest) as AppManifest), distribution: 'development' };
 }
 
 export default class AppDev extends BaseCommand {
@@ -116,16 +123,16 @@ export default class AppDev extends BaseCommand {
   }
 
   private async pickStore(api: DeveloperApi, wanted: string | undefined): Promise<number> {
-    const { data: stores, total } = await api.testStores().catch((error: Error) => this.error(error.message, { exit: 1 }));
+    const { data: stores, total } = await api.allTestStores().catch((error: Error) => this.error(error.message, { exit: 1 }));
     if (stores.length === 0) this.error('No owned test stores — create one on the dashboard first.', { exit: 2 });
     if (wanted) {
       const found = stores.find((store) => String(store.p_id) === wanted || store.name === wanted);
       if (!found) {
-        this.error(`No owned test store '${wanted}'. Yours: ${stores.map((store) => store.p_id).join(', ')}.${total > stores.length ? ` (${total} total; refine by exact p_id)` : ''}`, { exit: 2 });
+        this.error(`No owned test store '${wanted}'. Yours: ${stores.map((store) => `${store.p_id} (${store.name})`).join(', ')}.`, { exit: 2 });
       }
       return found.p_id;
     }
-    if (stores.length === 1 && total === 1) return stores[0].p_id;
-    this.error(`You own ${total} test stores — pass --store. First page: ${stores.map((store) => `${store.p_id} (${store.name})`).join(', ')}.`, { exit: 2 });
+    if (total === 1) return stores[0].p_id;
+    this.error(`You own ${total} test stores — pass --store. Yours: ${stores.map((store) => `${store.p_id} (${store.name})`).join(', ')}.`, { exit: 2 });
   }
 }

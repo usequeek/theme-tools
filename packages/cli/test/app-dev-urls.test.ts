@@ -27,4 +27,46 @@ describe('app dev URLs', () => {
     expect(dev.slug).toBe('hello');
     expect(dev.version).toBe('1.2.0');
   });
+
+  it('rewrites nested same-origin leaves (notify/link/image) and spares off-origin URLs', () => {
+    const dev = withDevUrls(
+      {
+        ...MANIFEST,
+        logo_url: 'https://cdn.example.net/logo.png',
+        dashboard: {
+          blocks: [],
+          actions: [
+            {
+              key: 'book',
+              title: 'Book',
+              target: 'order-details',
+              scope: 'merchant-business_profile-read',
+              effect: 'order_appointment',
+              notify_url: 'https://hello.example.com/notify',
+            },
+          ],
+          print: [],
+        },
+        extensions: {
+          blocks: [
+            {
+              key: 'recs',
+              type: 'app_block',
+              title: 'Recs',
+              targets: ['product'],
+              link_url: 'https://hello.example.com/blocks/recs',
+              image: { media_id: 'm1', url: 'https://hello.example.com/img/recs.png' },
+            },
+          ],
+        },
+      } as AppManifest,
+      'https://abc.trycloudflare.com',
+    );
+    const action = (dev.dashboard as { actions: { notify_url: string }[] }).actions[0];
+    expect(action.notify_url).toBe('https://abc.trycloudflare.com/notify');
+    const block = (dev.extensions as { blocks: { link_url: string; image: { url: string } }[] }).blocks[0];
+    expect(block.link_url).toBe('https://abc.trycloudflare.com/blocks/recs');
+    expect(block.image.url).toBe('https://abc.trycloudflare.com/img/recs.png');
+    expect(dev.logo_url).toBe('https://cdn.example.net/logo.png');
+  });
 });

@@ -52,8 +52,8 @@ export default class AppDeploy extends BaseCommand {
       this.log(`No changes — version ${result.version} is current.`);
       return { slug: result.slug, version: result.version, sequence: result.sequence, status: result.status, unchanged: true };
     }
-    if (flags['no-release']) {
-      this.log(`Created ${result.slug} version ${result.version} (sequence ${result.sequence}) — not released. Serve it with \`queek app release ${result.slug} ${result.version}\`.`);
+    if (result.status === 'created') {
+      this.log(`Created ${result.slug} version ${result.version} (sequence ${result.sequence}) — not released. Serve it with \`queek app release ${result.slug} --version ${result.version}\`.`);
     } else if (result.status === 'in_review') {
       this.log(`Version ${result.version} submitted for review — it releases when approved.`);
     } else {

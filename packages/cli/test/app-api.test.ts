@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
   AutomationTokenError,
+  DeniedError,
   DeveloperApi,
   LoginNeededError,
   type AuthContext,
@@ -48,13 +49,13 @@ const userAuth = (token = 'tok'): (() => Promise<AuthContext>) => async () => ({
 const autoAuth = (token = 'auto'): (() => Promise<AuthContext>) => async () => ({ token, kind: 'automation' });
 
 describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
-  it('deploys {manifest} bare (no version: backend auto-assigns) and reads signing_secret', async () => {
+  it('deploys {manifest} bare and derives status from review_status (real store shape: no data.status)', async () => {
     const { fetchImpl, calls } = mockFetch({
       'POST /api/v1/biz/vendor/developer/apps': ok({
         p_id: 'app_1', slug: 'hello', name: 'Hello',
         version: { version: '1.0.1', sequence: 2, review_status: 'development' },
         signing_secret: 'whsec_once',
-        status: 'released',
+        unchanged: false,
       }),
     });
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
@@ -66,6 +67,33 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(result.unchanged).toBe(false);
     expect(calls[0].body).toEqual({ manifest: MANIFEST });
     expect(calls[0].headers.authorization).toBe('Bearer tok');
+  });
+
+  it('reads data.status when the backend answers it, and derives created for --no-release', async () => {
+    const answered = new DeveloperApi('https://api.test', {
+      fetchImpl: mockFetch({
+        'POST /api/v1/biz/vendor/developer/apps': ok({
+          p_id: 'app_1', slug: 'hello', name: 'Hello',
+          version: { version: '1.1.0', sequence: 2, review_status: 'in_review' },
+          status: 'in_review',
+          unchanged: false,
+        }),
+      }).fetchImpl,
+      getAuth: userAuth(),
+    });
+    expect((await answered.deploy(MANIFEST)).status).toBe('in_review');
+
+    const created = new DeveloperApi('https://api.test', {
+      fetchImpl: mockFetch({
+        'POST /api/v1/biz/vendor/developer/apps': ok({
+          p_id: 'app_1', slug: 'hello', name: 'Hello',
+          version: { version: '1.2.0', sequence: 3, review_status: 'development' },
+          unchanged: false,
+        }),
+      }).fetchImpl,
+      getAuth: userAuth(),
+    });
+    expect((await created.deploy(MANIFEST, { noRelease: true })).status).toBe('created');
   });
 
   it('sends --version/--message/--no-release through, and spots the no-change no-op', async () => {
@@ -136,7 +164,14 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     const unknown = new DeveloperApi('https://api.test', {
       fetchImpl: mockFetch({ 'GET /oauth/device/status?code=nope': [404, { error: 'invalid_request', error_description: 'The device code is invalid or expired.' }] }).fetchImpl,
     });
-    await expect(unknown.deviceStatus('nope')).rejects.toMatchObject({ status: 404, message: 'The device code is invalid or expired.' });
+    await expect(unknown.deviceStatus('nope')).rejects.toMatchObject({ status: 404, message: 'Code expired, run `queek auth login` again.' });
+
+    const denied = new DeveloperApi('https://api.test', {
+      fetchImpl: mockFetch({ 'GET /oauth/device/status?code=d': [403, { error: 'access_denied', error_description: 'The user denied the request.' }] }).fetchImpl,
+    });
+    const denial = await denied.deviceStatus('d').catch((e: unknown) => e);
+    expect(denial).toBeInstanceOf(DeniedError);
+    expect((denial as Error).message).toBe('Sign-in was denied in the dashboard.');
   });
 
   it('exchanges the PKCE code with NO client_secret (public native client)', async () => {
@@ -167,32 +202,53 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
       'GET /api/v1/biz/vendor/developer/apps/hello/config': ok({ p_id: 'app_1', slug: 'hello', version: '1.0.0', sequence: 1, review_status: 'live', manifest: MANIFEST }),
       'GET /api/v1/biz/vendor/developer/apps/hello/versions': ok([
         { version: '1.0.0', sequence: 1, review_status: 'live', changelog: null, is_current: true, created_at: null },
+        { version: '1.0.1', sequence: 2, review_status: 'development', changelog: null, is_current: false, created_at: null },
       ]),
-      'POST /api/v1/biz/vendor/developer/apps/hello/versions/1.0.0/release': ok({ status: 'released', version: { version: '1.0.0', sequence: 1 } }),
+      'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/release': ok({ status: 'released', version: '1.0.1', sequence: 2 }),
       'POST /api/v1/biz/vendor/developer/apps/hello/submit': ok({ p_id: 'app_1', slug: 'hello', review_status: 'in_review', submitted_version: { version: '1.0.1', sequence: 2, review_status: 'in_review' } }),
-      'GET /api/v1/biz/vendor/developer/test-stores?per_page=50': ok({ data: [{ p_id: 12, name: 'Test', slug: 'test' }], meta: { current_page: 1, per_page: 50, total: 1 } }),
+      'GET /api/v1/biz/vendor/developer/test-stores?per_page=50&page=1': ok({ data: [{ p_id: 12, name: 'Test', slug: 'test' }], meta: { current_page: 1, per_page: 50, total: 1 } }),
       'POST /api/v1/biz/vendor/developer/apps/hello/dev-installs': [201, { status: 'success', message: 'ok', data: { installation_p_id: 'ins_1', store_p_id: 12, app_p_id: 'app_1', status: 'active', installed_version: '1.0.1' } }],
     });
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
     expect((await api.appConfig('hello')).review_status).toBe('live');
     const { versions } = await api.appVersions('hello');
-    expect(versions).toEqual([{ version: '1.0.0', sequence: 1, review_status: 'live', changelog: null, current: true, created_at: null }]);
-    expect(await api.releaseVersion('hello', '1.0.0')).toEqual({ status: 'released', version: '1.0.0' });
+    expect(versions).toHaveLength(2);
+    expect(versions[0]).toMatchObject({ version: '1.0.0', sequence: 1, current: true });
+    // Semver resolves to its sequence; the route takes the sequence.
+    expect(await api.releaseVersion('hello', '1.0.1')).toEqual({ status: 'released', version: '1.0.1', sequence: 2 });
     const submitted = await api.submitApp('hello');
     expect(submitted).toEqual({ review_status: 'in_review', version: '1.0.1' });
-    const stores = await api.testStores();
+    const stores = await api.allTestStores();
     expect(stores.data[0].p_id).toBe(12);
     const installed = await api.devInstall('hello', 12);
     expect(installed.installation_p_id).toBe('ins_1');
     expect(calls.map((call) => `${call.method} ${call.url.replace('https://api.test', '')}`)).toEqual([
       'GET /api/v1/biz/vendor/developer/apps/hello/config',
       'GET /api/v1/biz/vendor/developer/apps/hello/versions',
-      'POST /api/v1/biz/vendor/developer/apps/hello/versions/1.0.0/release',
+      // releaseVersion('hello', '1.0.1') resolves the semver first:
+      'GET /api/v1/biz/vendor/developer/apps/hello/versions',
+      'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/release',
       'POST /api/v1/biz/vendor/developer/apps/hello/submit',
-      'GET /api/v1/biz/vendor/developer/test-stores?per_page=50',
+      'GET /api/v1/biz/vendor/developer/test-stores?per_page=50&page=1',
       'POST /api/v1/biz/vendor/developer/apps/hello/dev-installs',
     ]);
-    expect(calls[5].body).toEqual({ test_store_p_id: 12 });
+    expect(calls[6].body).toEqual({ test_store_p_id: 12 });
+  });
+
+  it('resolves digit input as a sequence and errors unknown semvers with the list', async () => {
+    const { fetchImpl, calls } = mockFetch({
+      'GET /api/v1/biz/vendor/developer/apps/hello/versions': ok([
+        { version: '1.0.0', sequence: 1, review_status: 'live', changelog: null, is_current: true, created_at: null },
+      ]),
+      'POST /api/v1/biz/vendor/developer/apps/hello/versions/1/release': ok({ status: 'in_review', version: '1.0.0', sequence: 1 }),
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    // Digits go straight to the route — no versions lookup.
+    expect(await api.releaseVersion('hello', '1')).toEqual({ status: 'in_review', version: '1.0.0', sequence: 1 });
+    expect(calls.map((call) => `${call.method} ${call.url.replace('https://api.test', '')}`)).toEqual([
+      'POST /api/v1/biz/vendor/developer/apps/hello/versions/1/release',
+    ]);
+    await expect(api.releaseVersion('hello', '9.9.9')).rejects.toThrow("Unknown version '9.9.9' for 'hello'. Available: 1.0.0.");
   });
 
   it('retries once after a transparent refresh on 401, then throws', async () => {
@@ -204,7 +260,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
         : { ok: true, status: 200, json: async () => ({ status: 'success', message: 'ok', data: { ok: true } }) }) as Response;
     });
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth(), onRefresh: async () => 'fresh' });
-    await api.releaseVersion('hello', '1.0.0');
+    await api.releaseVersion('hello', '2');
     expect(hits).toBe(2);
   });
 
@@ -214,10 +270,10 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     ));
     const refreshed = vi.fn(async () => 'x');
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: autoAuth(), onRefresh: refreshed });
-    const error = await api.releaseVersion('hello', '1.0.0').catch((e: unknown) => e);
+    const error = await api.releaseVersion('hello', '2').catch((e: unknown) => e);
     expect(error).toBeInstanceOf(AutomationTokenError);
     expect((error as Error).message).toContain('belongs to a different app');
-    expect((error as Error).message).toContain("releasing version 1.0.0 of 'hello'");
+    expect((error as Error).message).toContain("releasing version 2 of 'hello'");
     expect(refreshed).not.toHaveBeenCalled();
   });
 

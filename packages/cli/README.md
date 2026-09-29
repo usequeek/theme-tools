@@ -143,7 +143,7 @@ queek app deploy --version 1.2.0 --message "Greeting"   # name the version + not
 queek app deploy --no-release                           # create without serving
 queek app config link hello # server manifest → queek.app.toml (no config push: deploy carries config)
 queek app versions list hello
-queek app release hello 1.2.0   # or: queek app release hello --version 1.2.0
+queek app release hello 1.2.0   # semver resolves to its sequence; digits address it directly
 queek app submit hello
 queek auth login            # rarely needed: app commands sign in automatically
 queek auth logout
