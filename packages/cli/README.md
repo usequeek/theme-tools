@@ -151,7 +151,8 @@ queek theme init my-theme --templates laundry,foods --primary laundry --tags min
 
 ```bash
 queek app init my-app       # from usequeek/queek-app-starter (== npm create @usequeek/app)
-queek app dev               # tunnel + owned test-store install, re-registers on save
+queek app dev               # tunnel + owned dev-store install, re-registers on save
+queek app info              # config file, app, app ID, scopes, dev store, user
 queek app deploy            # queek.app.toml → version N+1, released (secret shown once)
 queek app deploy --version 1.2.0 --message "Greeting"   # name the version + note
 queek app deploy --no-release                           # create without serving
@@ -179,6 +180,19 @@ every server-provided attestation clause, and POSTs with an Idempotency-Key.
 Test instructions take test-store credentials only, never production
 credentials. Success prints `Submitted v{version} — review usually within 3
 business days.`
+
+`dev` only installs on a dev store (`--store` takes a p_id, slug or name;
+merchant and test stores are refused with the wrong-kind copy). With no dev
+store it asks once to create one named after the app with sample data
+(`--create-dev-store` in CI). The ready block prints the tunnel URL and the
+Preview URL (the app open inside the dev store's dashboard); every install
+and app line logs with time + source. Device sign-in backs off on
+`slow_down`/429 (+5s per signal, capped) and keeps polling until the code
+expires. Every `dev` error path stops the tunnel — cloudflared is never left
+running. `info` prints the CURRENT APP CONFIGURATION box (config file, app,
+app ID, scopes, dev store, user). `deploy` prints `New version released —
+<slug>-N · <message> · <version page link>`; server validation errors surface
+verbatim.
 
 `queek.app.toml` is the local source of truth (same names as the server manifest,
 grouped: `[listing]`, `[access]`, `[webhooks]`, `[app]`, `[[settings]]`,
