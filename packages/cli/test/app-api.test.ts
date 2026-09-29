@@ -226,7 +226,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
       ]),
       'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/release': ok({ status: 'released', version: '1.0.1', sequence: 2 }),
       'POST /api/v1/biz/vendor/developer/apps/hello/submit': ok({ p_id: 'app_1', slug: 'hello', review_status: 'in_review', submitted_version: { version: '1.0.1', sequence: 2, review_status: 'in_review' } }),
-      'GET /api/v1/biz/vendor/developer/test-stores?per_page=50&page=1': ok({ data: [{ p_id: 12, name: 'Test', slug: 'test' }], meta: { current_page: 1, per_page: 50, total: 1 } }),
+      'GET /api/v1/biz/vendor/developer/test-stores?per_page=50&page=1': ok({ data: [{ id: 7, p_id: 12, name: 'Test', slug: 'test', storefront_url: 'https://test.usequeek.com' }], meta: { current_page: 1, per_page: 50, total: 1 } }),
       'POST /api/v1/biz/vendor/developer/apps/hello/dev-installs': [201, { status: 'success', message: 'ok', data: { installation_p_id: 'ins_1', store_p_id: 12, app_p_id: 'app_1', status: 'active', installed_version: '1.0.1' } }],
     });
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
@@ -279,16 +279,16 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect((error as Error).message).toBe('Unexpected deploy response from Queek — no status (expected released|in_review|created).');
   });
 
-  it('mints keypairs (PEM once) and rotates the signing secret (secret once)', async () => {
+  it('mints keypairs (PEM once) and lists recorded kids for the pre-generate check', async () => {
     const { fetchImpl, calls } = mockFetch({
       'POST /api/v1/biz/vendor/developer/apps/hello/keys/generate': [201, { status: 'success', message: 'ok', data: {
         kid: 'kid_1', added_at: '2026-09-30T00:00:00Z', private_key: 'PEM_BYTES',
       } }],
-      'POST /api/v1/biz/vendor/developer/apps/hello/rotate-secret': ok({ signing_secret: 'whsec_new' }),
+      'GET /api/v1/biz/vendor/developer/apps/hello/keys': ok({ keys: [{ kid: 'kid_0', added_at: 'x' }] }),
     });
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
     expect(await api.generateAppKey('hello')).toEqual({ kid: 'kid_1', privateKey: 'PEM_BYTES' });
-    expect(await api.rotateAppSecret('hello')).toBe('whsec_new');
+    expect(await api.appKeys('hello')).toEqual({ kids: ['kid_0'] });
     expect(calls[0].body).toEqual({});
 
     const replayed = new DeveloperApi('https://api.test', {

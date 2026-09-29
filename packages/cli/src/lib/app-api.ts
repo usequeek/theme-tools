@@ -61,11 +61,13 @@ export interface TokenPair {
 }
 
 export interface TestStore {
+  /** Internal id (lets the dashboard switch into the store). */
+  id: number;
   p_id: number;
   name: string;
   slug: string;
-  /** Served when the backend attaches it; the CLI never constructs store URLs itself. */
-  storefront_url?: string;
+  /** The store's public URL (verified custom domain wins) — served, never constructed here. */
+  storefront_url: string | null;
 }
 
 export interface AppVersion {
@@ -473,16 +475,15 @@ export class DeveloperApi {
   }
 
   /**
-   * Rotate the app signing secret (DeveloperAppKeyController.php
-   * `rotateSecret`): POST …/rotate-secret → `data.signing_secret`, shown
-   * once. This invalidates the previous secret — callers say so out loud.
+   * The app's recorded public keys (DeveloperAppKeyController.php `index`):
+   * GET …/keys → `data.keys: [{kid, added_at}]`. `queek app dev` reads this
+   * before minting so a full keyring stops with a clear message instead of
+   * failing mid-flow. There is deliberately no rotate-secret wrapper: dev
+   * and production share one app record, so rotation is never automatic.
    */
-  async rotateAppSecret(app: string): Promise<string> {
-    const { data } = await this.vendor<Record<string, unknown>>('POST', `/apps/${encodeURIComponent(app)}/rotate-secret`, `rotating the signing secret of '${app}'`, {}, app);
-    if (typeof data.signing_secret !== 'string' || data.signing_secret === '') {
-      throw new ApiError(`Rotating the signing secret of '${app}' returned no secret.`, 200, data);
-    }
-    return data.signing_secret;
+  async appKeys(app: string): Promise<{ kids: string[] }> {
+    const { data } = await this.vendor<{ keys: Array<{ kid: string }> }>('GET', `/apps/${encodeURIComponent(app)}/keys`, `listing keys of '${app}'`, undefined, app);
+    return { kids: data.keys.map((row) => row.kid) };
   }
 
   /** Submit for review (DeveloperAppController.php:72). */

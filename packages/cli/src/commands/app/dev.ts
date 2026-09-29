@@ -1,11 +1,11 @@
 import { mkdirSync, watch } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
 import { Flags } from '@oclif/core';
-import { LoginNeededError, type DeveloperApi, type DevInstallResult } from '../../lib/app-api.js';
+import { LoginNeededError, type DeveloperApi } from '../../lib/app-api.js';
 import { apiBase } from '../../lib/app-auth.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
-import { ensureDevSecrets, envLocalPath, readEnvFile, writeEnvLocal } from '../../lib/app-env.js';
+import { ensureDevSecrets, envLocalPath, MISSING_SECRET_MESSAGE, MissingSecretError, readEnvFile, writeEnvLocal } from '../../lib/app-env.js';
 import { startSupervised, waitForHealthy } from '../../lib/app-run.js';
 import { manualTunnel, startCloudflared, type Tunnel } from '../../lib/app-tunnel.js';
 import { BaseCommand } from '../../lib/base-command.js';
@@ -90,6 +90,16 @@ export default class AppDev extends BaseCommand {
     }
     const port = flags.port ?? dev.port ?? DEFAULT_DEV_PORT;
 
+    // The signing secret is never minted here — dev and production share one
+    // app record, so rotating would break every live install. Stop before
+    // starting anything (tunnel included) when it is nowhere to be found.
+    const queek = queekDir(flags.path);
+    mkdirSync(queek, { recursive: true });
+    const recorded = readEnvFile(envLocalPath(queek));
+    if (!recorded.QUEEK_APP_SECRET && !process.env.QUEEK_APP_SECRET) {
+      this.error(MISSING_SECRET_MESSAGE, { exit: 2 });
+    }
+
     const tomlPath = resolveTomlPath(flags.path, flags.config);
     const tunnel = await this.tunnel(flags.path, flags.url, port);
     const app = await this.startApp(api, flags.path, first.manifest.slug, tunnel.url, port, dev.command);
@@ -102,14 +112,14 @@ export default class AppDev extends BaseCommand {
     process.once('SIGINT', stop);
     process.once('SIGTERM', stop);
 
-    const cycle = async (): Promise<{ installed: DevInstallResult; store: { p_id: number; name: string; slug: string } }> => {
+    const cycle = async (): Promise<{ store: { p_id: number; name: string; slug: string; storefront_url: string | null }; appPid: string }> => {
       const { manifest } = loadApp(flags.path, flags.config);
       const devManifest = withDevUrls(manifest, tunnel.url);
       const result = await api.deploy(devManifest).catch((error: Error) => this.error(error.message, { exit: 1 }));
       const store = await this.pickStore(api, flags.store);
       const installed = await api.devInstall(result.slug, store.p_id).catch((error: Error) => this.error(error.message, { exit: 1 }));
       this.log(`Dev: ${result.slug} ${result.version} on test store ${store.p_id} ← ${tunnel.url} (install ${installed.status})`);
-      return { installed, store };
+      return { store, appPid: result.p_id };
     };
 
     let current = await cycle();
@@ -117,13 +127,13 @@ export default class AppDev extends BaseCommand {
     if (!healthy) {
       this.logToStderr(`The app did not answer http://127.0.0.1:${port}/health within 90s — its [app] log above says why. The tunnel and install are live; fix the app and it restarts.`);
     } else {
-      this.links(current.installed, current.store);
+      this.links(current.store, current.appPid);
     }
     this.log(`Watching ${tomlPath} — save it to re-register ([dev] changes need a restart). Ctrl+C to stop.`);
     watch(tomlPath, { persistent: true }, async () => {
       try {
         current = await cycle();
-        this.links(current.installed, current.store);
+        this.links(current.store, current.appPid);
       } catch (error) {
         this.logToStderr(`Re-register failed: ${(error as Error).message}`);
       }
@@ -132,10 +142,12 @@ export default class AppDev extends BaseCommand {
   }
 
   /**
-   * Start the app with the dev env. Secrets come from `.queek/.env.local`,
-   * minted on first run (rotate-secret / keys-generate / local random) and
-   * stored 0600 — the values are never printed. The project's own `.env`
-   * fills the rest, but CLI-owned keys always win.
+   * Start the app with the dev env. Credentials come from `.queek/.env.local`
+   * (or the environment for the secret), minted on first run (keys-generate
+   * once / local random) and stored 0600 — the values are never printed. The
+   * signing secret is NEVER rotated here (dev and production share one app
+   * record): the early gate in run() already stopped when it is missing. The
+   * project's own `.env` fills the rest, but CLI-owned keys always win.
    */
   private async startApp(
     api: DeveloperApi,
@@ -149,8 +161,9 @@ export default class AppDev extends BaseCommand {
     const queek = queekDir(dir);
     mkdirSync(queek, { recursive: true });
     const local = readEnvFile(envLocalPath(queek));
-    const secrets = await ensureDevSecrets(api, slug, local, (line) => this.log(line)).catch((error: Error) =>
-      this.error(error.message, { exit: 1 }),
+    const { kids } = await api.appKeys(slug).catch((error: Error) => this.error(error.message, { exit: 1 }));
+    const secrets = await ensureDevSecrets(api, slug, local, kids, (line) => this.log(line), process.env.QUEEK_APP_SECRET).catch(
+      (error: Error) => this.error(error.message, { exit: error instanceof MissingSecretError ? 2 : 1 }),
     );
     if (secrets.generated.length > 0) {
       const keep: Record<string, string> = {};
@@ -179,14 +192,14 @@ export default class AppDev extends BaseCommand {
     });
   }
 
-  /** The two links, once the app answers its health route. URL shapes come
-   * from the API (dev-install) — never constructed here. Until the backend
-   * serves them, the fallback names the store to open in the dashboard. */
-  private links(installed: DevInstallResult, store: { p_id: number; name: string; slug: string }): void {
-    const admin = installed.admin_url ?? `the dashboard → test store '${store.name}' → launch the dev install`;
-    const front = installed.storefront_url ?? `the dashboard → test store '${store.name}'`;
-    this.log(`Store admin: ${admin}`);
-    this.log(`Storefront: ${front}`);
+  /**
+   * The two links, once the app answers its health route. The storefront
+   * comes from the API (test-stores rows carry it) — never constructed
+   * here. The admin link is the Developer page's "Test on a store" section
+   * (which has "Open in admin"), with the app addressed by p_id.
+   */
+  private links(store: { p_id: number; name: string; slug: string; storefront_url: string | null }, appPid: string): void {
+    for (const line of devLinks(store, appPid)) this.log(line);
   }
 
   private async tunnel(dir: string, url: string | undefined, port: number): Promise<Tunnel> {
@@ -197,7 +210,10 @@ export default class AppDev extends BaseCommand {
     return startCloudflared(port, join(queek, 'cloudflared.log')).catch((error: Error) => this.error(error.message, { exit: 2 }));
   }
 
-  private async pickStore(api: DeveloperApi, wanted: string | undefined): Promise<{ p_id: number; name: string; slug: string }> {
+  private async pickStore(
+    api: DeveloperApi,
+    wanted: string | undefined,
+  ): Promise<{ p_id: number; name: string; slug: string; storefront_url: string | null }> {
     const { data: stores, total } = await api.allTestStores().catch((error: Error) => this.error(error.message, { exit: 1 }));
     if (stores.length === 0) this.error('No owned test stores — create one on the dashboard first.', { exit: 2 });
     if (wanted) {
@@ -210,4 +226,12 @@ export default class AppDev extends BaseCommand {
     if (total === 1 && stores[0]) return stores[0];
     this.error(`You own ${total} test stores — pass --store. Yours: ${stores.map((store) => `${store.p_id} (${store.name})`).join(', ')}.`, { exit: 2 });
   }
+}
+
+/** The two dev links, pure (tested in app-dev-urls.test.ts). */
+export function devLinks(store: { name: string; storefront_url: string | null }, appPid: string): string[] {
+  return [
+    `Store admin: https://dashboard.usequeek.com/developers?section=test&app=${appPid}`,
+    `Storefront: ${store.storefront_url ?? `the dashboard → test store '${store.name}'`}`,
+  ];
 }

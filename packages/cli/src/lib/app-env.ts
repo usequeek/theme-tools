@@ -89,21 +89,35 @@ export interface DevSecrets {
   generated: string[];
 }
 
+/** A missing signing secret: exit 2 with the recovery message, never a rotation. */
+export class MissingSecretError extends Error {}
+
+/** The one recovery message, shared by the early gate and the secrets resolver. */
+export const MISSING_SECRET_MESSAGE =
+  "Missing QUEEK_APP_SECRET. Put the signing secret you saved at registration into .queek/.env.local, or develop against a separate development app: create queek.app.development.toml with its own slug and run `queek app dev -c development` (Shopify's recommended pattern).";
+
+/** The app record holds at most this many keys — minting past it stops, it never fails mid-flow. */
+export const MAX_APP_KEYS = 3;
+
 /**
- * The three credentials a dev app needs, from `.queek/.env.local` when
- * present, minted otherwise (the caller persists `generated` and never
- * prints the values):
- * - signing secret: `rotate-secret` (absent only — rotation invalidates the
- *   previous secret, so the caller says so out loud);
- * - keypair: `keys/generate` once (the PEM is returned once; without the
- *   private half a recorded kid is useless, so a partial pair regenerates);
+ * The three credentials a dev app needs, from `.queek/.env.local` (or the
+ * environment for the secret) when present, minted otherwise (the caller
+ * persists `generated` and never prints the values):
+ * - signing secret: NEVER rotated here — dev and production share one app
+ *   record, so rotating would break every live install. Absent everywhere
+ *   reads as MissingSecretError (exit 2, with the recovery message);
+ * - keypair: `keys/generate` once, additive (the PEM is returned once;
+ *   without the private half a recorded kid is useless, so a partial pair
+ *   regenerates). A full keyring stops with a clear message;
  * - encryption key: 32 local random bytes (no server round-trip needed).
  */
 export async function ensureDevSecrets(
   api: DeveloperApi,
   app: string,
   local: Record<string, string>,
+  existingKids: string[],
   log: (line: string) => void,
+  envSecret?: string,
 ): Promise<DevSecrets> {
   const values: Record<string, string> = {};
   const generated: string[] = [];
@@ -111,10 +125,10 @@ export async function ensureDevSecrets(
   const secret = local.QUEEK_APP_SECRET;
   if (typeof secret === 'string' && secret !== '') {
     values.QUEEK_APP_SECRET = secret;
+  } else if (typeof envSecret === 'string' && envSecret !== '') {
+    values.QUEEK_APP_SECRET = envSecret;
   } else {
-    log('No signing secret in .queek/.env.local — rotating it (this invalidates the previous secret).');
-    values.QUEEK_APP_SECRET = await api.rotateAppSecret(app);
-    generated.push('QUEEK_APP_SECRET');
+    throw new MissingSecretError(MISSING_SECRET_MESSAGE);
   }
 
   const kid = local.APP_KEY_ID;
@@ -123,6 +137,11 @@ export async function ensureDevSecrets(
     values.APP_KEY_ID = kid;
     values.APP_PRIVATE_KEY = privateKey;
   } else {
+    if (existingKids.length >= MAX_APP_KEYS) {
+      throw new Error(
+        `This app already has ${MAX_APP_KEYS} keys (the maximum) — delete one on the Developer page (your app → Keys), or copy an existing private key into .queek/.env.local as APP_PRIVATE_KEY with its APP_KEY_ID.`,
+      );
+    }
     log('No keypair in .queek/.env.local — generating one (the private key is shown once, by the API, and stored here).');
     const pair = await api.generateAppKey(app);
     values.APP_KEY_ID = pair.kid;

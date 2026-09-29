@@ -6,6 +6,8 @@ import type { DeveloperApi } from '../src/lib/app-api.js';
 import {
   ensureDevSecrets,
   envLocalPath,
+  MISSING_SECRET_MESSAGE,
+  MissingSecretError,
   parseDotEnv,
   readEnvFile,
   toOneLineBase64,
@@ -73,12 +75,11 @@ describe('toOneLineBase64 (PEM → one line for APP_PRIVATE_KEY)', () => {
 
 const apiWith = (overrides: Partial<DeveloperApi> = {}): DeveloperApi =>
   ({
-    rotateAppSecret: vi.fn(async () => 'whsec_rotated'),
     generateAppKey: vi.fn(async () => ({ kid: 'kid_1', privateKey: 'PEM_BYTES' })),
     ...overrides,
   }) as unknown as DeveloperApi;
 
-describe('ensureDevSecrets (local first, minted otherwise, never printed)', () => {
+describe('ensureDevSecrets (local first, minted otherwise, never printed, never rotated)', () => {
   it('uses recorded values and calls nothing when all three are present', async () => {
     const api = apiWith();
     const lines: string[] = [];
@@ -86,32 +87,60 @@ describe('ensureDevSecrets (local first, minted otherwise, never printed)', () =
       api,
       'hello',
       { QUEEK_APP_SECRET: 'whsec_old', APP_KEY_ID: 'k0', APP_PRIVATE_KEY: 'UEVN', APP_ENCRYPTION_KEY: 'ZW5j' },
+      [],
       (line) => lines.push(line),
     );
     expect(values).toEqual({ QUEEK_APP_SECRET: 'whsec_old', APP_KEY_ID: 'k0', APP_PRIVATE_KEY: 'UEVN', APP_ENCRYPTION_KEY: 'ZW5j' });
     expect(generated).toEqual([]);
-    expect(api.rotateAppSecret).not.toHaveBeenCalled();
     expect(api.generateAppKey).not.toHaveBeenCalled();
   });
 
-  it('rotates the secret, generates the keypair once and rolls local random bytes when all are missing', async () => {
+  it('takes the secret from the environment without persisting it, and still mints the rest', async () => {
     const api = apiWith();
-    const { values, generated } = await ensureDevSecrets(api, 'hello', {}, () => {});
-    expect(values.QUEEK_APP_SECRET).toBe('whsec_rotated');
+    const { values, generated } = await ensureDevSecrets(api, 'hello', {}, [], () => {}, 'whsec_env');
+    expect(values.QUEEK_APP_SECRET).toBe('whsec_env');
+    expect(values.APP_KEY_ID).toBe('kid_1');
+    expect(generated).toEqual(['APP_KEY_ID', 'APP_PRIVATE_KEY', 'APP_ENCRYPTION_KEY']);
+  });
+
+  it('stops with the recovery message when the secret is nowhere (exit 2, never a rotation)', async () => {
+    const api = apiWith();
+    const error = await ensureDevSecrets(api, 'hello', {}, [], () => {}).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(MissingSecretError);
+    expect((error as Error).message).toBe(MISSING_SECRET_MESSAGE);
+    expect((error as Error).message).toContain('queek app dev -c development');
+    expect(api.generateAppKey).not.toHaveBeenCalled();
+  });
+
+  it('generates the keypair once and rolls local random bytes when those are missing', async () => {
+    const api = apiWith();
+    const { values, generated } = await ensureDevSecrets(api, 'hello', { QUEEK_APP_SECRET: 'whsec_old' }, ['kid_0'], () => {});
     expect(values.APP_KEY_ID).toBe('kid_1');
     expect(values.APP_PRIVATE_KEY).toBe(toOneLineBase64('PEM_BYTES'));
     expect(Buffer.from(values.APP_PRIVATE_KEY, 'base64').toString('utf8')).toBe('PEM_BYTES');
     expect(Buffer.from(values.APP_ENCRYPTION_KEY, 'base64')).toHaveLength(32);
-    expect(generated).toEqual(['QUEEK_APP_SECRET', 'APP_KEY_ID', 'APP_PRIVATE_KEY', 'APP_ENCRYPTION_KEY']);
-    expect(api.rotateAppSecret).toHaveBeenCalledWith('hello');
+    expect(generated).toEqual(['APP_KEY_ID', 'APP_PRIVATE_KEY', 'APP_ENCRYPTION_KEY']);
     expect(api.generateAppKey).toHaveBeenCalledWith('hello');
   });
 
   it('regenerates the whole pair when only the kid survived (a kid without its key is useless)', async () => {
     const api = apiWith();
-    const { values, generated } = await ensureDevSecrets(api, 'hello', { QUEEK_APP_SECRET: 's', APP_KEY_ID: 'orphan', APP_ENCRYPTION_KEY: 'e' }, () => {});
+    const { values, generated } = await ensureDevSecrets(
+      api,
+      'hello',
+      { QUEEK_APP_SECRET: 's', APP_KEY_ID: 'orphan', APP_ENCRYPTION_KEY: 'e' },
+      ['orphan'],
+      () => {},
+    );
     expect(values.APP_KEY_ID).toBe('kid_1');
     expect(generated).toEqual(['APP_KEY_ID', 'APP_PRIVATE_KEY']);
-    expect(api.rotateAppSecret).not.toHaveBeenCalled();
+  });
+
+  it('stops with a clear message on a full keyring instead of failing mid-flow', async () => {
+    const api = apiWith();
+    const error = await ensureDevSecrets(api, 'hello', { QUEEK_APP_SECRET: 's' }, ['k1', 'k2', 'k3'], () => {}).catch((e: unknown) => e);
+    expect(error).not.toBeInstanceOf(MissingSecretError);
+    expect((error as Error).message).toContain('already has 3 keys');
+    expect(api.generateAppKey).not.toHaveBeenCalled();
   });
 });

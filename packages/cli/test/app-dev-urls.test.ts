@@ -1,6 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { withDevUrls } from '../src/commands/app/dev.js';
+import { devLinks, withDevUrls } from '../src/commands/app/dev.js';
 import type { AppManifest } from '../src/lib/app-manifest.js';
+
+describe('devLinks (the two links after /health answers)', () => {
+  it('prints the Developer test section for the app p_id and the served storefront URL', () => {
+    expect(devLinks({ name: 'Test', storefront_url: 'https://test.usequeek.com' }, 'app_1')).toEqual([
+      'Store admin: https://dashboard.usequeek.com/developers?section=test&app=app_1',
+      'Storefront: https://test.usequeek.com',
+    ]);
+  });
+
+  it('falls back to naming the store when the API serves no storefront URL', () => {
+    expect(devLinks({ name: 'Test', storefront_url: null }, 'app_1')).toEqual([
+      'Store admin: https://dashboard.usequeek.com/developers?section=test&app=app_1',
+      "Storefront: the dashboard → test store 'Test'",
+    ]);
+  });
+});
 
 const MANIFEST: AppManifest = {
   slug: 'hello',
