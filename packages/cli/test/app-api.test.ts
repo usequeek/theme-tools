@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
+  apiFailureOf,
   AutomationTokenError,
   DeniedError,
   DeveloperApi,
   LoginNeededError,
+  reviewRequiredOf,
   type AuthContext,
   type FetchImpl,
 } from '../src/lib/app-api.js';
@@ -15,6 +17,14 @@ const MANIFEST = {
   scopes: ['merchant-business_profile-read'],
   install_url: 'https://hello.example.com/install',
   uninstall_url: 'https://hello.example.com/uninstall',
+};
+
+const SUBMIT_BODY = {
+  test_instructions: 'Install on the demo store.',
+  screencast_url: 'https://example.com/demo.mp4',
+  contact_email: 'dev@example.com',
+  emergency_contact: { email: 'ops@example.com' },
+  acknowledged_warnings: [],
 };
 
 /** Envelope the backend wears: {status, message, data} (Controller.php:21). */
@@ -217,7 +227,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(new URLSearchParams(calls[0].body as unknown as string).get('grant_type')).toBe('refresh_token');
   });
 
-  it('hits config/versions/release/submit/test-stores/dev-installs on the built paths', async () => {
+  it('hits config/versions/release/submission/submit/withdraw/test-stores/dev-installs on the built paths', async () => {
     const { fetchImpl, calls } = mockFetch({
       'GET /api/v1/biz/vendor/developer/apps/hello/config': ok({ p_id: 'app_1', slug: 'hello', version: '1.0.0', sequence: 1, review_status: 'live', manifest: MANIFEST }),
       'GET /api/v1/biz/vendor/developer/apps/hello/versions': ok([
@@ -225,7 +235,14 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
         { version: '1.0.1', sequence: 2, review_status: 'development', changelog: null, is_current: false, created_at: null },
       ]),
       'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/release': ok({ status: 'released', version: '1.0.1', sequence: 2 }),
-      'POST /api/v1/biz/vendor/developer/apps/hello/submit': ok({ p_id: 'app_1', slug: 'hello', review_status: 'in_review', submitted_version: { version: '1.0.1', sequence: 2, review_status: 'in_review' } }),
+      'GET /api/v1/biz/vendor/developer/apps/hello/versions/2/submission': ok({
+        version: '1.0.1', sequence: 2, review_status: 'development',
+        checks: [{ key: 'listing', level: 'error', ok: true, detail: null, at: '2026-09-30T00:00:00Z' }],
+      }),
+      'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/submit': ok({ submitted_version: { version: '1.0.1', sequence: 2, review_status: 'in_review' } }),
+      'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/withdraw': ok({
+        withdrawn_version: { version: '1.0.1', sequence: 2, review_status: 'development', review_note: 'Withdrawn by developer.' },
+      }),
       'GET /api/v1/biz/vendor/developer/test-stores?per_page=50&page=1': ok({ data: [{ id: 7, p_id: 12, name: 'Test', slug: 'test', storefront_url: 'https://test.usequeek.com' }], meta: { current_page: 1, per_page: 50, total: 1 } }),
       'POST /api/v1/biz/vendor/developer/apps/hello/dev-installs': [201, { status: 'success', message: 'ok', data: { installation_p_id: 'ins_1', store_p_id: 12, app_p_id: 'app_1', status: 'active', installed_version: '1.0.1' } }],
     });
@@ -236,10 +253,15 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(versions[0]).toMatchObject({ version: '1.0.0', sequence: 1, current: true });
     // Semver resolves to its sequence; the route takes the sequence.
     expect(await api.releaseVersion('hello', '1.0.1')).toEqual({ status: 'released', version: '1.0.1', sequence: 2 });
-    const submitted = await api.submitApp('hello');
-    expect(submitted).toEqual({ review_status: 'in_review', version: '1.0.1' });
+    const checklist = await api.submission('hello', 2);
+    expect(checklist.checks).toHaveLength(1);
+    expect(checklist.checks[0]).toMatchObject({ key: 'listing', level: 'error', ok: true });
+    const submitted = await api.submitVersion('hello', 2, SUBMIT_BODY, 'key-1');
+    expect(submitted).toEqual({ version: '1.0.1', sequence: 2, review_status: 'in_review' });
+    const withdrawn = await api.withdrawVersion('hello', 2);
+    expect(withdrawn).toMatchObject({ version: '1.0.1', sequence: 2, review_status: 'development', review_note: 'Withdrawn by developer.' });
     const stores = await api.allTestStores();
-    expect(stores.data[0].p_id).toBe(12);
+    expect(stores.data[0]).toMatchObject({ p_id: 12, storefront_url: 'https://test.usequeek.com' });
     const installed = await api.devInstall('hello', 12);
     expect(installed.installation_p_id).toBe('ins_1');
     expect(calls.map((call) => `${call.method} ${call.url.replace('https://api.test', '')}`)).toEqual([
@@ -248,11 +270,16 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
       // releaseVersion('hello', '1.0.1') resolves the semver first:
       'GET /api/v1/biz/vendor/developer/apps/hello/versions',
       'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/release',
-      'POST /api/v1/biz/vendor/developer/apps/hello/submit',
+      'GET /api/v1/biz/vendor/developer/apps/hello/versions/2/submission',
+      'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/submit',
+      'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/withdraw',
       'GET /api/v1/biz/vendor/developer/test-stores?per_page=50&page=1',
       'POST /api/v1/biz/vendor/developer/apps/hello/dev-installs',
     ]);
-    expect(calls[6].body).toEqual({ test_store_p_id: 12 });
+    expect(calls.find((call) => call.url.endsWith('/dev-installs'))?.body).toEqual({ test_store_p_id: 12 });
+    const submitCall = calls.find((call) => call.url.endsWith('/versions/2/submit'));
+    expect(submitCall?.headers['Idempotency-Key']).toBe('key-1');
+    expect(submitCall?.body).toEqual(SUBMIT_BODY);
   });
 
   it('accepts the real in_review release: HTTP 202, outcome from data.status', async () => {
@@ -263,6 +290,74 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     });
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
     expect(await api.releaseVersion('hello', '3')).toEqual({ status: 'in_review', version: '1.1.0', sequence: 3 });
+  });
+
+  it('treats 409 review_required as a gated outcome on deploy and release (never ApiError)', async () => {
+    const gated = (sequence: number): [number, unknown] => [
+      409,
+      { status: 'failed', error_type: 'review_required', title: 'Review required', message: 'Submit this version.', data: { version: '1.0.0', sequence, submission_url: '/api/v1/biz/vendor/developer/apps/app_1/versions/1/submit' } },
+    ];
+    const api = new DeveloperApi('https://api.test', {
+      fetchImpl: mockFetch({
+        'POST /api/v1/biz/vendor/developer/apps': gated(1),
+        'POST /api/v1/biz/vendor/developer/apps/hello/versions/1/release': gated(1),
+      }).fetchImpl,
+      getAuth: userAuth(),
+    });
+    expect(await api.deploy(MANIFEST)).toEqual({
+      status: 'review_required',
+      version: '1.0.0',
+      sequence: 1,
+      submission_url: '/api/v1/biz/vendor/developer/apps/app_1/versions/1/submit',
+    });
+    expect(await api.releaseVersion('hello', '1')).toEqual({
+      status: 'review_required',
+      version: '1.0.0',
+      sequence: 1,
+      submission_url: '/api/v1/biz/vendor/developer/apps/app_1/versions/1/submit',
+    });
+  });
+
+  it('keeps other 409s as ApiError (already_submitted, key reuse)', async () => {
+    const api = new DeveloperApi('https://api.test', {
+      fetchImpl: mockFetch({
+        'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/submit': [
+          409,
+          { status: 'failed', error_type: 'already_submitted', message: 'Already submitted.', data: null },
+        ],
+      }).fetchImpl,
+      getAuth: userAuth(),
+    });
+    const error = await api.submitVersion('hello', 2, SUBMIT_BODY, 'key-1').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(reviewRequiredOf(error)).toBeNull();
+    expect(apiFailureOf(error)).toMatchObject({ status: 409, errorType: 'already_submitted' });
+  });
+
+  it('decodes 422 per-key failures and 429 for the command to word', async () => {
+    const api = new DeveloperApi('https://api.test', {
+      fetchImpl: mockFetch({
+        'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/submit': [
+          422,
+          { status: 'failed', error_type: 'invalid_submission', message: 'Not ready.', data: { failures: [
+            { key: 'listing', reason: 'error_failed' },
+            { key: 'embedded_frame', reason: 'warning_unacknowledged' },
+            { key: 'tested', reason: 'stale' },
+          ] } },
+        ],
+      }).fetchImpl,
+      getAuth: userAuth(),
+    });
+    const error = await api.submitVersion('hello', 2, SUBMIT_BODY, 'key-1').catch((e: unknown) => e);
+    expect(apiFailureOf(error)).toMatchObject({
+      status: 422,
+      errorType: 'invalid_submission',
+      failures: [
+        { key: 'listing', reason: 'error_failed' },
+        { key: 'embedded_frame', reason: 'warning_unacknowledged' },
+        { key: 'tested', reason: 'stale' },
+      ],
+    });
   });
 
   it('fails loudly when a deploy answer carries no data.status (never a silent released)', async () => {

@@ -96,7 +96,7 @@ export interface DeployResult {
   sequence: number;
   review_status: string;
   /** `released` by default; `in_review` when the version needs admin review first. */
-  status: string;
+  status: 'released' | 'in_review' | 'created';
   /** True when the manifest was identical: no version was cut. */
   unchanged: boolean;
   /** Shown ONCE on first registration — never returned again. */
@@ -105,9 +105,109 @@ export interface DeployResult {
 
 export interface ReleaseResult {
   /** `released` (serving now) or `in_review` (releases when approved). */
-  status: string;
+  status: 'released' | 'in_review';
   version: string | null;
   sequence: number | null;
+}
+
+/**
+ * The gated outcome, behind the backend's explicit-submit switch (default
+ * OFF): HTTP 409 `{status:"failed", error_type:"review_required", ...,
+ * data:{version, sequence, submission_url}}` — no top-level `code`. A normal
+ * outcome, never an ApiError: the version waits in development for
+ * `queek app submit`.
+ */
+export interface ReviewRequired {
+  status: 'review_required';
+  version: string;
+  sequence: number;
+  submission_url: string | null;
+}
+
+/** One readiness probe (SubmissionCheckService.php `run`). */
+export interface SubmissionCheck {
+  key: string;
+  level: string;
+  ok: boolean;
+  detail: unknown;
+  at: string;
+}
+
+/** Attestation block of the checklist (lands in a parallel backend slice — all optional here). */
+export interface SubmissionAttestation {
+  required: boolean;
+  items: Array<{ key: string; text: string }>;
+}
+
+/** GET …/versions/{sequence}/submission (DeveloperAppController.php `submission`). */
+export interface SubmissionChecklist {
+  version: string;
+  sequence: number;
+  review_status: string;
+  checks: SubmissionCheck[];
+  review_note?: string | null;
+  submitted?: unknown;
+  attestation?: SubmissionAttestation;
+  thread?: unknown[];
+}
+
+/** POST …/versions/{sequence}/submit body (SubmitAppVersionRequest.php rules). */
+export interface SubmitBody {
+  test_instructions: string;
+  screencast_url: string;
+  contact_email: string;
+  emergency_contact: { email: string; phone?: string };
+  acknowledged_warnings: string[];
+  attestation?: { items: string[] };
+}
+
+/** One per-key submit refusal (SubmitAppVersionRequest / evaluate()). */
+export interface SubmitFailure {
+  key: string;
+  reason: string;
+}
+
+/** A thrown API failure, decoded for commands (error_type vs error_code matter). */
+export interface ApiFailure {
+  status: number;
+  message: string;
+  errorType?: string;
+  errorCode?: string;
+  failures: SubmitFailure[];
+}
+
+/** Pull the gated outcome out of a thrown error, if it is one. */
+export function reviewRequiredOf(error: unknown): ReviewRequired | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null;
+  const body = (error.body ?? {}) as Record<string, unknown>;
+  if (body.error_type !== 'review_required') return null;
+  const data = (body.data ?? {}) as Record<string, unknown>;
+  return {
+    status: 'review_required',
+    version: typeof data.version === 'string' ? data.version : '',
+    sequence: typeof data.sequence === 'number' ? data.sequence : 0,
+    submission_url: typeof data.submission_url === 'string' ? data.submission_url : null,
+  };
+}
+
+/** Decode a thrown submit/release failure for clear command messages. */
+export function apiFailureOf(error: unknown): ApiFailure | null {
+  if (!(error instanceof ApiError)) return null;
+  const body = (error.body ?? {}) as Record<string, unknown>;
+  const data = (body.data ?? {}) as Record<string, unknown>;
+  const failures = Array.isArray(data.failures)
+    ? (data.failures as Array<Record<string, unknown>>).map((row) => ({
+        key: typeof row.key === 'string' ? row.key : 'unknown',
+        reason: typeof row.reason === 'string' ? row.reason : 'unknown',
+      }))
+    : [];
+  return {
+    status: error.status,
+    message: error.message,
+    ...(typeof body.error_type === 'string' ? { errorType: body.error_type } : {}),
+    ...(typeof body.error_code === 'string' ? { errorCode: body.error_code } : {}),
+    failures,
+  };
 }
 
 export interface AppConfig {
@@ -189,7 +289,14 @@ export class DeveloperApi {
    * grant and is worded as such (with the app slug when the call names one).
    * `action` words the refusal ("deploying", "releasing version 1.2.0 of", ...).
    */
-  private async vendor<T>(method: string, path: string, action: string, body?: unknown, appSlug?: string): Promise<{ data: T; message: string; status: number }> {
+  private async vendor<T>(
+    method: string,
+    path: string,
+    action: string,
+    body?: unknown,
+    appSlug?: string,
+    headers?: Record<string, string>,
+  ): Promise<{ data: T; message: string; status: number }> {
     const automationRefusal = (status: number, raw: unknown): AutomationTokenError => {
       const detail = messageOf(raw, status);
       const scope = appSlug ? `it only works for app '${appSlug}'s deploy, versions, release and submit` : 'it only works for its own app';
@@ -198,7 +305,7 @@ export class DeveloperApi {
     const attempt = async (token: string, kind: AuthKind, retried: boolean): Promise<{ data: unknown; message: string; status: number }> => {
       const { status, body: raw } = await this.raw(`${this.base}${VENDOR_PREFIX}${path}`, {
         method,
-        headers: { 'content-type': 'application/json', accept: 'application/json', authorization: `Bearer ${token}` },
+        headers: { 'content-type': 'application/json', accept: 'application/json', authorization: `Bearer ${token}`, ...(headers ?? {}) },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
       // Scoping moved into Sanctum's token resolution: an automation token
@@ -325,19 +432,33 @@ export class DeveloperApi {
    * `no_release: true` holds the version in development (created). The
    * outcome is `data.status` — never the HTTP code (DeveloperAppController.php:180).
    */
-  async deploy(manifest: AppManifest, options: DeployOptions = {}): Promise<DeployResult> {
-    const { data, message, status: httpStatus } = await this.vendor<Record<string, unknown>>(
-      'POST',
-      '/apps',
-      'deploying this app',
-      {
-        manifest,
-        ...(options.version !== undefined ? { version: options.version } : {}),
-        ...(options.message !== undefined ? { message: options.message } : {}),
-        ...(options.noRelease ? { no_release: true } : {}),
-      },
-      manifest.slug,
-    );
+  async deploy(manifest: AppManifest, options: DeployOptions = {}): Promise<DeployResult | ReviewRequired> {
+    let data: Record<string, unknown>;
+    let message: string;
+    let httpStatus: number;
+    try {
+      const answered = await this.vendor<Record<string, unknown>>(
+        'POST',
+        '/apps',
+        'deploying this app',
+        {
+          manifest,
+          ...(options.version !== undefined ? { version: options.version } : {}),
+          ...(options.message !== undefined ? { message: options.message } : {}),
+          ...(options.noRelease ? { no_release: true } : {}),
+        },
+        manifest.slug,
+      );
+      data = answered.data;
+      message = answered.message;
+      httpStatus = answered.status;
+    } catch (error) {
+      // Gated outcome, not a failure: the version waits in development for
+      // `queek app submit`. Anything else rethrows.
+      const gated = reviewRequiredOf(error);
+      if (gated) return gated;
+      throw error;
+    }
     const version = (data.version ?? {}) as Record<string, unknown>;
     const unchanged = data.unchanged === true || /no changes/i.test(message);
     const reviewStatus = version.review_status as string;
@@ -431,7 +552,7 @@ export class DeveloperApi {
    * ctype_digit gate — a semver reads as 404): a semver input is resolved
    * via the versions list first. Unknown input errors listing what exists.
    */
-  async releaseVersion(app: string, input: string): Promise<ReleaseResult> {
+  async releaseVersion(app: string, input: string): Promise<ReleaseResult | ReviewRequired> {
     let sequence: number;
     if (/^\d+$/.test(input)) {
       sequence = Number(input);
@@ -445,14 +566,23 @@ export class DeveloperApi {
       }
       sequence = found.sequence;
     }
-    const { data } = await this.vendor<Record<string, unknown>>(
-      'POST',
-      `/apps/${encodeURIComponent(app)}/versions/${sequence}/release`,
-      `releasing version ${input} of '${app}'`,
-      undefined,
-      app,
-    );
-    const status = typeof data.status === 'string' ? data.status : 'released';
+    let data: Record<string, unknown>;
+    try {
+      data = (
+        await this.vendor<Record<string, unknown>>(
+          'POST',
+          `/apps/${encodeURIComponent(app)}/versions/${sequence}/release`,
+          `releasing version ${input} of '${app}'`,
+          undefined,
+          app,
+        )
+      ).data;
+    } catch (error) {
+      const gated = reviewRequiredOf(error);
+      if (gated) return gated;
+      throw error;
+    }
+    const status: 'released' | 'in_review' = data.status === 'in_review' ? 'in_review' : 'released';
     return {
       status,
       version: typeof data.version === 'string' ? data.version : input,
@@ -486,13 +616,106 @@ export class DeveloperApi {
     return { kids: data.keys.map((row) => row.kid) };
   }
 
-  /** Submit for review (DeveloperAppController.php:72). */
-  async submitApp(app: string): Promise<{ review_status: string; version: string | null }> {
-    const { data } = await this.vendor<Record<string, unknown>>('POST', `/apps/${encodeURIComponent(app)}/submit`, `submitting '${app}'`, undefined, app);
-    const submitted = (data.submitted_version ?? null) as Record<string, unknown> | null;
+  /**
+   * Readiness checklist for one owned version (DeveloperAppController.php
+   * `submission`): stored checks return with zero egress when fresh,
+   * otherwise the server re-probes. `review_note`/`submitted`/`attestation`/
+   * `thread` land in a parallel backend slice — read by exact name, default
+   * the rest (the senior reconciles any drift).
+   */
+  async submission(app: string, sequence: number): Promise<SubmissionChecklist> {
+    const { data } = await this.vendor<Record<string, unknown>>(
+      'GET',
+      `/apps/${encodeURIComponent(app)}/versions/${sequence}/submission`,
+      `reading the submission checklist of '${app}' sequence ${sequence}`,
+      undefined,
+      app,
+    );
+    const attestation = (data.attestation ?? null) as Record<string, unknown> | null;
     return {
-      review_status: submitted !== null ? (submitted.review_status as string) : (data.review_status as string),
-      version: submitted !== null ? (submitted.version as string) : null,
+      version: typeof data.version === 'string' ? data.version : '',
+      sequence: typeof data.sequence === 'number' ? data.sequence : sequence,
+      review_status: typeof data.review_status === 'string' ? data.review_status : 'development',
+      checks: (Array.isArray(data.checks) ? data.checks : []).map((row) => {
+        const check = (row ?? {}) as Record<string, unknown>;
+        return {
+          key: typeof check.key === 'string' ? check.key : 'unknown',
+          level: typeof check.level === 'string' ? check.level : 'error',
+          ok: check.ok === true,
+          detail: check.detail ?? null,
+          at: typeof check.at === 'string' ? check.at : '',
+        };
+      }),
+      ...(typeof data.review_note === 'string' ? { review_note: data.review_note } : {}),
+      ...('submitted' in data ? { submitted: data.submitted } : {}),
+      ...(attestation !== null
+        ? {
+            attestation: {
+              required: attestation.required === true,
+              items: (Array.isArray(attestation.items) ? attestation.items : []).map((entry) => {
+                const item = (entry ?? {}) as Record<string, unknown>;
+                return { key: typeof item.key === 'string' ? item.key : '', text: typeof item.text === 'string' ? item.text : '' };
+              }),
+            },
+          }
+        : {}),
+      ...(Array.isArray(data.thread) ? { thread: data.thread } : {}),
+    };
+  }
+
+  /**
+   * Explicit submit of the `{sequence}` version (DeveloperAppController.php
+   * `submitVersion`): 200 `data.submitted_version`. The Idempotency-Key is
+   * caller-owned — fresh per logical submit, reused on retry — because a
+   * replayed body under the same key answers the stored response while a
+   * changed body 409s key-reuse. 409/422/429 propagate as ApiError for the
+   * command to word (see apiFailureOf).
+   */
+  async submitVersion(
+    app: string,
+    sequence: number,
+    body: SubmitBody,
+    idempotencyKey: string,
+  ): Promise<{ version: string; sequence: number; review_status: string }> {
+    const { data } = await this.vendor<Record<string, unknown>>(
+      'POST',
+      `/apps/${encodeURIComponent(app)}/versions/${sequence}/submit`,
+      `submitting '${app}' sequence ${sequence}`,
+      body,
+      app,
+      { 'Idempotency-Key': idempotencyKey },
+    );
+    const submitted = (data.submitted_version ?? {}) as Record<string, unknown>;
+    return {
+      version: typeof submitted.version === 'string' ? submitted.version : '',
+      sequence: typeof submitted.sequence === 'number' ? submitted.sequence : sequence,
+      review_status: typeof submitted.review_status === 'string' ? submitted.review_status : 'in_review',
+    };
+  }
+
+  /**
+   * Withdraw the `{sequence}` version from review (DeveloperAppController.php
+   * `withdraw`): in_review → development with the server-written note.
+   * 200 `data.withdrawn_version.{version, sequence, review_status,
+   * review_note}`.
+   */
+  async withdrawVersion(
+    app: string,
+    sequence: number,
+  ): Promise<{ version: string; sequence: number; review_status: string; review_note: string | null }> {
+    const { data } = await this.vendor<Record<string, unknown>>(
+      'POST',
+      `/apps/${encodeURIComponent(app)}/versions/${sequence}/withdraw`,
+      `withdrawing '${app}' sequence ${sequence}`,
+      undefined,
+      app,
+    );
+    const withdrawn = (data.withdrawn_version ?? {}) as Record<string, unknown>;
+    return {
+      version: typeof withdrawn.version === 'string' ? withdrawn.version : '',
+      sequence: typeof withdrawn.sequence === 'number' ? withdrawn.sequence : sequence,
+      review_status: typeof withdrawn.review_status === 'string' ? withdrawn.review_status : 'development',
+      review_note: typeof withdrawn.review_note === 'string' ? withdrawn.review_note : null,
     };
   }
 }
