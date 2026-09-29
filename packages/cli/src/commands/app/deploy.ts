@@ -52,8 +52,13 @@ export default class AppDeploy extends BaseCommand {
       this.log(`No changes — version ${result.version} is current.`);
       return { slug: result.slug, version: result.version, sequence: result.sequence, status: result.status, unchanged: true };
     }
-    if (result.status === 'created') {
+    // `created` only arrives when --no-release held the version in
+    // development (default deploy always releases via the policy) — the
+    // serve-it-later hint belongs to that flag alone.
+    if (result.status === 'created' && flags['no-release']) {
       this.log(`Created ${result.slug} version ${result.version} (sequence ${result.sequence}) — not released. Serve it with \`queek app release ${result.slug} --version ${result.version}\`.`);
+    } else if (result.status === 'created') {
+      this.log(`Created ${result.slug} version ${result.version} (sequence ${result.sequence}).`);
     } else if (result.status === 'in_review') {
       this.log(`Version ${result.version} submitted for review — it releases when approved.`);
     } else {

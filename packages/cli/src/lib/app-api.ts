@@ -176,32 +176,36 @@ export class DeveloperApi {
   }
 
   /**
-   * One vendor call: bearer from the session layer, `{data}` unwrapped,
-   * one transparent refresh-and-retry on 401 (user sessions only), and a
-   * plain-words 403 for automation tokens. `action` words the 403
-   * ("deploying", "releasing version 1.2.0 of", ...).
+   * One vendor call: bearer from the session layer, `{data}` unwrapped.
+   * Auth failures never trigger a login here: a user 401 refreshes once and
+   * retries; an automation 401/403 means the token is outside its app's
+   * grant and is worded as such (with the app slug when the call names one).
+   * `action` words the refusal ("deploying", "releasing version 1.2.0 of", ...).
    */
-  private async vendor<T>(method: string, path: string, action: string, body?: unknown): Promise<{ data: T; message: string }> {
+  private async vendor<T>(method: string, path: string, action: string, body?: unknown, appSlug?: string): Promise<{ data: T; message: string }> {
+    const automationRefusal = (status: number, raw: unknown): AutomationTokenError => {
+      const detail = messageOf(raw, status);
+      const scope = appSlug ? `it only works for app '${appSlug}'s deploy, versions, release and submit` : 'it only works for its own app';
+      return new AutomationTokenError(`This automation token can't do that — ${scope}. (Server: ${detail})`, status, raw);
+    };
     const attempt = async (token: string, kind: AuthKind, retried: boolean): Promise<{ data: unknown; message: string }> => {
       const { status, body: raw } = await this.raw(`${this.base}${VENDOR_PREFIX}${path}`, {
         method,
         headers: { 'content-type': 'application/json', accept: 'application/json', authorization: `Bearer ${token}` },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
+      // Scoping moved into Sanctum's token resolution: an automation token
+      // outside its app's allowed routes reads as 401, same as a dead
+      // developer session — but the two mean opposite things, so they split
+      // here and never meet a browser login.
+      if (status === 401 && kind === 'automation') throw automationRefusal(status, raw);
       // One transparent refresh-and-retry on 401 (user sessions only): a
       // second 401 throws below instead of looping.
       if (status === 401 && kind === 'user' && !retried && this.onRefresh) {
         const fresh = await this.onRefresh();
         return attempt(fresh, kind, true);
       }
-      if (status === 403 && kind === 'automation') {
-        const detail = messageOf(raw, status);
-        throw new AutomationTokenError(
-          `Access refused ${action} — this automation token belongs to a different app or cannot do that. (Server: ${detail})`,
-          status,
-          raw,
-        );
-      }
+      if (status === 403 && kind === 'automation') throw automationRefusal(status, raw);
       if (status < 200 || status >= 300) throw new ApiError(messageOf(raw, status), status, raw);
       const envelope = (raw ?? {}) as { data?: unknown; message?: unknown };
       return { data: envelope.data ?? null, message: typeof envelope.message === 'string' ? envelope.message : '' };
@@ -250,7 +254,7 @@ export class DeveloperApi {
       throw new DeniedError('Sign-in was denied in the dashboard.', status, body);
     }
     if (status === 404 || errorCode === 'expired_token') {
-      throw new ApiError('Code expired, run `queek auth login` again.', status, body);
+      throw new ApiError('Code expired or already used — run `queek auth login` again.', status, body);
     }
     if (status < 200 || status >= 300) throw new ApiError(messageOf(body, status), status, body);
     return tokenPairOf(body, status);
@@ -306,33 +310,31 @@ export class DeveloperApi {
   // ── Developer surface (vendor router, bearer) ──
 
   /**
-   * Deploy: toml → version N+1, released by default (DeveloperAppController.php:180).
-   * The manifest carries no `version` — `options.version` names one, otherwise
-   * the backend auto-assigns the next patch. `message` rides both `message`
-   * and `changelog` (S1 validated `changelog`; the parallel review-policy
-   * build reads `message` — harmless duplication, confirmed in open_questions).
+   * Deploy: POST /apps `{manifest, version?, message?, no_release?}` →
+   * 201 (new app) or 200, never 202. `message` alone: the server treats it
+   * as the changelog alias (message wins when both are sent), so one field
+   * is enough. Default deploy RELEASES through the release policy (first
+   * listing → in_review, harmless N+1 on an approved app → released);
+   * `no_release: true` holds the version in development (created). The
+   * outcome is `data.status` — never the HTTP code (DeveloperAppController.php:180).
    */
   async deploy(manifest: AppManifest, options: DeployOptions = {}): Promise<DeployResult> {
-    const { data, message } = await this.vendor<Record<string, unknown>>('POST', '/apps', 'deploying this app', {
-      manifest,
-      ...(options.version !== undefined ? { version: options.version } : {}),
-      ...(options.message !== undefined ? { message: options.message, changelog: options.message } : {}),
-      ...(options.noRelease ? { no_release: true } : {}),
-    });
+    const { data, message } = await this.vendor<Record<string, unknown>>(
+      'POST',
+      '/apps',
+      'deploying this app',
+      {
+        manifest,
+        ...(options.version !== undefined ? { version: options.version } : {}),
+        ...(options.message !== undefined ? { message: options.message } : {}),
+        ...(options.noRelease ? { no_release: true } : {}),
+      },
+      manifest.slug,
+    );
     const version = (data.version ?? {}) as Record<string, unknown>;
     const unchanged = data.unchanged === true || /no changes/i.test(message);
     const reviewStatus = version.review_status as string;
-    // The review-policy build answers data.status (released|in_review|created);
-    // until then derive it: review_status carries in_review, and a --no-release
-    // create that answers no status is a bare create.
-    const status =
-      typeof data.status === 'string'
-        ? data.status
-        : options.noRelease
-          ? 'created'
-          : reviewStatus === 'in_review'
-            ? 'in_review'
-            : 'released';
+    const status = data.status === 'released' || data.status === 'in_review' || data.status === 'created' ? data.status : 'released';
     return {
       p_id: data.p_id as string,
       slug: data.slug as string,
@@ -370,22 +372,34 @@ export class DeveloperApi {
 
   /** Install an unreviewed dev build on an owned test store (DeveloperAppController.php:268). */
   async devInstall(app: string, testStorePId: number, settings?: Record<string, unknown>): Promise<DevInstallResult> {
-    const { data } = await this.vendor<DevInstallResult>('POST', `/apps/${encodeURIComponent(app)}/dev-installs`, `installing a dev build of '${app}'`, {
-      test_store_p_id: testStorePId,
-      ...(settings !== undefined ? { settings } : {}),
-    });
+    const { data } = await this.vendor<DevInstallResult>(
+      'POST',
+      `/apps/${encodeURIComponent(app)}/dev-installs`,
+      `installing a dev build of '${app}'`,
+      {
+        test_store_p_id: testStorePId,
+        ...(settings !== undefined ? { settings } : {}),
+      },
+      app,
+    );
     return data;
   }
 
   /** Server → toml (DeveloperAppController.php:308). */
   async appConfig(app: string): Promise<AppConfig> {
-    const { data } = await this.vendor<AppConfig>('GET', `/apps/${encodeURIComponent(app)}/config`, `linking config of '${app}'`);
+    const { data } = await this.vendor<AppConfig>('GET', `/apps/${encodeURIComponent(app)}/config`, `linking config of '${app}'`, undefined, app);
     return data;
   }
 
   /** Every version snapshot, newest first (DeveloperAppController.php:342). */
   async appVersions(app: string): Promise<{ versions: AppVersion[] }> {
-    const { data: rows } = await this.vendor<Record<string, unknown>[]>('GET', `/apps/${encodeURIComponent(app)}/versions`, `listing versions of '${app}'`);
+    const { data: rows } = await this.vendor<Record<string, unknown>[]>(
+      'GET',
+      `/apps/${encodeURIComponent(app)}/versions`,
+      `listing versions of '${app}'`,
+      undefined,
+      app,
+    );
     return {
       versions: rows.map((row) => ({
         version: row.version as string,
@@ -422,6 +436,8 @@ export class DeveloperApi {
       'POST',
       `/apps/${encodeURIComponent(app)}/versions/${sequence}/release`,
       `releasing version ${input} of '${app}'`,
+      undefined,
+      app,
     );
     const status = typeof data.status === 'string' ? data.status : 'released';
     return {
@@ -433,7 +449,7 @@ export class DeveloperApi {
 
   /** Submit for review (DeveloperAppController.php:72). */
   async submitApp(app: string): Promise<{ review_status: string; version: string | null }> {
-    const { data } = await this.vendor<Record<string, unknown>>('POST', `/apps/${encodeURIComponent(app)}/submit`, `submitting '${app}'`);
+    const { data } = await this.vendor<Record<string, unknown>>('POST', `/apps/${encodeURIComponent(app)}/submit`, `submitting '${app}'`, undefined, app);
     const submitted = (data.submitted_version ?? null) as Record<string, unknown> | null;
     return {
       review_status: submitted !== null ? (submitted.review_status as string) : (data.review_status as string),

@@ -49,14 +49,15 @@ const userAuth = (token = 'tok'): (() => Promise<AuthContext>) => async () => ({
 const autoAuth = (token = 'auto'): (() => Promise<AuthContext>) => async () => ({ token, kind: 'automation' });
 
 describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
-  it('deploys {manifest} bare and derives status from review_status (real store shape: no data.status)', async () => {
+  it('deploys {manifest} bare and reads data.status (201 new app, never 202 — never the HTTP code)', async () => {
     const { fetchImpl, calls } = mockFetch({
-      'POST /api/v1/biz/vendor/developer/apps': ok({
+      'POST /api/v1/biz/vendor/developer/apps': [201, { status: 'success', message: 'App registered successfully', data: {
         p_id: 'app_1', slug: 'hello', name: 'Hello',
         version: { version: '1.0.1', sequence: 2, review_status: 'development' },
         signing_secret: 'whsec_once',
         unchanged: false,
-      }),
+        status: 'released',
+      } }],
     });
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
     const result = await api.deploy(MANIFEST);
@@ -69,7 +70,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(calls[0].headers.authorization).toBe('Bearer tok');
   });
 
-  it('reads data.status when the backend answers it, and derives created for --no-release', async () => {
+  it('reads data.status for in_review, and created when --no-release holds the version in development', async () => {
     const answered = new DeveloperApi('https://api.test', {
       fetchImpl: mockFetch({
         'POST /api/v1/biz/vendor/developer/apps': ok({
@@ -88,6 +89,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
         'POST /api/v1/biz/vendor/developer/apps': ok({
           p_id: 'app_1', slug: 'hello', name: 'Hello',
           version: { version: '1.2.0', sequence: 3, review_status: 'development' },
+          status: 'created',
           unchanged: false,
         }),
       }).fetchImpl,
@@ -106,7 +108,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     });
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
     await api.deploy(MANIFEST, { version: '1.2.0', message: 'Greeting', noRelease: true });
-    expect(calls[0].body).toEqual({ manifest: MANIFEST, version: '1.2.0', message: 'Greeting', changelog: 'Greeting', no_release: true });
+    expect(calls[0].body).toEqual({ manifest: MANIFEST, version: '1.2.0', message: 'Greeting', no_release: true });
 
     const same = new DeveloperApi('https://api.test', {
       fetchImpl: mockFetch({
@@ -164,7 +166,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     const unknown = new DeveloperApi('https://api.test', {
       fetchImpl: mockFetch({ 'GET /oauth/device/status?code=nope': [404, { error: 'invalid_request', error_description: 'The device code is invalid or expired.' }] }).fetchImpl,
     });
-    await expect(unknown.deviceStatus('nope')).rejects.toMatchObject({ status: 404, message: 'Code expired, run `queek auth login` again.' });
+    await expect(unknown.deviceStatus('nope')).rejects.toMatchObject({ status: 404, message: 'Code expired or already used — run `queek auth login` again.' });
 
     const denied = new DeveloperApi('https://api.test', {
       fetchImpl: mockFetch({ 'GET /oauth/device/status?code=d': [403, { error: 'access_denied', error_description: 'The user denied the request.' }] }).fetchImpl,
@@ -172,6 +174,22 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     const denial = await denied.deviceStatus('d').catch((e: unknown) => e);
     expect(denial).toBeInstanceOf(DeniedError);
     expect((denial as Error).message).toBe('Sign-in was denied in the dashboard.');
+  });
+
+  it('meets the deny exactly as the backend serves it: 403 access_denied ONCE, then 404', async () => {
+    let hits = 0;
+    const fetchImpl: FetchImpl = vi.fn(async () => {
+      hits += 1;
+      return (hits === 1
+        ? { ok: false, status: 403, json: async () => ({ error: 'access_denied', error_description: 'The user denied the request.' }) }
+        : { ok: false, status: 404, json: async () => ({ error: 'invalid_request', error_description: 'The device code is invalid or expired.' }) }) as Response;
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl });
+    await expect(api.deviceStatus('d')).rejects.toBeInstanceOf(DeniedError);
+    await expect(api.deviceStatus('d')).rejects.toMatchObject({
+      status: 404,
+      message: 'Code expired or already used — run `queek auth login` again.',
+    });
   });
 
   it('exchanges the PKCE code with NO client_secret (public native client)', async () => {
@@ -264,16 +282,17 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(hits).toBe(2);
   });
 
-  it('words automation 403s as wrong-app-or-grant, and never refreshes them', async () => {
+  it.each([401, 403])('words automation %is as out-of-grant for its app, and never refreshes or re-logins', async (denied) => {
     const fetchImpl: FetchImpl = vi.fn(async () => (
-      { ok: false, status: 403, json: async () => ({ status: 'failed', error: 'Forbidden', message: 'Forbidden' }) } as Response
+      { ok: false, status: denied, json: async () => ({ status: 'failed', error: 'Unauthenticated.', message: 'Unauthenticated.' }) } as Response
     ));
     const refreshed = vi.fn(async () => 'x');
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: autoAuth(), onRefresh: refreshed });
     const error = await api.releaseVersion('hello', '2').catch((e: unknown) => e);
     expect(error).toBeInstanceOf(AutomationTokenError);
-    expect((error as Error).message).toContain('belongs to a different app');
-    expect((error as Error).message).toContain("releasing version 2 of 'hello'");
+    expect((error as Error).message).toContain("This automation token can't do that");
+    expect((error as Error).message).toContain("app 'hello's deploy, versions, release and submit");
+    expect((error as Error).message).not.toContain('expired');
     expect(refreshed).not.toHaveBeenCalled();
   });
 
