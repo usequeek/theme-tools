@@ -1,5 +1,5 @@
 import { Flags } from '@oclif/core';
-import { LoginNeededError } from '../../lib/app-api.js';
+import { AutomationTokenError, LoginNeededError } from '../../lib/app-api.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { loadApp, resolveTomlPath } from '../../lib/app-manifest.js';
 import { BaseCommand } from '../../lib/base-command.js';
@@ -68,7 +68,14 @@ export default class AppInfo extends BaseCommand {
     const config = await api.appConfig(manifest.slug).catch((error: Error) => this.error(error.message, { exit: 1 }));
     let store: string | null = null;
     if (flags.store) {
-      const { data: stores } = await api.devStores().catch((error: Error) => this.error(error.message, { exit: 1 }));
+      // Dev-store reads sit outside the automation grant by backend design:
+      // say so instead of dumping the 401/403 envelope.
+      const { data: stores } = await api.devStores().catch((error: Error) => {
+        if (error instanceof AutomationTokenError) {
+          this.error('Resolving --store needs a developer session — automation tokens cannot list dev stores. Run where `queek auth login` works, or omit --store.', { exit: 2 });
+        }
+        this.error(error.message, { exit: 1 });
+      });
       const found = stores.find((row) => String(row.p_id) === flags.store || row.name === flags.store || row.slug === flags.store);
       if (!found) this.error(devStoreRefusal(flags.store, stores), { exit: 2 });
       store = found.name;

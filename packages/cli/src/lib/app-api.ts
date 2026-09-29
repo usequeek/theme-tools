@@ -248,10 +248,20 @@ export interface DevInstallResult {
   /** Served when the backend attaches them; the CLI never constructs dashboard/store URLs itself. */
   admin_url?: string;
   storefront_url?: string;
+  /** Served preview URL (DevStoreService::previewUrl); the CLI rebuilds it from admin_url+slug only as fallback. */
+  preview_url?: string;
 }
 
 const VENDOR_PREFIX = '/api/v1/biz/vendor/developer';
 const OAUTH_PREFIX = '/oauth';
+
+/**
+ * Production Developer dashboard (backend `dashboard_url` default).
+ * Staging dashboards are unsupported: every dashboard link assumes
+ * production, even under a staging QUEEK_API_BASE, until the backend serves
+ * its own dashboard_url to the CLI.
+ */
+export const DASHBOARD_URL = 'https://dashboard.usequeek.com';
 
 function messageOf(body: unknown, status: number): string {
   if (body !== null && typeof body === 'object') {
@@ -381,14 +391,18 @@ export class DeveloperApi {
    * errors: they report through `onSlowDown` and read as null (keep polling,
    * slower) — the B1 crash was throwing on them.
    */
-  async deviceStatus(deviceCode: string, hooks?: { onSlowDown?: () => void }): Promise<TokenPair | null> {
+  async deviceStatus(deviceCode: string, hooks?: { onSlowDown?: (serverIntervalSec?: number) => void }): Promise<TokenPair | null> {
     const { status, body } = await this.raw(`${this.base}${OAUTH_PREFIX}/device/status?code=${encodeURIComponent(deviceCode)}`, {
       headers: { accept: 'application/json' },
     });
     if (status === 202) return null;
     const errorCode = (body as { error?: unknown } | null)?.error;
     if (errorCode === 'slow_down' || status === 429) {
-      hooks?.onSlowDown?.();
+      // The server computes the backoff (slow_down carries `interval`,
+      // seconds, like the device-code issue); absent, the caller falls back
+      // to +5s per RFC 8628 §3.5.
+      const interval = (body as { interval?: unknown } | null)?.interval;
+      hooks?.onSlowDown?.(typeof interval === 'number' ? interval : undefined);
       return null;
     }
     if (errorCode === 'access_denied') {
@@ -544,8 +558,9 @@ export class DeveloperApi {
 
   /**
    * Create a dev store (S-A contract, D1): POST /dev-stores
-   * {name (≤60), test_data} → 201 the store. Idempotency-Key is
-   * caller-owned like submit (fresh per store, reused on retry).
+   * {name (≤60), test_data} → 201 the store. Idempotency-Key is fresh per
+   * creation attempt; a re-run lists first and only creates when still
+   * absent — list-then-create is the dedupe, not key reuse.
    */
   async createDevStore(name: string, testData: boolean, idempotencyKey: string): Promise<DevStore> {
     const trimmed = name.trim();

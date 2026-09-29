@@ -3,7 +3,7 @@ import { mkdirSync, watch } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
 import * as p from '@clack/prompts';
 import { Flags } from '@oclif/core';
-import { apiFailureOf, LoginNeededError, type DeveloperApi, type DevStore } from '../../lib/app-api.js';
+import { apiFailureOf, DASHBOARD_URL, LoginNeededError, type DeveloperApi, type DevStore } from '../../lib/app-api.js';
 import { apiBase } from '../../lib/app-auth.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
@@ -179,7 +179,7 @@ export default class AppDev extends BaseCommand {
       process.once('SIGINT', stop);
       process.once('SIGTERM', stop);
 
-      const cycle = async (): Promise<{ store: DevStore; slug: string; appPid: string }> => {
+      const cycle = async (): Promise<{ store: DevStore; preview: string | null; appPid: string }> => {
         const { manifest } = loadApp(flags.path, flags.config);
         const devManifest = withDevUrls(manifest, tunnel.url);
         const result = await api.deploy(devManifest).catch((error: Error) => this.error(error.message, { exit: 1 }));
@@ -208,7 +208,9 @@ export default class AppDev extends BaseCommand {
           this.error(error.message, { exit: 1 });
         });
         this.log(handoffLine('queek', `Dev install: ${result.slug} ${result.version} on dev store '${store.name}' ← ${tunnel.url} (install ${installed.status})`));
-        return { store, slug: result.slug, appPid: result.p_id };
+        // The served preview wins; admin_url+slug rebuilds only as fallback.
+        const preview = resolvePreview(installed.preview_url, store.admin_url, result.slug);
+        return { store, preview, appPid: result.p_id };
       };
 
       let current = await cycle();
@@ -216,13 +218,13 @@ export default class AppDev extends BaseCommand {
       if (!healthy) {
         this.logToStderr(`The app did not answer http://127.0.0.1:${port}/health within 90s — its [app] log above says why. The tunnel and install are live; fix the app and it restarts.`);
       } else {
-        this.readyBlock(tunnel.url, current.store, current.slug, current.appPid);
+        this.readyBlock(tunnel.url, current.preview, current.store, current.appPid);
       }
       this.log(`Watching ${tomlPath} — save it to re-register ([dev] changes need a restart). Ctrl+C to stop.`);
       watch(tomlPath, { persistent: true }, async () => {
         try {
           current = await cycle();
-          this.readyBlock(tunnel.url, current.store, current.slug, current.appPid);
+          this.readyBlock(tunnel.url, current.preview, current.store, current.appPid);
         } catch (error) {
           this.logToStderr(`Re-register failed: ${(error as Error).message}`);
         }
@@ -290,10 +292,9 @@ export default class AppDev extends BaseCommand {
    * dashboard links stand in — the storefront comes from the API, never
    * constructed here.
    */
-  private readyBlock(tunnelUrl: string, store: DevStore, appSlug: string, appPid: string): void {
+  private readyBlock(tunnelUrl: string, preview: string | null, store: DevStore, appPid: string): void {
     this.log('✅ Ready, watching for changes');
     this.log(`Tunnel: ${tunnelUrl}`);
-    const preview = previewUrl(store.admin_url, appSlug);
     if (preview) this.log(`Preview URL: ${preview}`);
     else for (const line of devLinks(store, appPid)) this.log(line);
   }
@@ -349,7 +350,15 @@ export default class AppDev extends BaseCommand {
 /** The two dev links, pure (tested in app-dev-urls.test.ts). */
 export function devLinks(store: { name: string; storefront_url: string | null }, appPid: string): string[] {
   return [
-    `Store admin: https://dashboard.usequeek.com/developers?section=test&app=${appPid}`,
+    `Store admin: ${DASHBOARD_URL}/developers?section=test&app=${appPid}`,
     `Storefront: ${store.storefront_url ?? `the dashboard → test store '${store.name}'`}`,
   ];
+}
+
+/**
+ * Served preview wins; admin_url+slug rebuilds only as fallback (the
+ * backend computes the same value server-side — never diverge from it).
+ */
+export function resolvePreview(served: string | undefined, adminUrl: string | null, appSlug: string): string | null {
+  return served ?? previewUrl(adminUrl, appSlug);
 }

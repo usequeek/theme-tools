@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { devLinks, devStoreRefusal, handoffLine, previewUrl, withDevResources, withDevUrls } from '../src/commands/app/dev.js';
+import { devLinks, devStoreRefusal, handoffLine, previewUrl, resolvePreview, withDevResources, withDevUrls } from '../src/commands/app/dev.js';
 import type { DevStore } from '../src/lib/app-api.js';
 import type { AppManifest } from '../src/lib/app-manifest.js';
 
@@ -17,6 +17,14 @@ describe('dev ready block helpers (Shopify parity)', () => {
       'https://dashboard.usequeek.com/open-store?store=12&app=hello',
     );
     expect(previewUrl(null, 'hello')).toBeNull();
+  });
+
+  it('prefers the served preview_url, rebuilding from admin_url+slug only as fallback', () => {
+    expect(resolvePreview('https://dash/served-preview?store=12&app=hello', 'https://dash/open-store?store=12', 'hello')).toBe(
+      'https://dash/served-preview?store=12&app=hello',
+    );
+    expect(resolvePreview(undefined, 'https://dash/open-store?store=12', 'hello')).toBe('https://dash/open-store?store=12&app=hello');
+    expect(resolvePreview(undefined, null, 'hello')).toBeNull();
   });
 
   it('refuses a non-dev --store with the wrong-kind copy, never bare not-found', () => {

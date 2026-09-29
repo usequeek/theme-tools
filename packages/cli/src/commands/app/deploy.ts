@@ -1,7 +1,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Flags } from '@oclif/core';
-import { LoginNeededError } from '../../lib/app-api.js';
+import { DASHBOARD_URL, LoginNeededError } from '../../lib/app-api.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { assertSemver, loadApp, queekDir } from '../../lib/app-manifest.js';
 import { BaseCommand } from '../../lib/base-command.js';
@@ -23,7 +23,7 @@ export function printSecretToStdout(): boolean {
  */
 export function deploySuccessLine(input: { slug: string; pId: string; sequence: number; message?: string }): string {
   const note = input.message ? ` · ${input.message}` : '';
-  return `New version released — ${input.slug}-${input.sequence}${note} · https://dashboard.usequeek.com/developers?app=${input.pId}&section=versions&version=${input.sequence}`;
+  return `New version released — ${input.slug}-${input.sequence}${note} · ${DASHBOARD_URL}/developers?app=${input.pId}&section=versions&version=${input.sequence}`;
 }
 
 export default class AppDeploy extends BaseCommand {

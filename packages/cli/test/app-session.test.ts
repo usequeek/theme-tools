@@ -59,6 +59,28 @@ describe('deviceLogin backoff (B1: slow_down/429 never throw)', () => {
     expect(sleeps).toEqual([5000, 10000, 15000]);
   });
 
+  it('takes the server-sent slow_down interval when present', async () => {
+    isolatedHome();
+    const { api } = apiFor([
+      [400, { error: 'slow_down', error_description: 'Polling too fast; slow down.', interval: 12 }],
+      [200, PAIR],
+    ]);
+    const { clock, sleeps } = fakeClock();
+    expect(await deviceLogin(api, io, clock)).toBe('file');
+    expect(sleeps).toEqual([5000, 12000]);
+  });
+
+  it('waits out a transient 5xx like any other non-answer', async () => {
+    isolatedHome();
+    const { api } = apiFor([
+      [500, { status: 'failed', message: 'Upstream hiccup.' }],
+      [200, PAIR],
+    ]);
+    const { clock, sleeps } = fakeClock();
+    expect(await deviceLogin(api, io, clock)).toBe('file');
+    expect(sleeps).toEqual([5000, 5000]);
+  });
+
   it('keeps waiting through slow_down until expiry, then reports expiry (not slow_down)', async () => {
     isolatedHome();
     const { api } = apiFor([[400, { error: 'slow_down', error_description: 'Polling too fast; slow down.' }]]);

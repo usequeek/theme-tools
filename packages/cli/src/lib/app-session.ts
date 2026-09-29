@@ -144,16 +144,24 @@ export async function deviceLogin(api: DeveloperApi, io: FlowIO, clock: DeviceCl
   for (;;) {
     await clock.sleep(step);
     // deviceStatus ends the wait itself: DeniedError on dashboard deny
-    // (RFC 8628 access_denied), expired message on 404/expired_token;
-    // slow_down/429 only widens the step via the hook — anything else is
-    // transient and the poll continues.
+    // (RFC 8628 access_denied), expired message on 404/expired_token. The
+    // server computes the slow_down backoff (interval seconds when the body
+    // carries it, else +5s); a transient 5xx waits out the step like any
+    // other non-answer — only deny, expiry and 4xx abort the login.
     const pair: TokenPair | null = await api.deviceStatus(issued.device_code, {
-      onSlowDown: () => {
-        step = Math.min(step + 5000, 30_000);
+      onSlowDown: (serverIntervalSec?: number) => {
+        const grown = serverIntervalSec !== undefined && serverIntervalSec > 0 ? serverIntervalSec * 1000 : step + 5000;
+        step = Math.min(grown, 30_000);
       },
     }).catch((error: Error) => {
       if (error instanceof DeniedError) throw new Error('Sign-in was denied in the dashboard.');
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError) {
+        if (error.status >= 500) {
+          io.debug(`device poll: transient ${error.status} (${error.message}); waiting.`);
+          return null;
+        }
+        throw error;
+      }
       io.debug(`device poll: ${error.message}`);
       return null;
     });
