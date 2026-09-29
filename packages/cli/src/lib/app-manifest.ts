@@ -52,6 +52,8 @@ const DASHBOARD_ACTION_TARGETS = ['order-details'];
 const DASHBOARD_PRINT_TARGETS = ['order-print'];
 const DASHBOARD_PRIMITIVES = ['date', 'time', 'select', 'text', 'slot-list'];
 const DASHBOARD_WHEN_FIELDS = ['order.has_appointment', 'order.is_paid', 'product.has_files'];
+/** Closed visibility conditions for an extension block (validator BLOCK_AVAILABLE_IF). */
+const BLOCK_AVAILABLE_IF = ['declared_products'];
 const EXTENSION_BLOCK_TARGETS = ['product'];
 const EXTENSION_PRIMITIVES = ['date', 'time', 'select'];
 const EXTENSION_BLOCK_TYPES = ['app_block', 'app_embed'];
@@ -239,7 +241,7 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   const topics = (webhooks.topics ?? []) as unknown;
   if (!Array.isArray(topics)) throw fail('The webhooks.topics field must be a list.');
   const webhookUrl = webhooks.url as unknown;
-  if ((topics as unknown[]).length > 0 && webhookUrl === undefined) throw fail('The webhook_url field is required when webhook_topics is present.');
+  if ((topics as unknown[]).length > 0 && webhookUrl === undefined) throw fail('webhook_topics needs webhook_url: topics without a receiver URL are refused.');
   for (const urlField of [['install_url', app.install_url], ['uninstall_url', app.uninstall_url], ['settings_url', app.settings_url], ['webhook_url', webhookUrl]] as const) {
     if (urlField[1] === undefined) {
       if (urlField[0] === 'install_url' || urlField[0] === 'uninstall_url') throw fail(`The ${urlField[0]} field is required.`);
@@ -300,12 +302,37 @@ export function assertSemver(version: string): void {
   if (!SEMVER_RE.test(version)) throw new TomlError('The --version must be strict X.Y.Z (e.g. 1.2.0).');
 }
 
+/** Offline https check mirroring assertAppUrl's scheme line (the guard's DNS half stays server-side). */
+function checkUrl(value: unknown, field: string, fail: (message: string) => never): void {
+  const problem = httpsProblem(field, value);
+  if (problem) throw fail(problem);
+}
+
+function checkImage(image: unknown, where: string, problems: string[], fail: (message: string) => never): void {
+  // A non-table image is nulled server-side (normalizeExtensions/normalizeDashboard);
+  // the container key's own allow-list lives with the caller.
+  if (!isRecord(image)) return;
+  for (const key of Object.keys(image)) {
+    if (!['media_id', 'url'].includes(key)) problems.push(unknownField(key, `${where}.image`));
+  }
+  if (image.url !== undefined && image.url !== null) checkUrl(image.url, `${where}.image.url`, fail);
+}
+
 function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (message: string) => never): void {
   if (extensions === undefined) return;
   if (!isRecord(extensions)) throw fail('The extensions section must be a table.');
+  const problems: string[] = [];
+  for (const key of Object.keys(extensions)) {
+    if (!['proxy', 'blocks', 'merchant_page_url'].includes(key)) problems.push(unknownField(key, 'manifest.extensions'));
+  }
+  if (problems.length > 0) throw new TomlError(problems.join('\n'));
   const out: Record<string, unknown> = {};
   if (extensions.proxy !== undefined) {
     if (!isRecord(extensions.proxy)) throw fail('The extensions.proxy section must be a table.');
+    for (const key of Object.keys(extensions.proxy)) {
+      if (!['url', 'subpath', 'share_customer_id'].includes(key)) problems.push(unknownField(key, 'manifest.extensions.proxy'));
+    }
+    if (problems.length > 0) throw new TomlError(problems.join('\n'));
     const proxy = extensions.proxy;
     if (typeof proxy.url !== 'string') throw fail('The extensions.proxy.url field is required.');
     const urlProblem = httpsProblem('extensions.proxy.url', proxy.url);
@@ -324,12 +351,11 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
   if (!Array.isArray(blocks)) throw fail('The extensions.blocks section must be a list of [[extensions.blocks]] tables.');
   if ((blocks as unknown[]).length > 10) throw fail('The extensions.blocks list must not have more than 10 blocks.');
   const checked: unknown[] = [];
-  const problems: string[] = [];
   (blocks as Record<string, unknown>[]).forEach((block, index) => {
     const where = `manifest.extensions.blocks[${index}]`;
     if (!isRecord(block)) throw fail(unknownField(String(index), 'manifest.extensions.blocks'));
     for (const key of Object.keys(block)) {
-      if (!['key', 'type', 'title', 'description', 'targets', 'schema', 'link_url', 'image'].includes(key)) problems.push(unknownField(key, where));
+      if (!['key', 'type', 'title', 'description', 'targets', 'available_if', 'schema', 'link_url', 'image'].includes(key)) problems.push(unknownField(key, where));
     }
     if (typeof block.key !== 'string' || !SETTING_KEY_RE.test(block.key)) throw fail(`The ${where}.key must match [a-z0-9_]{1,64}.`);
     if (block.type !== undefined && !EXTENSION_BLOCK_TYPES.includes(block.type as string)) {
@@ -339,7 +365,12 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     for (const target of block.targets as unknown[]) {
       if (!EXTENSION_BLOCK_TARGETS.includes(target as string)) throw fail(`The block target must be one of: ${EXTENSION_BLOCK_TARGETS.join(', ')}.`);
     }
+    if (block.available_if !== undefined && !BLOCK_AVAILABLE_IF.includes(block.available_if as string)) {
+      throw fail(`The block visibility condition must be one of: ${BLOCK_AVAILABLE_IF.join(', ')}.`);
+    }
     if (block.schema !== undefined) checkSchemaFields(block.schema, where, EXTENSION_PRIMITIVES, problems);
+    if (block.link_url !== undefined && block.link_url !== null) checkUrl(block.link_url, `${where}.link_url`, fail);
+    checkImage(block.image, where, problems, fail);
     checked.push(block);
   });
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
@@ -352,6 +383,10 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
   if (dashboard === undefined) return;
   if (!isRecord(dashboard)) throw fail('The dashboard section must be a table.');
   const problems: string[] = [];
+  for (const key of Object.keys(dashboard)) {
+    if (!['blocks', 'actions', 'print'].includes(key)) problems.push(unknownField(key, 'manifest.dashboard'));
+  }
+  if (problems.length > 0) throw new TomlError(problems.join('\n'));
   const out: Record<string, unknown> = {};
   const checkList = (key: 'blocks' | 'actions' | 'print', max: number): Record<string, unknown>[] => {
     const list = (dashboard[key] ?? []) as unknown;
@@ -373,6 +408,8 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
         if (!DASHBOARD_WHEN_FIELDS.includes(when as string)) throw fail(`The dashboard \`when\` field must be one of: ${DASHBOARD_WHEN_FIELDS.join(', ')}.`);
       }
     }
+    if (block.link_url !== undefined && block.link_url !== null) checkUrl(block.link_url, `${where}.link_url`, fail);
+    checkImage(block.image, where, problems, fail);
   }
   for (const action of checkList('actions', 10)) {
     const where = 'manifest.dashboard.actions';
@@ -385,6 +422,8 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
     if (typeof action.scope !== 'string' || action.scope === '') throw fail(`The ${where} scope field is required.`);
     if (action.effect !== 'order_appointment') throw fail('The dashboard action effect must be one of: order_appointment.');
     if (typeof action.notify_url !== 'string') throw fail(`The ${where} notify_url field is required.`);
+    checkUrl(action.notify_url, `${where}.notify_url`, fail);
+    checkImage(action.image, where, problems, fail);
     if (!scopes.includes(action.scope)) {
       throw fail(`Dashboard action '${action.key}' declares scope '${action.scope}' the manifest never grants.`);
     }
@@ -395,15 +434,28 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
       }
     }
   }
-  for (const row of checkList('print', 5)) {
-    const where = 'manifest.dashboard.print';
+  checkList('print', 5).forEach((row, index) => {
+    const where = `manifest.dashboard.print[${index}]`;
+    if (!isRecord(row)) {
+      problems.push(unknownField(String(index), 'manifest.dashboard.print'));
+      return;
+    }
     for (const key of Object.keys(row)) {
       if (!['key', 'title', 'target', 'fields'].includes(key)) problems.push(unknownField(key, where));
     }
     if (!DASHBOARD_PRINT_TARGETS.includes(row.target as string)) {
       throw fail(`The dashboard print target must be one of: ${DASHBOARD_PRINT_TARGETS.join(', ')}.`);
     }
-  }
+    for (const [fieldIndex, field] of ((row.fields ?? []) as unknown[]).entries()) {
+      if (!isRecord(field)) {
+        problems.push(unknownField(String(fieldIndex), `${where}.fields`));
+        continue;
+      }
+      for (const key of Object.keys(field)) {
+        if (!['key', 'label'].includes(key)) problems.push(unknownField(key, `${where}.fields[${fieldIndex}]`));
+      }
+    }
+  });
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
   const blocks = dashboard.blocks as unknown[] | undefined;
   const actions = dashboard.actions as unknown[] | undefined;
