@@ -15,6 +15,16 @@ export function printSecretToStdout(): boolean {
   return process.stdout.isTTY === true && !process.env.QUEEK_APP_AUTOMATION_TOKEN;
 }
 
+/**
+ * Shopify deploy parity: "New version released — <slug>-N · <message> · <link
+ * to the version page>". The message segment drops out when no --message was
+ * passed; the link is the app's Versions page on the Developer dashboard.
+ */
+export function deploySuccessLine(input: { slug: string; pId: string; sequence: number; message?: string }): string {
+  const note = input.message ? ` · ${input.message}` : '';
+  return `New version released — ${input.slug}-${input.sequence}${note} · https://dashboard.usequeek.com/developers?section=versions&app=${input.pId}`;
+}
+
 export default class AppDeploy extends BaseCommand {
   static override summary = 'Deploy queek.app.toml: create a version, released by default.';
 
@@ -53,6 +63,9 @@ export default class AppDeploy extends BaseCommand {
       debug: (line) => this.debug(line),
     }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
 
+    // Server validation errors (422 whole-config refusals like
+    // "[product]: requires write_products") surface verbatim: the server's
+    // message passes through unwrapped, never reworded.
     const result = await api
       .deploy(manifest, { version: flags.version, message: flags.message, noRelease: flags['no-release'] })
       .catch((error: Error) => this.error(error.message, { exit: 1 }));
@@ -79,7 +92,7 @@ export default class AppDeploy extends BaseCommand {
     } else if (result.status === 'in_review') {
       this.log(`Version ${result.version} submitted for review — it releases when approved.`);
     } else {
-      this.log(`Deployed ${result.slug} version ${result.version} (sequence ${result.sequence}, ${result.review_status}).`);
+      this.log(deploySuccessLine({ slug: result.slug, pId: result.p_id, sequence: result.sequence, message: flags.message }));
     }
 
     if (typeof result.signing_secret === 'string' && result.signing_secret !== '') {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { printSecretToStdout } from '../src/commands/app/deploy.js';
+import { deploySuccessLine, printSecretToStdout } from '../src/commands/app/deploy.js';
 
 const savedTty = process.stdout.isTTY;
 const savedToken = process.env.QUEEK_APP_AUTOMATION_TOKEN;
@@ -22,5 +22,19 @@ describe('deploy secret disclosure (shown-once never lands in CI logs)', () => {
     Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
     process.env.QUEEK_APP_AUTOMATION_TOKEN = 'auto';
     expect(printSecretToStdout()).toBe(false);
+  });
+});
+
+describe('deploySuccessLine (Shopify output parity)', () => {
+  it('prints slug-N · message · version page link', () => {
+    expect(deploySuccessLine({ slug: 'hello', pId: 'app_1', sequence: 2, message: 'New greeting setting' })).toBe(
+      'New version released — hello-2 · New greeting setting · https://dashboard.usequeek.com/developers?section=versions&app=app_1',
+    );
+  });
+
+  it('drops the message segment when no --message was passed', () => {
+    expect(deploySuccessLine({ slug: 'hello', pId: 'app_1', sequence: 2 })).toBe(
+      'New version released — hello-2 · https://dashboard.usequeek.com/developers?section=versions&app=app_1',
+    );
   });
 });
