@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { createWriteStream, existsSync, readFileSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readFileSync } from 'node:fs';
 
 /**
  * `app dev` serves the app's tunnel URL to Queek (tunnel URLs pass the same
@@ -38,11 +38,19 @@ export async function startCloudflared(port: number, logFile: string): Promise<T
   // never a sync throw, so without this the process crashes instead of
   // printing the install line.
   if (!hasCloudflared()) throw new Error(MISSING_CLOUDFLARED);
-  const log = createWriteStream(logFile, { flags: 'a' });
-  const child = spawn('cloudflared', ['tunnel', '--url', `http://127.0.0.1:${port}`], {
-    detached: true,
-    stdio: ['ignore', log, log],
-  });
+  // spawn() needs an OPEN descriptor: a fresh WriteStream has fd null until
+  // its async 'open', which spawn rejects. The child keeps its own copy, so
+  // the parent closes its handle right after spawning.
+  const log = openSync(logFile, 'a');
+  let child: ReturnType<typeof spawn>;
+  try {
+    child = spawn('cloudflared', ['tunnel', '--url', `http://127.0.0.1:${port}`], {
+      detached: true,
+      stdio: ['ignore', log, log],
+    });
+  } finally {
+    closeSync(log);
+  }
   // The binary can vanish between the check and the spawn (or die on exec):
   // capture the event so the loop below reports it instead of crashing.
   let spawnError: Error | null = null;
