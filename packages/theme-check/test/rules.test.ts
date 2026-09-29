@@ -397,6 +397,62 @@ describe('theme/template-copy', () => {
     expect(disabled[0].where).toBe('theme/demos/food.json → config.header.announcement.text');
     expect(await templateCopyRule.run(withManifest([announced('New arrivals are in', true)]))).toEqual([]);
   });
+
+  it('rejects production claims — how the store makes things (BE30)', () => {
+    for (const text of [
+      'Every jar is filled by hand in our studio',
+      'Made in small batches', 'Small-batch roasting',
+      'We test every shade on deep skin first', 'Tested on real skin',
+      'Hand-poured candles', 'Hand-stitched leather',
+      'Sewn in our own workshop', 'Blended in our lab',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^claim only the vendor can make: "/)]),
+      );
+    }
+    expect(copyViolations('Handmade in Lagos', null)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^claim only the vendor can make: "/)]),
+    );
+    expect(copyViolations('Baked in our kitchen every morning', null)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^claim only the vendor can make: "/)]),
+    );
+  });
+
+  it('does not mistake products and use for production claims (BE30)', () => {
+    for (const text of [
+      'Hand cream and body lotion', 'Handbags and wallets', 'Second-hand phones', 'Hands-free cooking',
+      'Studio lighting kits', 'Kitchen tools and pans', 'Lab coats and scrubs', 'Workshop tools',
+      'Our kitchen classics',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual([]);
+    }
+  });
+
+  it('rejects turnarounds — how fast the store promises things (BE30)', () => {
+    for (const text of [
+      'One fitting, ten days', 'Ready in 3 days',
+      'Made to order in two weeks',
+      'Alterations take five days', 'Two-week turnaround',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^promises a schedule: "/)]),
+      );
+    }
+    // already reported through the promise category: flagged, never twice
+    for (const text of ['Delivered within 2–4 working days', 'Dispatched in 48 hours']) {
+      expect(copyViolations(text, null), text).toHaveLength(1);
+    }
+  });
+
+  it('does not mistake process durations and product facts for turnarounds (BE30)', () => {
+    for (const text of [
+      'Sourdough fermented for 36 hours', 'Dry-aged for 28 days', 'Aged 30 days in oak',
+      'Steeped for two weeks', 'Marinated for 24 hours', 'The 30-day skin plan',
+      'A week of looks',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual([]);
+    }
+  });
 });
 
 describe('theme/template-description', () => {

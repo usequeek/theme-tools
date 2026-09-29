@@ -222,6 +222,16 @@ export const TEMPLATE_COPY_CLAIMS: readonly RegExp[] = [
   // medical
   /\bcures?\b/iu,
   /\bheals?\b/iu,
+  // production: how the store makes things (BE30) — "by hand", "in our
+  // studio/kitchen/workshop/lab", "small batches", "we test…". Each needs a
+  // making word, so products and use stay out: "hand cream", "handbags",
+  // "second-hand", "hands-free", "studio lighting", "kitchen tools",
+  // "lab coats", "workshop tools", "our kitchen classics".
+  /\bby hand\b/iu,
+  /\bsmall[- ]batch(?:es)?\b/iu,
+  /\bhand[- ]?(?:poured|made|stitched)\b/iu,
+  /\bin our (?:own )?(?:kitchen|workshop|lab|studio)\b/iu,
+  /\btest(?:s|ed|ing)?\b[^.!?\n]{0,25}?\b(?:every shade|real skin|deep skin)\b/iu,
 ];
 
 /**
@@ -267,6 +277,17 @@ export const TEMPLATE_COPY_SCHEDULES: readonly RegExp[] = [
   /\bround[- ]the[- ]clock\b/iu,
   // a reply promised fast
   /\bwe (?:reply|answer|respond)\b[^.!?\n]{0,30}\b(?:within|in under)\b/iu,
+  // a turnaround only the vendor can keep (BE30): ready, fitted, altered or
+  // made to order in days or weeks; a dispatch or delivery range; an N-week
+  // turnaround. Each needs a service word, so process durations stay out:
+  // "fermented for 36 hours", "dry-aged for 28 days", "aged 30 days in oak",
+  // "steeped for two weeks", "marinated for 24 hours", "ready in 3 minutes".
+  // Overlaps with the promise category ("Dispatched in 48 hours") report
+  // once, through the promise — see copyViolations.
+  /\b(?:ready|fittings?|alterations?|made to order)\b[^.!?\n]{0,30}?\b(?:in\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fourteen|fifteen|twenty|thirty)[\s-]*(?:hours?|hrs?|days?|weeks?)\b/iu,
+  /\b(?:deliver\w*|dispatch\w*|ship\w*)\b[^.!?\n]{0,30}?\b(?:within\s+)?\d+\s*(?:–|-|to)\s*\d+[\s-]*(?:working\s+|business\s+)?(?:hours?|days?|weeks?)\b/iu,
+  /\b(?:deliver\w*|dispatch\w*|ship\w*)\b[^.!?\n]{0,30}?\bin\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fourteen|fifteen|twenty|thirty|forty[- ]eight)[\s-]*(?:hours?|hrs?|days?|weeks?)\b/iu,
+  /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fourteen|fifteen|twenty|thirty)[\s-]*(?:hours?|days?|weeks?)\s+turnaround\b|\bturnaround\b[^.!?\n]{0,20}?\b(?:in\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)[\s-]*(?:hours?|days?|weeks?)\b/iu,
 ];
 
 const first = (patterns: RegExp[], text: string): string | null => {
