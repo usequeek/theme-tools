@@ -62,6 +62,14 @@ tarballs installed into a fresh project, the way npm would install them. Run it
 before any change to packaging, the preview or the CLI's dependencies. If you are iterating on a rule in `@usequeek/theme-check`, rebuild
 (`pnpm build`) before re-running the CLI so it picks up your change.
 
+## Windows: three rules the Windows CI enforces
+
+Developers build themes on Windows, and CI runs every test there. The failures so far were all one of these:
+
+- **Build paths with `node:path` (`join`, `dirname`), and never split a path on `/`.** `relative()` answers with `\` on Windows. `queek theme add` once built a folder from `relative(...).split('/')` and never created `demos/` there.
+- **Report paths with `/` on every OS** (`.replace(/\\/g, '/')`), in text and `--json` alike, like every path the checker prints.
+- **Expect CRLF files.** A Windows checkout writes them, and so do many editors. Anything that edits a file at parser offsets must edit an LF copy and give CRLF back (`preservingLineEndings` in `create-theme/src/config-edit.ts`), and its tests must feed CRLF input on every platform, so Linux CI catches it too.
+
 ## Changesets: required for package changes
 
 Every PR that changes anything inside a `packages/*` directory **must** include
