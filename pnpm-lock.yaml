@@ -224,11 +224,11 @@ importers:
   packages/cli:
     dependencies:
       '@oclif/core':
-        specifier: ^4.14.0
-        version: 4.14.0
+        specifier: ^5.0.0
+        version: 5.1.2
       '@oclif/plugin-warn-if-update-available':
-        specifier: ^3.1.0
-        version: 3.2.0(supports-color@8.1.1)
+        specifier: ^4.0.0
+        version: 4.0.1(supports-color@8.1.1)
       '@usequeek/create-theme':
         specifier: workspace:^
         version: link:../create-theme
@@ -682,13 +682,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@oclif/core@4.14.0':
-    resolution: {integrity: sha512-QCJIZoVJxV7jywgVAUlsQwl3dr3Sa21kfi5z9KrYolbexWJUtFSEtMoNiBWojD05mYycLnB50gp/VxlGdaOCRA==}
-    engines: {node: '>=18.0.0'}
+  '@oclif/core@5.1.2':
+    resolution: {integrity: sha512-vgbWWFKjjsf7oAbJONFPnDkVNeqmy70DTBUjsprW/HRiTrXe8sMlFc0ih8GjpU+dn+m6V2ksaZjBV9HgnsmWVg==}
+    engines: {node: '>=22.0.0'}
 
-  '@oclif/plugin-warn-if-update-available@3.2.0':
-    resolution: {integrity: sha512-E7l+/NTjddOi32Q9G1CWzEtuh0EwNylVHfTRlFxlZD50v1oBqBpziWh+Dzz6oAIe4ee5U7EUc7lP22aLxpW3vA==}
-    engines: {node: '>=18.0.0'}
+  '@oclif/plugin-warn-if-update-available@4.0.1':
+    resolution: {integrity: sha512-zX0iNZT5JiHXdzQ7ORQCRAqwydG119LZDf6Pet+5HEeONHJu/byWAA99n2HLTOZmWMwJ65bLSp3ZajOHtJaSkw==}
+    engines: {node: '>=22.0.0'}
 
   '@oxc-project/types@0.150.0':
     resolution: {integrity: sha512-rDS5/31E9HfPl/CIzGrn0DOlvBbXFseQ5URJ9sYMfstbKLD/c6Gm9vmRzRGDdAXyOIL4zmO37lc9RIwYqVruZw==}
@@ -2444,7 +2444,7 @@ snapshots:
   '@next/swc-win32-x64-msvc@16.3.6':
     optional: true
 
-  '@oclif/core@4.14.0':
+  '@oclif/core@5.1.2':
     dependencies:
       ansi-escapes: 4.3.2
       ansis: 3.17.0
@@ -2465,9 +2465,9 @@ snapshots:
       wrap-ansi: 7.0.0
       wsl-utils: 0.4.0
 
-  '@oclif/plugin-warn-if-update-available@3.2.0(supports-color@8.1.1)':
+  '@oclif/plugin-warn-if-update-available@4.0.1(supports-color@8.1.1)':
     dependencies:
-      '@oclif/core': 4.14.0
+      '@oclif/core': 5.1.2
       ansis: 3.17.0
       debug: 4.4.3(supports-color@8.1.1)
       http-call: 5.3.0(supports-color@8.1.1)
