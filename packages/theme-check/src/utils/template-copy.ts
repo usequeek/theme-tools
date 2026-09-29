@@ -141,6 +141,12 @@ const PROMISE = [
   new RegExp(String.raw`\b${SERVICE}\b[^.!?\n]{0,40}?${WINDOW}\b|${WINDOW}\b[^.!?\n]{0,40}?\b${SERVICE}\b`, 'i'),
   /\b\d+[\s-](?:minute|min|hour|hr|day|week)s?\s+(?:delivery|dispatch|shipping|turnaround|returns?|exchanges?|refunds?|adjustments?|service)\b/i,
   /\b(?:free|complimentary)\s+(?:\w+\s+)?(?:delivery|shipping|returns?|pick[- ]?up|collection|alterations?|installation|install|resizing|exchanges?|samples?|styling|gifts?|consultations?|fittings?|refills?)\b/i,
+  // a service on the house, or handwork thrown in free (BE30b): "A fitting,
+  // *on the house*", "Off the peg, altered free", "Every trouser is hemmed
+  // free". The free word follows the work, so the free-before pattern above
+  // never sees it; "Hemming tape and sewing kits" names no free work.
+  /\bon[ -]the[ -]house\b/iu,
+  /\b(?:altered|hemmed)\s+free\b/iu,
   // a service promised without end, or a reply promised fast
   /\b(?:returns?|exchanges?|refunds?|delivery|shipping)\b[^.!?\n|]{0,20}\balways\b/i,
   /\b(?:answer\w*|repl(?:y|ies|ied)|respond\w*)\s+(?:fast|quickly|promptly|right away)\b|\b(?:fast|quick|prompt)\s+(?:repl(?:y|ies)|answers?|responses?)\b/i,
@@ -232,6 +238,28 @@ export const TEMPLATE_COPY_CLAIMS: readonly RegExp[] = [
   /\bhand[- ]?(?:poured|made|stitched)\b/iu,
   /\bin our (?:own )?(?:kitchen|workshop|lab|studio)\b/iu,
   /\btest(?:s|ed|ing)?\b[^.!?\n]{0,25}?\b(?:every shade|real skin|deep skin)\b/iu,
+  // services a template may not offer (BE30b): naming the service is itself
+  // the claim, no time window needed. Each needs its booking or making word,
+  // so the neighbours stay out: "Book a *table*" (the reservation section's
+  // own copy), "Book club picks", "Books and stationery", "Appointment
+  // diaries and planners", "Consult the size guide" (the verb, never the
+  // noun), "Houseplants and pots", "Home and house goods", "How to measure
+  // your size", "Measuring cups and spoons", "Ankara prints, cut to order",
+  // "Ask our salesperson for help", "Cured in-house", hardware "fittings",
+  // "Fitted sheets", "a close-fitting knit" and "Hemming tape and kits".
+  /\bbook\s+an?\s+\*?(?:fittings?|appointments?|facials?|consults?|consultations?|custom units?)\*?\b/iu,
+  /\b(?:by|private)\s+appointments?\b|\bwalk[- ]?ins?\s+and\s+appointments?\b/iu,
+  /\b(?:start|request)\b[^.!?\n]{0,30}?\bconsultations?\b|\bfit\s+consultations?\b/iu,
+  /\bexplore\s+bespoke\b|\bbespoke\s+orders?\b/iu,
+  /\bmade[- ]to[- ]measure\b|\bcut\s+to\s+measure\b|\bmeasure\s+and\s+off\s+the\s+rail\b/iu,
+  /\bfirst\s+\*?fittings?\*?\b|\bfittings?\b[^.!?\n]{0,30}?\batelier\b/iu,
+  /\balterations?\s+on\s+every\b|\bask\b[^.!?\n]{0,30}?\balterations?\b|\balterations?\b[^.!?\n]{0,30}?\bask\b/iu,
+  // in-house making (BE30b): a making word must sit before "in-house", so
+  // "Cured in-house" (a finish, not a service) stays out; "our in-house
+  // team" names the makers instead. Asterisks pass through: "Cut
+  // *in-house*", "bottled *in-house*".
+  /\b(?:fitted|cut|blended|bottled|tailored|styled)\b[^.!?\n]{0,30}?\bin\*?-?\*?house\b/iu,
+  /\bour\s+\*?in\*?-?\*?house\s+team\b/iu,
 ];
 
 /**
@@ -288,6 +316,18 @@ export const TEMPLATE_COPY_SCHEDULES: readonly RegExp[] = [
   /\b(?:deliver\w*|dispatch\w*|ship\w*)\b[^.!?\n]{0,30}?\b(?:within\s+)?\d+\s*(?:–|-|to)\s*\d+[\s-]*(?:working\s+|business\s+)?(?:hours?|days?|weeks?)\b/iu,
   /\b(?:deliver\w*|dispatch\w*|ship\w*)\b[^.!?\n]{0,30}?\bin\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fourteen|fifteen|twenty|thirty|forty[- ]eight)[\s-]*(?:hours?|hrs?|days?|weeks?)\b/iu,
   /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fourteen|fifteen|twenty|thirty)[\s-]*(?:hours?|days?|weeks?)\s+turnaround\b|\bturnaround\b[^.!?\n]{0,20}?\b(?:in\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)[\s-]*(?:hours?|days?|weeks?)\b/iu,
+  // restock cadences and working-day turnarounds (BE30b): "New sets added
+  // weekly", "Retros return *Friday*", "Ten working days, pressed and
+  // bagged", "Units made to your head size in 5 working days", "Feasts need
+  // two hours notice". Each needs its cadence word, so "Weekend bags",
+  // "Deep curls that return after every wash", "Open the box on Friday" and
+  // process durations ("Dry-aged for 28 days", "Cold brewed for 12–24
+  // hours") stay out. Overlaps with the promise category report once,
+  // through the promise — see copyViolations.
+  /\badded\s+weekly\b/iu,
+  /\breturns?\b[^.!?\n]{0,20}?\*?(?:mon|tues|wednes|thurs|fri|satur|sun)days?\*?/iu,
+  /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fourteen|fifteen|twenty|thirty)[\s-]*(?:working|business)[\s-]*days?\b/iu,
+  /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)[\s-]*hours?\s+notice\b/iu,
 ];
 
 const first = (patterns: RegExp[], text: string): string | null => {
@@ -325,8 +365,11 @@ export function copyViolations(text: string, storeName: string | null | undefine
   if (history) found.push(`dates the store ("${history}")`);
   const contact = CONTACT.exec(text);
   if (contact) found.push(`gives the store’s contact details ("${contact[0]}")`);
-  const claim = first([...TEMPLATE_COPY_CLAIMS], text);
-  if (claim) found.push(`claim only the vendor can make: "${claim}"`);
+  const claim = firstSpan([...TEMPLATE_COPY_CLAIMS], text);
+  // A phrase the promise check already reports is not reported twice either:
+  // "Made to measure in ten days" reads once, through the promise.
+  const claimDoubleReported = !!claim && !!promise && claim.start < promise.end && promise.start < claim.end;
+  if (claim && !claimDoubleReported) found.push(`claim only the vendor can make: "${claim.match}"`);
   const schedule = firstSpan([...TEMPLATE_COPY_SCHEDULES], text);
   // A phrase the promise check already reports is not reported twice: skip a
   // schedule match overlapping the promise match's span.

@@ -110,9 +110,10 @@ describe('theme/template-copy', () => {
     }
     for (const text of [
       'Wholesale bags on request', 'Ask our salesperson for help', 'Beans sold for sale by the kilo',
-      'Free-range eggs', 'Hands-free cooking', 'Made to measure',
-      'Always in season: tomatoes and peppers', 'Open the box on Friday', 'Alterations on every trouser',
+      'Free-range eggs', 'Hands-free cooking', 'Ready to wear',
+      'Always in season: tomatoes and peppers', 'Open the box on Friday', 'Tape measures and rulers',
     ]) {
+      // BE30b: a named service ("Made to measure", "Alterations…") is a claim even without a window.
       expect(copyViolations(text, null), text).toEqual([]);
     }
   });
@@ -231,9 +232,10 @@ describe('theme/template-copy', () => {
     'Dubai chocolate bar', 'London Dry gin', 'The Florence midi dress', 'Opened the 2026 season with linen',
     'Glow before *8am*', 'Trace your feet after 6pm', 'UK size 8',
     'Wholesale bags on request', 'Ask our salesperson for help', 'Beans sold for sale by the kilo',
-    'Free-range eggs', 'Hands-free cooking', 'Made to measure', 'Always in season: tomatoes and peppers',
-    'Open the box on Friday', 'Alterations on every trouser',
+    'Free-range eggs', 'Hands-free cooking', 'Ready to wear', 'Always in season: tomatoes and peppers',
+    'Open the box on Friday', 'Tape measures and rulers',
   ])('leaves %s alone', (text) => {
+    // BE30b: a named service ("Made to measure", "Alterations…") is a claim even without a window.
     expect(copyViolations(text, null)).toEqual([]);
   });
 
@@ -452,6 +454,67 @@ describe('theme/template-copy', () => {
     ]) {
       expect(copyViolations(text, null), text).toEqual([]);
     }
+  });
+
+  it('rejects named services — bookings, consultations, bespoke, made to measure, fittings, alterations, in-house making (BE30b)', () => {
+    for (const text of [
+      'Book a fitting', 'Book a *fitting*',
+      'Book an appointment', 'Book An *Appointment*', 'Sunday by appointment',
+      'Open for walk-ins and appointments', 'Private appointments to try the capsule',
+      'Book a facial', 'Book a consult', 'Book a custom unit',
+      'Start a consultation', 'Request a wardrobe consultation', 'Fit consultation',
+      'Explore bespoke', 'Bespoke Orders',
+      'Made to measure', 'Made-to-measure in-house', 'Cut to measure', 'to measure and off the rail',
+      'Every bridal and aso-ebi order gets two fittings at our atelier', 'First fitting',
+      'Sizing, orders, alterations — ask anything', 'Alterations on every trouser',
+      'Ask us which alterations suit each piece',
+      'Fitted in-house', 'Cut *in-house*', 'Blended in-house, bottled in small runs',
+      'Dew, bottled *in-house*', 'our in-house team', 'cut and styled in-house by our stylists',
+      'Real wax prints tailored in-house',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^claim only the vendor can make: "/)]),
+      );
+    }
+    // free or on-the-house services read through the promise, which already owns "free alterations"
+    for (const text of ['Off the peg, altered free', 'Every trouser is hemmed free']) {
+      expect(copyViolations(text, null), text).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^makes a promise/)]),
+      );
+    }
+  });
+
+  it('rejects restock days and working-day turnarounds (BE30b)', () => {
+    for (const text of [
+      'New sets added weekly', 'Restocked every Friday', 'Retros return *Friday*',
+      'Ten working days, pressed and bagged', 'Units made to your head size in 5 working days',
+      'Feasts need two hours notice',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^promises a schedule: "/)]),
+      );
+    }
+  });
+
+  it('does not mistake hardware, products, verbs and ordinary words for services (BE30b)', () => {
+    for (const text of [
+      'Solid brass fittings', 'Light fittings and fixtures', 'Pipe fittings and valves',
+      'Fitted sheets and pillowcases', 'A close-fitting knit',
+      'How to measure your size', 'Tape measures and rulers', 'Measuring cups and spoons',
+      'Consult the size guide', 'Consult a pharmacist before use',
+      'Appointment diaries and planners', 'Houseplants and pots', 'Home and house goods',
+      'Hemming tape and sewing kits',
+      'Friday night outfits', 'Weekend bags', 'Deep curls that return after every wash',
+      'Book club picks', 'Books and stationery', 'Book a *table*',
+      'Ready to wear',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual([]);
+    }
+  });
+
+  it('reports an on-the-house fitting once, and a measured turnaround once (BE30b)', () => {
+    expect(copyViolations('A fitting, *on the house*', null)).toHaveLength(1);
+    expect(copyViolations('Made to measure in ten days', null)).toHaveLength(1);
   });
 });
 
