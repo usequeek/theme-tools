@@ -1,5 +1,11 @@
 # @usequeek/theme-check
 
+## 0.12.1
+
+### Patch Changes
+
+- Template copy may not state a spelled-out percentage offer ("Twenty percent off", "save fifteen per cent"); "100 percent cotton" still passes.
+
 ## 0.12.0
 
 ### Minor Changes
