@@ -112,8 +112,17 @@ function checkSchemaFields(list: unknown, where: string, primitives: string[], p
     if (typeof field.key !== 'string' || !SETTING_KEY_RE.test(field.key)) problems.push(`The ${where}.schema[${index}].key must match [a-z0-9_]{1,64}.`);
     if (typeof field.label !== 'string' || field.label.length > 120) problems.push(`The ${where}.schema[${index}].label is required (max 120).`);
     if (!primitives.includes(field.type as string)) problems.push(`The schema primitive must be one of: ${primitives.join(', ')}.`);
-    if (field.type === 'select' && (!Array.isArray(field.options) || field.options.length < 1)) {
-      problems.push('A select primitive needs at least one option.');
+    if (field.type === 'select') {
+      if (!Array.isArray(field.options) || field.options.length < 1) {
+        problems.push('A select primitive needs at least one option.');
+      } else {
+        if (field.options.length > 50) problems.push(`The ${where}.schema[${index}].options must not have more than 50 options.`);
+        field.options.forEach((option: unknown, optionIndex: number) => {
+          if (typeof option !== 'string' || option.length > 120) {
+            problems.push(`The ${where}.schema[${index}].options[${optionIndex}] must be a string (max 120).`);
+          }
+        });
+      }
     }
   });
 }
@@ -263,8 +272,18 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
     if (!['string', 'secret', 'number', 'boolean', 'select'].includes(field.type as string)) {
       throw fail(`The settings[${index}].type must be one of: string, secret, number, boolean, select.`);
     }
-    if (field.type === 'select' && (!Array.isArray(field.options) || (field.options as unknown[]).length < 1)) {
-      throw fail('A select setting needs at least one option.');
+    if (field.type === 'select') {
+      if (!Array.isArray(field.options) || (field.options as unknown[]).length < 1) {
+        throw fail('A select setting needs at least one option.');
+      }
+      for (const [optionIndex, option] of (field.options as unknown[]).entries()) {
+        if (typeof option !== 'string' || (option as string).length > 120) {
+          throw fail(`The settings[${index}].options[${optionIndex}] must be a string (max 120).`);
+        }
+      }
+    }
+    if (field.help !== undefined && field.help !== null && (typeof field.help !== 'string' || (field.help as string).length > 500)) {
+      throw fail(`The settings[${index}].help field must be a string (max 500).`);
     }
   });
 
@@ -315,7 +334,19 @@ function checkImage(image: unknown, where: string, problems: string[], fail: (me
   for (const key of Object.keys(image)) {
     if (!['media_id', 'url'].includes(key)) problems.push(unknownField(key, `${where}.image`));
   }
-  if (image.url !== undefined && image.url !== null) checkUrl(image.url, `${where}.image.url`, fail);
+  if (image.url !== undefined && image.url !== null) checkCappedUrl(image.url, `${where}.image.url`, fail);
+}
+
+/**
+ * https URL the backend caps at 2048 (proxy.url, merchant_page_url,
+ * block link_url/image.url, dashboard link_url/notify_url — validator
+ * `max:2048`). Fields the backend leaves uncapped (install_url and friends)
+ * keep the plain scheme check: refusing locally what the server accepts
+ * would be a lie.
+ */
+function checkCappedUrl(value: unknown, field: string, fail: (message: string) => never): void {
+  checkUrl(value, field, fail);
+  if (typeof value === 'string' && value.length > 2048) throw fail(`The ${field} must not be longer than 2048 characters.`);
 }
 
 function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (message: string) => never): void {
@@ -335,16 +366,14 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     if (problems.length > 0) throw new TomlError(problems.join('\n'));
     const proxy = extensions.proxy;
     if (typeof proxy.url !== 'string') throw fail('The extensions.proxy.url field is required.');
-    const urlProblem = httpsProblem('extensions.proxy.url', proxy.url);
-    if (urlProblem) throw fail(urlProblem);
+    checkCappedUrl(proxy.url, 'extensions.proxy.url', fail);
     if (typeof proxy.subpath !== 'string' || !/^[a-z0-9][a-z0-9-]{1,39}$/.test(proxy.subpath)) {
       throw fail('The proxy subpath must be 2-40 lowercase letters, digits or dashes.');
     }
     out.proxy = { url: proxy.url, subpath: proxy.subpath, ...(proxy.share_customer_id !== undefined ? { share_customer_id: proxy.share_customer_id } : {}) };
   }
   if (extensions.merchant_page_url !== undefined) {
-    const urlProblem = httpsProblem('extensions.merchant_page_url', extensions.merchant_page_url);
-    if (urlProblem) throw fail(urlProblem);
+    checkCappedUrl(extensions.merchant_page_url, 'extensions.merchant_page_url', fail);
     out.merchant_page_url = extensions.merchant_page_url;
   }
   const blocks = (extensions.blocks ?? []) as unknown;
@@ -358,6 +387,10 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
       if (!['key', 'type', 'title', 'description', 'targets', 'available_if', 'schema', 'link_url', 'image'].includes(key)) problems.push(unknownField(key, where));
     }
     if (typeof block.key !== 'string' || !SETTING_KEY_RE.test(block.key)) throw fail(`The ${where}.key must match [a-z0-9_]{1,64}.`);
+    if (typeof block.title !== 'string' || block.title.length > 80) throw fail(`The ${where}.title field is required (max 80).`);
+    if (block.description !== undefined && block.description !== null && (typeof block.description !== 'string' || block.description.length > 500)) {
+      throw fail(`The ${where}.description field must be a string (max 500).`);
+    }
     if (block.type !== undefined && !EXTENSION_BLOCK_TYPES.includes(block.type as string)) {
       throw fail(`The block type must be one of: ${EXTENSION_BLOCK_TYPES.join(', ')}.`);
     }
@@ -369,7 +402,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
       throw fail(`The block visibility condition must be one of: ${BLOCK_AVAILABLE_IF.join(', ')}.`);
     }
     if (block.schema !== undefined) checkSchemaFields(block.schema, where, EXTENSION_PRIMITIVES, problems);
-    if (block.link_url !== undefined && block.link_url !== null) checkUrl(block.link_url, `${where}.link_url`, fail);
+    if (block.link_url !== undefined && block.link_url !== null) checkCappedUrl(block.link_url, `${where}.link_url`, fail);
     checkImage(block.image, where, problems, fail);
     checked.push(block);
   });
@@ -394,11 +427,14 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
     if ((list as unknown[]).length > max) throw fail(`The dashboard.${key} list must not have more than ${max} entries.`);
     return list as Record<string, unknown>[];
   };
-  for (const block of checkList('blocks', 10)) {
+  for (const [index, block] of checkList('blocks', 10).entries()) {
     const where = 'manifest.dashboard.blocks';
+    const row = `${where}[${index}]`;
     for (const key of Object.keys(block)) {
       if (!['key', 'title', 'target', 'schema', 'when', 'link_url', 'image'].includes(key)) problems.push(unknownField(key, where));
     }
+    if (typeof block.key !== 'string' || !SETTING_KEY_RE.test(block.key)) throw fail(`The ${row}.key must match [a-z0-9_]{1,64}.`);
+    if (typeof block.title !== 'string' || block.title.length > 80) throw fail(`The ${row}.title field is required (max 80).`);
     if (!DASHBOARD_BLOCK_TARGETS.includes(block.target as string)) {
       throw fail(`The dashboard block target must be one of: ${DASHBOARD_BLOCK_TARGETS.join(', ')}.`);
     }
@@ -408,21 +444,24 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
         if (!DASHBOARD_WHEN_FIELDS.includes(when as string)) throw fail(`The dashboard \`when\` field must be one of: ${DASHBOARD_WHEN_FIELDS.join(', ')}.`);
       }
     }
-    if (block.link_url !== undefined && block.link_url !== null) checkUrl(block.link_url, `${where}.link_url`, fail);
+    if (block.link_url !== undefined && block.link_url !== null) checkCappedUrl(block.link_url, `${where}.link_url`, fail);
     checkImage(block.image, where, problems, fail);
   }
-  for (const action of checkList('actions', 10)) {
+  for (const [index, action] of checkList('actions', 10).entries()) {
     const where = 'manifest.dashboard.actions';
+    const row = `${where}[${index}]`;
     for (const key of Object.keys(action)) {
       if (!['key', 'title', 'target', 'scope', 'effect', 'schema', 'when', 'notify_url'].includes(key)) problems.push(unknownField(key, where));
     }
+    if (typeof action.key !== 'string' || !SETTING_KEY_RE.test(action.key)) throw fail(`The ${row}.key must match [a-z0-9_]{1,64}.`);
+    if (typeof action.title !== 'string' || action.title.length > 80) throw fail(`The ${row}.title field is required (max 80).`);
     if (!DASHBOARD_ACTION_TARGETS.includes(action.target as string)) {
       throw fail(`The dashboard action target must be one of: ${DASHBOARD_ACTION_TARGETS.join(', ')}.`);
     }
     if (typeof action.scope !== 'string' || action.scope === '') throw fail(`The ${where} scope field is required.`);
     if (action.effect !== 'order_appointment') throw fail('The dashboard action effect must be one of: order_appointment.');
     if (typeof action.notify_url !== 'string') throw fail(`The ${where} notify_url field is required.`);
-    checkUrl(action.notify_url, `${where}.notify_url`, fail);
+    checkCappedUrl(action.notify_url, `${where}.notify_url`, fail);
     checkImage(action.image, where, problems, fail);
     if (!scopes.includes(action.scope)) {
       throw fail(`Dashboard action '${action.key}' declares scope '${action.scope}' the manifest never grants.`);
@@ -443,8 +482,15 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
     for (const key of Object.keys(row)) {
       if (!['key', 'title', 'target', 'fields'].includes(key)) problems.push(unknownField(key, where));
     }
+    if (typeof row.key !== 'string' || !SETTING_KEY_RE.test(row.key)) throw fail(`The ${where}.key must match [a-z0-9_]{1,64}.`);
+    if (typeof row.title !== 'string' || row.title.length > 80) throw fail(`The ${where}.title field is required (max 80).`);
     if (!DASHBOARD_PRINT_TARGETS.includes(row.target as string)) {
       throw fail(`The dashboard print target must be one of: ${DASHBOARD_PRINT_TARGETS.join(', ')}.`);
+    }
+    if (row.fields !== undefined && !Array.isArray(row.fields)) {
+      problems.push(`The ${where}.fields must be a list.`);
+    } else if (Array.isArray(row.fields) && row.fields.length > 20) {
+      throw fail(`The ${where}.fields must not have more than 20 fields.`);
     }
     for (const [fieldIndex, field] of ((row.fields ?? []) as unknown[]).entries()) {
       if (!isRecord(field)) {

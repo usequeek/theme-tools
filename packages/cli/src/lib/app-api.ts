@@ -36,7 +36,7 @@ export class ApiError extends Error {
   }
 }
 
-/** A 403 under an automation token: wrong app or beyond its grant. */
+/** A 401/403 under an automation token: wrong app or beyond its grant (never a dead session). */
 export class AutomationTokenError extends ApiError {}
 
 /** The session is gone (refresh refused): the user must log in again. */
@@ -182,13 +182,13 @@ export class DeveloperApi {
    * grant and is worded as such (with the app slug when the call names one).
    * `action` words the refusal ("deploying", "releasing version 1.2.0 of", ...).
    */
-  private async vendor<T>(method: string, path: string, action: string, body?: unknown, appSlug?: string): Promise<{ data: T; message: string }> {
+  private async vendor<T>(method: string, path: string, action: string, body?: unknown, appSlug?: string): Promise<{ data: T; message: string; status: number }> {
     const automationRefusal = (status: number, raw: unknown): AutomationTokenError => {
       const detail = messageOf(raw, status);
       const scope = appSlug ? `it only works for app '${appSlug}'s deploy, versions, release and submit` : 'it only works for its own app';
       return new AutomationTokenError(`This automation token can't do that — ${scope}. (Server: ${detail})`, status, raw);
     };
-    const attempt = async (token: string, kind: AuthKind, retried: boolean): Promise<{ data: unknown; message: string }> => {
+    const attempt = async (token: string, kind: AuthKind, retried: boolean): Promise<{ data: unknown; message: string; status: number }> => {
       const { status, body: raw } = await this.raw(`${this.base}${VENDOR_PREFIX}${path}`, {
         method,
         headers: { 'content-type': 'application/json', accept: 'application/json', authorization: `Bearer ${token}` },
@@ -208,12 +208,12 @@ export class DeveloperApi {
       if (status === 403 && kind === 'automation') throw automationRefusal(status, raw);
       if (status < 200 || status >= 300) throw new ApiError(messageOf(raw, status), status, raw);
       const envelope = (raw ?? {}) as { data?: unknown; message?: unknown };
-      return { data: envelope.data ?? null, message: typeof envelope.message === 'string' ? envelope.message : '' };
+      return { data: envelope.data ?? null, message: typeof envelope.message === 'string' ? envelope.message : '', status };
     };
 
     const auth = await this.getAuth();
-    const { data, message } = await attempt(auth.token, auth.kind, false);
-    return { data: data as T, message };
+    const { data, message, status } = await attempt(auth.token, auth.kind, false);
+    return { data: data as T, message, status };
   }
 
   // ── OAuth (web router, unauthenticated except by code/verifier) ──
@@ -319,7 +319,7 @@ export class DeveloperApi {
    * outcome is `data.status` — never the HTTP code (DeveloperAppController.php:180).
    */
   async deploy(manifest: AppManifest, options: DeployOptions = {}): Promise<DeployResult> {
-    const { data, message } = await this.vendor<Record<string, unknown>>(
+    const { data, message, status: httpStatus } = await this.vendor<Record<string, unknown>>(
       'POST',
       '/apps',
       'deploying this app',
@@ -334,7 +334,13 @@ export class DeveloperApi {
     const version = (data.version ?? {}) as Record<string, unknown>;
     const unchanged = data.unchanged === true || /no changes/i.test(message);
     const reviewStatus = version.review_status as string;
-    const status = data.status === 'released' || data.status === 'in_review' || data.status === 'created' ? data.status : 'released';
+    // The contract guarantees data.status (released|in_review|created):
+    // an answer without one is a backend regression, and 'released' would
+    // be the most dangerous guess — fail loudly instead.
+    if (data.status !== 'released' && data.status !== 'in_review' && data.status !== 'created') {
+      throw new ApiError('Unexpected deploy response from Queek — no status (expected released|in_review|created).', httpStatus, data);
+    }
+    const status = data.status;
     return {
       p_id: data.p_id as string,
       slug: data.slug as string,

@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { createServer } from 'node:http';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { ApiError, DeniedError, DeveloperApi, LoginNeededError, type AuthContext, type TokenPair } from './app-api.js';
 import {
   apiBase,
@@ -31,11 +31,26 @@ export interface FlowIO {
 const base64url = (buffer: Buffer): string =>
   buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-/** Wait for the loopback `?code=` redirect the dashboard approval sends back. */
-function waitForCode(port: number, state: string, timeoutMs: number): Promise<{ code: string; redirectUri: string }> {
-  const redirectUri = `http://127.0.0.1:${port}/callback`;
+/**
+ * Wait on an already-bound loopback server for the `?code=` redirect the
+ * dashboard approval sends back. The server stays bound from authorize to
+ * callback — no close-then-rebind on the ephemeral port for another
+ * process to win.
+ */
+function waitForCode(server: Server, redirectUri: string, state: string, timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
-    const server = createServer((request, response) => {
+    const timer = setTimeout(() => {
+      finish(() => reject(new Error('Timed out waiting for the dashboard approval (5 minutes).')));
+    }, timeoutMs);
+    timer.unref();
+    const finish = (task: () => void): void => {
+      clearTimeout(timer);
+      server.removeListener('request', onRequest);
+      server.removeListener('error', onError);
+      server.close();
+      task();
+    };
+    const onRequest = (request: IncomingMessage, response: ServerResponse): void => {
       const url = new URL(request.url ?? '/', redirectUri);
       if (url.pathname !== '/callback') {
         response.writeHead(404).end();
@@ -47,17 +62,15 @@ function waitForCode(port: number, state: string, timeoutMs: number): Promise<{ 
       response.writeHead(200, { 'content-type': 'text/html' }).end(
         '<html><body><p>You are logged in — return to the terminal.</p></body></html>',
       );
-      server.close();
-      if (returned !== state) reject(new Error('The login reply did not match this attempt (state mismatch) — try again.'));
-      else if (typeof code === 'string' && code !== '') resolve({ code, redirectUri });
-      else reject(new Error(error ? `The dashboard refused the login (${error}).` : 'The dashboard sent back no code.'));
-    });
-    server.on('error', reject);
-    server.listen(port, '127.0.0.1');
-    setTimeout(() => {
-      server.close();
-      reject(new Error('Timed out waiting for the dashboard approval (5 minutes).'));
-    }, timeoutMs).unref();
+      if (returned !== state) finish(() => reject(new Error('The login reply did not match this attempt (state mismatch) — try again.')));
+      else if (typeof code === 'string' && code !== '') finish(() => resolve(code));
+      else finish(() => reject(new Error(error ? `The dashboard refused the login (${error}).` : 'The dashboard sent back no code.')));
+    };
+    const onError = (error: Error): void => {
+      finish(() => reject(error));
+    };
+    server.on('request', onRequest);
+    server.on('error', onError);
   });
 }
 
@@ -71,9 +84,11 @@ export async function browserLogin(api: DeveloperApi, base: string, io: FlowIO):
   const verifier = base64url(randomBytes(32));
   const challenge = base64url(createHash('sha256').update(verifier).digest());
   const state = base64url(randomBytes(16));
+  // Bound once and kept bound: the same live server serves the callback,
+  // so nothing can take the ephemeral port between authorize and approval.
   const server = createServer();
   await new Promise<void>((resolve, reject) => {
-    server.on('error', reject);
+    server.once('error', reject);
     server.listen(0, '127.0.0.1', resolve);
   });
   const address = server.address();
@@ -81,7 +96,6 @@ export async function browserLogin(api: DeveloperApi, base: string, io: FlowIO):
     server.close();
     throw new Error('Could not bind the loopback login redirect.');
   }
-  server.close();
   const port = (address as { port: number }).port;
   const redirectUri = `http://127.0.0.1:${port}/callback`;
   // Exact authorize shape (AuthorizeRequest.php): client_id, redirect_uri,
@@ -97,7 +111,7 @@ export async function browserLogin(api: DeveloperApi, base: string, io: FlowIO):
 
   io.log('Opening the browser to approve this login…');
   openUrl(authorize.toString());
-  const { code } = await waitForCode(port, state, 5 * 60_000);
+  const code = await waitForCode(server, redirectUri, state, 5 * 60_000);
   const pair = await api.oauthToken({ code, code_verifier: verifier, redirect_uri: redirectUri });
   const stored = await writeSession(sessionFromPair(pair));
   io.log(`Logged in (session stored in ${stored === 'keychain' ? 'the OS keychain' : 'a 0600 session file'}).`);

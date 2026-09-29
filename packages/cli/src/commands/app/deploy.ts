@@ -6,6 +6,15 @@ import { appFlags, appSession } from '../../lib/app-command.js';
 import { assertSemver, loadApp, queekDir } from '../../lib/app-manifest.js';
 import { BaseCommand } from '../../lib/base-command.js';
 
+/**
+ * The shown-once secret reaches stdout only for a human at a terminal: CI
+ * logs keep everything forever, so a piped run or an automation-token
+ * deploy records the file path and the host instruction, never the value.
+ */
+export function printSecretToStdout(): boolean {
+  return process.stdout.isTTY === true && !process.env.QUEEK_APP_AUTOMATION_TOKEN;
+}
+
 export default class AppDeploy extends BaseCommand {
   static override summary = 'Deploy queek.app.toml: create a version, released by default.';
 
@@ -76,7 +85,11 @@ export default class AppDeploy extends BaseCommand {
         appendFileSync(envFile, line, { mode: 0o600 });
         this.log(`Secret written to ${envFile} (gitignored — back it up; it is shown once).`);
       }
-      this.log(`\n  App secret (shown once — copy it now):\n\n  ${result.signing_secret}\n`);
+      if (printSecretToStdout()) {
+        this.log(`\n  App secret (shown once — copy it now):\n\n  ${result.signing_secret}\n`);
+      } else {
+        this.log(`Set it as QUEEK_APP_SECRET in your host from ${envFile} — the value is only ever printed on an interactive terminal.`);
+      }
     }
 
     return { slug: result.slug, version: result.version, sequence: result.sequence, status: result.status, unchanged: false };

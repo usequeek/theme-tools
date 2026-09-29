@@ -8,8 +8,9 @@ import { dirname, join } from 'node:path';
  * - CI (`QUEEK_APP_AUTOMATION_TOKEN`): a per-app App Automation Token minted
  *   on the Developer page. When set it is the Bearer for app commands and no
  *   login is attempted. The server scopes it to one app's reads, deploy,
- *   release and submit — a 403 means it belongs to a different app or cannot
- *   do the attempted action (the API layer words that, per call).
+ *   release and submit — a 401/403 means it is outside that grant (the API
+ *   layer words that per call, naming the app; never a dead session, never
+ *   a login prompt).
  * - Local (developer session): a person-scoped `developer-cli` token pair
  *   from `queek auth login` (or automatic sign-in when a command needs auth).
  *   The access token lives ~60 minutes; the refresh token rotates it

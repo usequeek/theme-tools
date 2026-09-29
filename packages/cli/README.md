@@ -161,10 +161,25 @@ Auth: commands sign in automatically when there is no valid session (browser
 OAuth; device code with `--no-browser` or when headless). The 60-minute access
 token refreshes transparently. In CI, `QUEEK_APP_AUTOMATION_TOKEN` (a per-app
 App Automation Token from the Developer page) authenticates `deploy`, `release`,
-`submit`, `versions list` and `config link` with no login — a 403 means the
-token belongs to a different app or cannot do the attempted action.
+`submit`, `versions list` and `config link` with no login — a 401/403 means the
+token is outside its app's grant (never a dead session, never a login prompt).
 `QUEEK_API_BASE` overrides the backend host (vendor API at `/api/v1/biz/…`,
 OAuth at `/oauth/…`).
+
+### Why these layers are new (necessity gate)
+
+Every `app`/`auth` layer below was added because the theme CLI has no
+primitive it could reuse — each row names the file checked, the Shopify
+counterpart it mirrors, and why the theme code could not serve.
+
+| New layer | Existing primitive checked | Shopify counterpart | Why it differs |
+|---|---|---|---|
+| `src/lib/app-manifest.ts` (grouped `queek.app.toml` → flat 25-key manifest, exit-2 pre-check) | `src/lib/project.ts:11` — a theme project is a folder holding `manifest.ts`; no app declaration exists anywhere in the CLI | [app-configuration](https://shopify.dev/docs/apps/build/cli-for-apps/app-configuration) | maps toml groups onto the server manifest (`handle`→`slug` sugar, `available_if`, secret refusal); themes have no manifest to map |
+| `src/lib/app-api.ts` (`DeveloperApi`: vendor envelope + OAuth routers + per-call auth kinds) | no HTTP client in `src/` — theme commands are local-only (`src/commands/dev.ts:21` serves `127.0.0.1`) | [app-deploy](https://shopify.dev/docs/api/shopify-cli/app/app-deploy) | `{data}` unwrap, `data.status` reads, sequence release, automation-token refusal wording; nothing to reuse |
+| `src/lib/app-auth.ts` (keychain-or-0600 session file + CI automation token) | `src/lib/base-command.ts:8` — `QUEEK_THEME_*` flag env only, no credential storage; `src/lib/keytar.d.ts:1` is an unused type shim | [CLI command reference](https://shopify.dev/docs/api/shopify-cli) (`queek auth login` ≈ `shopify auth login`) | first credential storage in the CLI, with a token kind that must never trigger a login |
+| `src/lib/app-session.ts` (browser PKCE loopback + device-code fallback) | `src/lib/browser.ts:1` — `playwright-core` drives a downloaded browser for screenshots | same CLI reference | login must use the user's own browser (zero downloads, RFC 8252 loopback kept bound) with a headless device fallback (RFC 8628) |
+| `src/lib/app-tunnel.ts` (public URL for `app dev`) | `src/commands/dev.ts:21-23` + `src/lib/port.ts:33` — binds localhost + next free port; nothing public | [networking options](https://shopify.dev/docs/apps/build/cli-for-apps/networking-options) | install/notify/webhook URLs must be public HTTPS: Cloudflare Quick Tunnel or `--url` |
+| `packages/create-app` (scaffolder) | `packages/create-theme/src` — scaffolds storefront theme projects | [app-init](https://shopify.dev/docs/api/shopify-cli/app/app-init) | the app starter is Hono + SDK + `queek.app.toml` + Dockerfile, not a theme |
 
 ## Project config (`.queek-theme.yml`)
 

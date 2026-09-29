@@ -209,4 +209,76 @@ describe('backend parity (validator origin/master 29/9)', () => {
     const { doc } = loadTomlFile(stageFile(`${BASE}\n[webhooks]\ntopics = ["orders/updated"]\n`));
     expect(() => toManifest(doc)).toThrow('webhook_topics needs webhook_url: topics without a receiver URL are refused.');
   });
+
+  it('requires key + title on every extension block (backend key/title rules, exit 2)', () => {
+    const noTitle = BLOCK.replace('title = "Recommendations"\n', '');
+    const noKey = BLOCK.replace('key = "recs"\n', '');
+    expect(() => toManifest(loadTomlFile(stageFile(`${BASE}${noTitle}`)).doc)).toThrow(
+      'The manifest.extensions.blocks[0].title field is required (max 80).',
+    );
+    expect(() => toManifest(loadTomlFile(stageFile(`${BASE}${noKey}`)).doc)).toThrow(
+      'The manifest.extensions.blocks[0].key must match [a-z0-9_]{1,64}.',
+    );
+    const longTitle = BLOCK.replace('title = "Recommendations"', `title = "${'T'.repeat(81)}"`);
+    expect(() => toManifest(loadTomlFile(stageFile(`${BASE}${longTitle}`)).doc)).toThrow(
+      'The manifest.extensions.blocks[0].title field is required (max 80).',
+    );
+  });
+
+  it('requires key + title on every dashboard block, action and print row (exit 2)', () => {
+    const block = (body: string): string => `${BASE}\n[dashboard]\n[[dashboard.blocks]]\n${body}target = "order-details"\n`;
+    const action = (body: string): string =>
+      `${BASE}\n[dashboard]\n[[dashboard.actions]]\n${body}target = "order-details"\nscope = "merchant-business_profile-read"\neffect = "order_appointment"\nnotify_url = "https://hello.example.com/notify"\n`;
+    const print = (body: string): string => `${BASE}\n[dashboard]\n[[dashboard.print]]\n${body}target = "order-print"\n`;
+    expect(() => toManifest(loadTomlFile(stageFile(block('key = "b"\n'))).doc)).toThrow(
+      'The manifest.dashboard.blocks[0].title field is required (max 80).',
+    );
+    expect(() => toManifest(loadTomlFile(stageFile(block('title = "B"\n'))).doc)).toThrow(
+      'The manifest.dashboard.blocks[0].key must match [a-z0-9_]{1,64}.',
+    );
+    expect(() => toManifest(loadTomlFile(stageFile(action('key = "a"\n'))).doc)).toThrow(
+      'The manifest.dashboard.actions[0].title field is required (max 80).',
+    );
+    expect(() => toManifest(loadTomlFile(stageFile(action('title = "A"\n'))).doc)).toThrow(
+      'The manifest.dashboard.actions[0].key must match [a-z0-9_]{1,64}.',
+    );
+    expect(() => toManifest(loadTomlFile(stageFile(print('key = "p"\n'))).doc)).toThrow(
+      'The manifest.dashboard.print[0].title field is required (max 80).',
+    );
+    expect(() => toManifest(loadTomlFile(stageFile(print('title = "P"\n'))).doc)).toThrow(
+      'The manifest.dashboard.print[0].key must match [a-z0-9_]{1,64}.',
+    );
+  });
+
+  it('mirrors the backend length caps locally (exit 2, never a 422)', () => {
+    const bad = (toml: string): string => {
+      try {
+        toManifest(loadTomlFile(stageFile(toml)).doc);
+        return 'no error';
+      } catch (error) {
+        expect(error).toBeInstanceOf(TomlError);
+        return (error as Error).message;
+      }
+    };
+    const long = (n: number): string => 'x'.repeat(n);
+    expect(bad(`${BASE}\n[[settings]]\nkey = "s"\nlabel = "S"\ntype = "string"\nhelp = "${long(501)}"\n`)).toContain(
+      'The settings[0].help field must be a string (max 500).',
+    );
+    expect(bad(`${BASE}${BLOCK}description = "${long(501)}"\n`)).toContain(
+      'The manifest.extensions.blocks[0].description field must be a string (max 500).',
+    );
+    expect(bad(`${BASE}\n[extensions.proxy]\nurl = "https://x.example.com/${long(2028)}"\nsubpath = "hello"\n`)).toContain(
+      'The extensions.proxy.url must not be longer than 2048 characters.',
+    );
+    expect(bad(`${BASE}\n[dashboard]\n[[dashboard.print]]\nkey = "p"\ntitle = "P"\ntarget = "order-print"\n${'[[dashboard.print.fields]]\nkey = "f"\nlabel = "F"\n'.repeat(21)}`)).toContain(
+      'The manifest.dashboard.print[0].fields must not have more than 20 fields.',
+    );
+    const manyOptions = Array.from({ length: 51 }, (_, i) => `"o${i}"`).join(', ');
+    expect(
+      bad(`${BASE}${BLOCK}[[extensions.blocks.schema]]\nkey = "c"\nlabel = "C"\ntype = "select"\noptions = [${manyOptions}]\n`),
+    ).toContain('The manifest.extensions.blocks[0].schema[0].options must not have more than 50 options.');
+    expect(
+      bad(`${BASE}\n[[settings]]\nkey = "s"\nlabel = "S"\ntype = "select"\noptions = ["${long(121)}"]\n`),
+    ).toContain('The settings[0].options[0] must be a string (max 120).');
+  });
 });

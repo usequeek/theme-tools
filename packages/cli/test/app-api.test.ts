@@ -115,6 +115,8 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
         'POST /api/v1/biz/vendor/developer/apps': [200, { status: 'success', message: 'No changes — version 1.0.0 is current.', data: {
           p_id: 'app_1', slug: 'hello', name: 'Hello',
           version: { version: '1.0.0', sequence: 1, review_status: 'live' },
+          status: 'released',
+          unchanged: true,
         } }],
       }).fetchImpl,
       getAuth: userAuth(),
@@ -251,6 +253,30 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
       'POST /api/v1/biz/vendor/developer/apps/hello/dev-installs',
     ]);
     expect(calls[6].body).toEqual({ test_store_p_id: 12 });
+  });
+
+  it('accepts the real in_review release: HTTP 202, outcome from data.status', async () => {
+    const { fetchImpl } = mockFetch({
+      'POST /api/v1/biz/vendor/developer/apps/hello/versions/3/release': [202, { status: 'success', message: 'ok', data: {
+        status: 'in_review', version: '1.1.0', sequence: 3,
+      } }],
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    expect(await api.releaseVersion('hello', '3')).toEqual({ status: 'in_review', version: '1.1.0', sequence: 3 });
+  });
+
+  it('fails loudly when a deploy answer carries no data.status (never a silent released)', async () => {
+    const { fetchImpl } = mockFetch({
+      'POST /api/v1/biz/vendor/developer/apps': ok({
+        p_id: 'app_1', slug: 'hello', name: 'Hello',
+        version: { version: '1.0.1', sequence: 2, review_status: 'development' },
+        unchanged: false,
+      }),
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    const error = await api.deploy(MANIFEST).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as Error).message).toBe('Unexpected deploy response from Queek — no status (expected released|in_review|created).');
   });
 
   it('resolves digit input as a sequence and errors unknown semvers with the list', async () => {
