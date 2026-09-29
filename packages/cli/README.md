@@ -158,10 +158,23 @@ queek app deploy --no-release                           # create without serving
 queek app config link hello # server manifest → queek.app.toml (no config push: deploy carries config)
 queek app versions list hello
 queek app release hello 1.2.0   # semver resolves to its sequence; digits address it directly
-queek app submit hello
+queek app submit hello                # checklist + form + attestation → review (default: latest version)
+queek app submit hello --sequence 3   # submit one sequence explicitly
+queek app withdraw hello              # in_review back to development (--yes in CI)
 queek auth login            # rarely needed: app commands sign in automatically
 queek auth logout
 ```
+
+Behind the backend's explicit-submit switch, `deploy` and `release` can answer
+HTTP 409 `review_required` instead of releasing: the CLI prints
+`v{version} is ready for review. Run: queek app submit …` and exits 0 — a
+successful deploy is not a failure. `submit` runs the readiness checklist
+(errors block before anything is asked), collects the form (flags in CI,
+prompts on a TTY), requires explicit warning acknowledgement and agreement to
+every server-provided attestation clause, and POSTs with an Idempotency-Key.
+Test instructions take test-store credentials only, never production
+credentials. Success prints `Submitted v{version} — review usually within 3
+business days.`
 
 `queek.app.toml` is the local source of truth (same names as the server manifest,
 grouped: `[listing]`, `[access]`, `[webhooks]`, `[app]`, `[[settings]]`,
