@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import {
   designsOf,
   groupTemplates,
@@ -280,10 +280,12 @@ export async function planAddPage(themeDir: string, input: { page: string; templ
 export function applyAddPlan(plan: AddPlan): void {
   for (const write of plan.writes) {
     const relativePath = relative(plan.dir, write.path);
-    if (relativePath.startsWith('..') || relativePath === '') {
+    // `relative` answers with the platform's separator (`demos\x.json` on Windows), and
+    // with an absolute path when the file is on another drive.
+    if (relativePath === '' || relativePath.startsWith('..') || isAbsolute(relativePath)) {
       throw new Error(`Refusing to write outside the theme folder: ${write.path}`);
     }
-    mkdirSync(join(plan.dir, relativePath.split('/').slice(0, -1).join('/')), { recursive: true });
+    mkdirSync(dirname(write.path), { recursive: true });
     writeFileSync(write.path, write.content);
   }
 }
