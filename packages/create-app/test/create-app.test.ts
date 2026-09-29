@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { fetchStarter, setupApp } from '../src/setup.js';
+import { fetchStarter, setupAgentFiles, setupApp, successBanner } from '../src/setup.js';
 import { slugProblem, slugify } from '../src/naming.js';
 
 const dirs: string[] = [];
@@ -42,6 +42,29 @@ describe('@usequeek/create-app', () => {
     expect(readFileSync(join(stage, 'Dockerfile'), 'utf8')).toContain('docker build -t bookings');
     expect(readFileSync(join(stage, 'Dockerfile'), 'utf8')).toContain('/app/data/bookings.db');
     expect(readFileSync(join(stage, '.env.example'), 'utf8')).toContain('./data/bookings.db');
+  });
+
+  it('ships the agent files: AGENTS.md, exact CLAUDE.md pointer, both MCP wirings', () => {
+    const stage = mkdtempSync(join(tmpdir(), 'starter-'));
+    dirs.push(stage);
+    setupAgentFiles(stage);
+    const agents = readFileSync(join(stage, 'AGENTS.md'), 'utf8');
+    for (const must of ['@usequeek/app-sdk', 'queek.app.toml', 'queek app dev', 'https://docs.usequeek.com', 'Queek MCP', 'Do not add tooling to this repo']) {
+      expect(agents).toContain(must);
+    }
+    expect(readFileSync(join(stage, 'CLAUDE.md'), 'utf8')).toBe('@AGENTS.md');
+    for (const mcp of [join(stage, '.mcp.json'), join(stage, '.cursor', 'mcp.json')]) {
+      expect(JSON.parse(readFileSync(mcp, 'utf8'))).toEqual({ mcpServers: {} });
+    }
+  });
+
+  it('banners the next steps plus the AI setup (docs + MCP location)', () => {
+    const banner = successBanner('my-app');
+    expect(banner).toContain('cd my-app');
+    expect(banner).toContain('queek app dev');
+    expect(banner).toContain('AGENTS.md');
+    expect(banner).toContain('https://docs.usequeek.com');
+    expect(banner).toContain('Queek MCP');
   });
 
   it('refuses a stage without queek.app.toml', () => {

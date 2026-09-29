@@ -1,10 +1,65 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { downloadTemplate } from 'giget';
 import { slugify } from './naming.js';
 import { UsageError, type PackageManager } from './options.js';
+
+/** The Queek developer docs every scaffolded file points at (the MCP ships later — never invented here). */
+export const QUEEK_DOCS_URL = 'https://docs.usequeek.com';
+
+/**
+ * What every `npm create @usequeek/app` output ships (Shopify item 15
+ * parity): how an agent builds a Queek app — SDK, toml, dev loop, docs, MCP
+ * status, and the no-new-tooling rule. The scaffolder owns this text so a
+ * drifting template branch can never drop it.
+ */
+export function agentsMd(): string {
+  return `# Building this Queek app
+
+You are working in a Queek installable app (scaffolded by \`@usequeek/create-app\`).
+
+- SDK: \`@usequeek/app-sdk\` — install/uninstall/settings/webhooks handlers live in \`src/\`. The SDK README in \`node_modules/@usequeek/app-sdk\` is the handler contract.
+- Config: \`queek.app.toml\` IS the app — scopes (\`[access]\`), webhook topics (\`[webhooks]\`), app URLs (\`[app]\`), merchant settings (\`[[settings]]\`). \`queek app config link\` pulls the live config into the file; \`queek app deploy\` validates the whole config server-side and releases a version.
+- Dev loop: \`queek app dev\` — creates a dev store with sample data when you have none, then tunnels, installs (scopes auto-granted, no consent screen) and watches. \`queek app info\` shows the current configuration.
+- Docs: ${QUEEK_DOCS_URL} — the reference for the manifest, scopes, webhooks and the review submission flow.
+- Queek MCP: not published yet. \`.mcp.json\` (and \`.cursor/mcp.json\`) is the standard location — wire the Queek MCP there when it ships; until then use the docs above.
+
+Do not add tooling to this repo: no new build systems, linters, formatters, test frameworks or CI beyond what the starter ships. Fix the app, not the scaffold.
+`;
+}
+
+/** `CLAUDE.md` is exactly the pointer — one line, no trailing prose. */
+export const CLAUDE_MD = '@AGENTS.md';
+
+/**
+ * The MCP wiring location, shipped from day one. No developer MCP server
+ * exists in the repos yet, so this wires nothing invented — an empty
+ * `mcpServers` object the Queek MCP lands in when it publishes.
+ */
+export function mcpJson(): string {
+  return `${JSON.stringify({ mcpServers: {} }, null, 2)}\n`;
+}
+
+/** The success banner: next steps plus the AI setup (AGENTS.md + docs + MCP location). */
+export function successBanner(dir: string): string {
+  return [
+    `Next steps:`,
+    `  cd ${dir}`,
+    `  queek app dev          # creates a dev store if you have none, then tunnels + installs + watches`,
+    `AI assistants: AGENTS.md points at the Queek docs (${QUEEK_DOCS_URL}); .mcp.json is ready for the Queek MCP when it ships — do not add tooling to this repo.`,
+  ].join('\n');
+}
+
+/** Write the agent files every scaffolded app ships (overwrites template drift — the scaffolder owns them). */
+export function setupAgentFiles(stage: string): void {
+  writeFileSync(join(stage, 'AGENTS.md'), agentsMd());
+  writeFileSync(join(stage, 'CLAUDE.md'), CLAUDE_MD);
+  writeFileSync(join(stage, '.mcp.json'), mcpJson());
+  mkdirSync(join(stage, '.cursor'), { recursive: true });
+  writeFileSync(join(stage, '.cursor', 'mcp.json'), mcpJson());
+}
 
 export interface Answers {
   slug: string;
@@ -135,8 +190,10 @@ export async function createApp(dir: string, answers: Answers, options: CreateOp
   try {
     const from = await fetchStarter(stage, options.template, STARTER);
     setupApp(stage, answers);
+    setupAgentFiles(stage);
     cpSync(stage, resolve(dir), { recursive: true });
     options.log?.(`Created ${dir} from ${from} as "${answers.slug}".`);
+    options.log?.(successBanner(dir));
   } finally {
     rmSync(stage, { recursive: true, force: true });
   }
