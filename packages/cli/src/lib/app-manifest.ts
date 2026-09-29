@@ -36,7 +36,7 @@ export const unknownField = (key: string, where = 'manifest'): string => `Unknow
 
 const TOP_LEVEL_TOML_KEYS = new Set([
   'slug', 'handle', 'name', 'version', 'distribution', 'icon', 'developer', 'category',
-  'listing', 'access', 'webhooks', 'app', 'settings', 'extensions', 'dashboard',
+  'listing', 'access', 'webhooks', 'app', 'settings', 'extensions', 'dashboard', 'dev',
 ]);
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,63}$/;
@@ -167,7 +167,22 @@ export interface TomlManifest {
   manifest: AppManifest;
   /** Non-fatal notices (e.g. an ignored `version`) for the command to print once. */
   warnings: string[];
+  /** The CLI-only `[dev]` table (how `queek app dev` starts the app) — never sent to the backend, like `handle`. */
+  dev?: DevTable;
 }
+
+/**
+ * `[dev]` in queek.app.toml (Shopify `shopify.web.toml` parity: the command
+ * that serves the app + the port it listens on). CLI-only: `toManifest`
+ * validates it but never maps it onto the manifest.
+ */
+export interface DevTable {
+  command: string;
+  port: number;
+}
+
+/** Default local app port when neither `[dev].port` nor `--port` names one. */
+export const DEFAULT_DEV_PORT = 3000;
 
 /**
  * Map the grouped toml onto the flat manifest the API takes. `version` is
@@ -200,6 +215,29 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   const fail = (message: string): never => {
     throw new TomlError(message);
   };
+
+  // `[dev]` is CLI-only (Shopify `shopify.web.toml` parity): validated here,
+  // never mapped onto the manifest below.
+  let dev: DevTable | undefined;
+  if (doc.dev !== undefined) {
+    if (!isRecord(doc.dev)) throw fail('The dev section must be a table.');
+    for (const key of Object.keys(doc.dev)) {
+      if (!['command', 'port'].includes(key)) problems.push(unknownField(key, 'manifest.dev'));
+    }
+    if (problems.length > 0) throw new TomlError(problems.join('\n'));
+    const table = doc.dev;
+    if (typeof table.command !== 'string' || table.command.trim() === '') {
+      throw fail('The dev.command field is required (how `queek app dev` starts the app, e.g. "tsx watch src/index.ts").');
+    }
+    let port = DEFAULT_DEV_PORT;
+    if (table.port !== undefined) {
+      if (typeof table.port !== 'number' || !Number.isInteger(table.port) || table.port < 1 || table.port > 65535) {
+        throw fail('The dev.port must be a port number (1-65535).');
+      }
+      port = table.port;
+    }
+    dev = { command: table.command, port };
+  }
 
   const str = (value: unknown, field: string, max: number, required: boolean): string | undefined => {
     if (value === undefined) {
@@ -313,7 +351,7 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   for (const key of Object.keys(manifest)) {
     if (!(MANIFEST_KEYS as readonly string[]).includes(key)) throw new TomlError(unknownField(key));
   }
-  return { manifest, warnings };
+  return { manifest, warnings, ...(dev !== undefined ? { dev } : {}) };
 }
 
 /** Strict X.Y.Z for `deploy --version` (the backend auto-assigns when absent). */
@@ -549,11 +587,28 @@ export function fromManifest(manifest: Record<string, unknown>): string {
 }
 
 /** Load + validate in one step: what every `app` command starts from. */
-export function loadApp(dir: string, variant?: string): { path: string; manifest: AppManifest; warnings: string[] } {
+export function loadApp(dir: string, variant?: string): { path: string; manifest: AppManifest; warnings: string[]; dev?: DevTable } {
   const path = resolveTomlPath(dir, variant);
   const { doc } = loadTomlFile(path);
-  const { manifest, warnings } = toManifest(doc);
-  return { path, manifest, warnings };
+  const { manifest, warnings, dev } = toManifest(doc);
+  return { path, manifest, warnings, ...(dev !== undefined ? { dev } : {}) };
+}
+
+/**
+ * Keep the CLI-only `[dev]` table across `app config link --force`: link
+ * rewrites the toml from the server manifest (which has no dev), so a
+ * recorded table would otherwise be wiped. Returns the linked text with the
+ * recorded `[dev]` appended, or the text unchanged when there is none.
+ */
+export function preserveDevTable(existingToml: string, linkedToml: string): string {
+  let doc: unknown;
+  try {
+    doc = parseToml(existingToml);
+  } catch {
+    return linkedToml;
+  }
+  if (!isRecord(doc) || !isRecord(doc.dev)) return linkedToml;
+  return `${linkedToml.trimEnd()}\n\n[dev]\n${stringifyToml(doc.dev as Record<string, unknown>).trimEnd()}\n`;
 }
 
 export function tomlFileName(variant?: string): string {

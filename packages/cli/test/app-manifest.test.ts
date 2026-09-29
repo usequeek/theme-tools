@@ -7,6 +7,7 @@ import {
   fromManifest,
   loadApp,
   loadTomlFile,
+  preserveDevTable,
   resolveTomlPath,
   toManifest,
   TomlError,
@@ -203,6 +204,49 @@ describe('backend parity (validator origin/master 29/9)', () => {
     };
     expect(bad(`${BASE}${BLOCK}link_url = "http://x.example.com/l"\n`)).toContain('must be an https URL');
     expect(bad(`${BASE}\n[dashboard]\n[[dashboard.actions]]\nkey = "b"\ntitle = "B"\ntarget = "order-details"\nscope = "merchant-business_profile-read"\neffect = "order_appointment"\nnotify_url = "http://x.example.com/n"\n`)).toContain('must be an https URL');
+  });
+
+  it('parses the CLI-only [dev] table and strips it from the manifest (never sent, like handle)', () => {
+    const { doc } = loadTomlFile(stageFile(`${BASE}\n[dev]\ncommand = "tsx watch src/index.ts"\nport = 3001\n`));
+    const { manifest, dev } = toManifest(doc);
+    expect(dev).toEqual({ command: 'tsx watch src/index.ts', port: 3001 });
+    expect(manifest).not.toHaveProperty('dev');
+    expect(Object.keys(manifest)).not.toContain('dev');
+    const dir = stage({ [APP_TOML]: `${BASE}\n[dev]\ncommand = "tsx watch src/index.ts"\n` });
+    expect(loadApp(dir).dev).toEqual({ command: 'tsx watch src/index.ts', port: 3000 });
+  });
+
+  it('defaults [dev].port and rejects a missing command, a bad port and stray keys (exit 2)', () => {
+    const bare = loadTomlFile(stageFile(`${BASE}\n[dev]\ncommand = "npm run dev"\n`));
+    expect(toManifest(bare.doc).dev).toEqual({ command: 'npm run dev', port: 3000 });
+    expect(() => toManifest(loadTomlFile(stageFile(`${BASE}\n[dev]\nport = 3000\n`)).doc)).toThrow(
+      'The dev.command field is required (how `queek app dev` starts the app, e.g. "tsx watch src/index.ts").',
+    );
+    expect(() => toManifest(loadTomlFile(stageFile(`${BASE}\n[dev]\ncommand = "x"\nport = 99999\n`)).doc)).toThrow(
+      'The dev.port must be a port number (1-65535).',
+    );
+    expect(() => toManifest(loadTomlFile(stageFile(`${BASE}\n[dev]\ncommand = "x"\nwatch = true\n`)).doc)).toThrow(
+      "Unknown field 'watch' in manifest.dev.",
+    );
+    try {
+      toManifest(loadTomlFile(stageFile(`${BASE}\n[dev]\nport = 3000\n`)).doc);
+      expect.unreachable('expected a TomlError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(TomlError);
+      expect((error as Error & { exitCode: number }).exitCode).toBe(2);
+    }
+  });
+
+  it('keeps the recorded [dev] table across config link --force (the server manifest has none)', () => {
+    const existing = `${BASE}\n[dev]\ncommand = "tsx watch src/index.ts"\nport = 3001\n`;
+    const linked = '# queek.app.toml — local source of truth\nslug = "hello"\nname = "Hello World"\n\n[access]\nscopes = ["merchant-business_profile-read"]\n\n[app]\ninstall_url = "https://hello.example.com/install"\nuninstall_url = "https://hello.example.com/uninstall"\n';
+    const kept = preserveDevTable(existing, linked);
+    expect(kept).toContain('[dev]');
+    expect(kept).toContain('command = "tsx watch src/index.ts"');
+    // And the kept file still validates with the same table.
+    expect(toManifest(loadTomlFile(stageFile(kept)).doc).dev).toEqual({ command: 'tsx watch src/index.ts', port: 3001 });
+    expect(preserveDevTable(`${BASE}\n`, linked)).toBe(linked);
+    expect(preserveDevTable('not toml [[[', linked)).toBe(linked);
   });
 
   it('uses the backend sentence for topics-without-receiver', () => {

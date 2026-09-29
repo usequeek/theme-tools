@@ -279,6 +279,27 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect((error as Error).message).toBe('Unexpected deploy response from Queek — no status (expected released|in_review|created).');
   });
 
+  it('mints keypairs (PEM once) and rotates the signing secret (secret once)', async () => {
+    const { fetchImpl, calls } = mockFetch({
+      'POST /api/v1/biz/vendor/developer/apps/hello/keys/generate': [201, { status: 'success', message: 'ok', data: {
+        kid: 'kid_1', added_at: '2026-09-30T00:00:00Z', private_key: 'PEM_BYTES',
+      } }],
+      'POST /api/v1/biz/vendor/developer/apps/hello/rotate-secret': ok({ signing_secret: 'whsec_new' }),
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    expect(await api.generateAppKey('hello')).toEqual({ kid: 'kid_1', privateKey: 'PEM_BYTES' });
+    expect(await api.rotateAppSecret('hello')).toBe('whsec_new');
+    expect(calls[0].body).toEqual({});
+
+    const replayed = new DeveloperApi('https://api.test', {
+      fetchImpl: mockFetch({
+        'POST /api/v1/biz/vendor/developer/apps/hello/keys/generate': ok({ kid: 'kid_1', added_at: 'x', private_key: null }),
+      }).fetchImpl,
+      getAuth: userAuth(),
+    });
+    await expect(replayed.generateAppKey('hello')).rejects.toThrow('returned no private key');
+  });
+
   it('resolves digit input as a sequence and errors unknown semvers with the list', async () => {
     const { fetchImpl, calls } = mockFetch({
       'GET /api/v1/biz/vendor/developer/apps/hello/versions': ok([

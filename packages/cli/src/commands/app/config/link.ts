@@ -1,9 +1,9 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Args, Flags } from '@oclif/core';
 import { LoginNeededError } from '../../../lib/app-api.js';
 import { appFlags, appSession } from '../../../lib/app-command.js';
-import { fromManifest, tomlFileName } from '../../../lib/app-manifest.js';
+import { fromManifest, preserveDevTable, tomlFileName } from '../../../lib/app-manifest.js';
 import { BaseCommand } from '../../../lib/base-command.js';
 
 export default class AppConfigLink extends BaseCommand {
@@ -41,7 +41,11 @@ export default class AppConfigLink extends BaseCommand {
       this.error(`${tomlFileName(flags.config)} already exists — pass --force to overwrite it with the server manifest.`, { exit: 2 });
     }
     mkdirSync(flags.path, { recursive: true });
-    writeFileSync(target, fromManifest(config.manifest));
+    const linked = fromManifest(config.manifest);
+    // The server manifest carries no `[dev]` (CLI-only): keep the recorded
+    // table instead of wiping the developer's start command.
+    const previous = existsSync(target) ? readFileSync(target, 'utf8') : null;
+    writeFileSync(target, previous === null ? linked : preserveDevTable(previous, linked));
     this.log(`Linked ${config.slug} version ${config.version} (sequence ${config.sequence}, ${config.review_status}) → ${target}`);
     return { file: target };
   }

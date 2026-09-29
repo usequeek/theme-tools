@@ -1,9 +1,12 @@
 import { mkdirSync, watch } from 'node:fs';
-import { join } from 'node:path';
+import { delimiter, join, resolve } from 'node:path';
 import { Flags } from '@oclif/core';
-import { LoginNeededError, type DeveloperApi } from '../../lib/app-api.js';
+import { LoginNeededError, type DeveloperApi, type DevInstallResult } from '../../lib/app-api.js';
+import { apiBase } from '../../lib/app-auth.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
-import { loadApp, queekDir, resolveTomlPath, type AppManifest } from '../../lib/app-manifest.js';
+import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
+import { ensureDevSecrets, envLocalPath, readEnvFile, writeEnvLocal } from '../../lib/app-env.js';
+import { startSupervised, waitForHealthy } from '../../lib/app-run.js';
 import { manualTunnel, startCloudflared, type Tunnel } from '../../lib/app-tunnel.js';
 import { BaseCommand } from '../../lib/base-command.js';
 
@@ -49,9 +52,9 @@ export default class AppDev extends BaseCommand {
   // A long-running watcher has no result to print.
   static override enableJsonFlag = false;
 
-  static override summary = 'Develop against an owned test store: tunnel + dev install + watch.';
+  static override summary = 'Develop an app end to end: tunnel + dev install + your app running with injected env.';
 
-  static override description = `Brings up a tunnel, registers the toml as a development build (same-semver unreleased rides the in-place rule — no version spam), installs it on an owned test store, and re-registers whenever queek.app.toml changes. Run your app server (npm start) in another terminal; this command owns the tunnel, the registration and the install. Automation tokens cannot run dev (test-store reads are outside their grant) — sign in as a developer. Ctrl+C stops the tunnel.`;
+  static override description = `Brings up a tunnel, registers the toml as a development build (same-semver unreleased rides the in-place rule — no version spam), installs it on an owned test store, then starts the app from the toml's CLI-only \`[dev]\` table (\`command\`, e.g. "tsx watch src/index.ts") with the dev env injected (APP_BASE_URL=<tunnel origin>, PORT, NODE_ENV=development, QUEEK_API_BASE, plus the signing secret / keypair / encryption key from .queek/.env.local, minted on first run). The app's stdout streams prefixed with [app]; a crash restarts it with backoff. Saves to queek.app.toml re-register; \`[dev]\` changes need a restart. Automation tokens cannot run dev (test-store reads are outside their grant) — sign in as a developer. Ctrl+C stops the app and the tunnel.`;
 
   static override examples = [
     '<%= config.bin %> <%= command.id %>',
@@ -62,7 +65,7 @@ export default class AppDev extends BaseCommand {
   static override flags = {
     ...appFlags,
     store: Flags.string({ summary: 'The owned test store (numeric p_id or name). The only store when you own exactly one.', env: 'QUEEK_APP_STORE' }),
-    port: Flags.integer({ summary: 'Your local app server port the tunnel forwards to.', default: 3000, min: 1, max: 65535 }),
+    port: Flags.integer({ summary: 'Your local app server port the tunnel forwards to (default: [dev].port, else 3000).', min: 1, max: 65535 }),
     url: Flags.string({ summary: 'Your own tunnel URL (https). Skips starting cloudflared.' }),
   };
 
@@ -79,39 +82,111 @@ export default class AppDev extends BaseCommand {
       this.error('`queek app dev` needs a developer session (test-store reads are outside the automation grant) — run it where `queek auth login` works.', { exit: 2 });
     }
 
+    const first = loadApp(flags.path, flags.config);
+    for (const warning of first.warnings) this.logToStderr(`Warning: ${warning}`);
+    const dev: DevTable | undefined = first.dev;
+    if (!dev) {
+      this.error('`queek app dev` starts the app from the toml’s [dev] table — add `[dev]` with `command = "tsx watch src/index.ts"` (and optionally `port = 3000`) to queek.app.toml.', { exit: 2 });
+    }
+    const port = flags.port ?? dev.port ?? DEFAULT_DEV_PORT;
+
     const tomlPath = resolveTomlPath(flags.path, flags.config);
-    const tunnel = await this.tunnel(flags.path, flags.url, flags.port);
+    const tunnel = await this.tunnel(flags.path, flags.url, port);
+    const app = await this.startApp(api, flags.path, first.manifest.slug, tunnel.url, port, dev.command);
+
     const stop = async (): Promise<void> => {
+      app.stop();
       tunnel.stop();
       process.exit(0);
     };
     process.once('SIGINT', stop);
     process.once('SIGTERM', stop);
 
-    let warned = false;
-    const register = async (): Promise<void> => {
-      const { manifest, warnings } = loadApp(flags.path, flags.config);
-      if (!warned) {
-        warned = true;
-        for (const warning of warnings) this.logToStderr(`Warning: ${warning}`);
-      }
+    const cycle = async (): Promise<{ installed: DevInstallResult; store: { p_id: number; name: string; slug: string } }> => {
+      const { manifest } = loadApp(flags.path, flags.config);
       const devManifest = withDevUrls(manifest, tunnel.url);
       const result = await api.deploy(devManifest).catch((error: Error) => this.error(error.message, { exit: 1 }));
-      const storePid = await this.pickStore(api, flags.store);
-      const installed = await api.devInstall(result.slug, storePid).catch((error: Error) => this.error(error.message, { exit: 1 }));
-      this.log(`Dev: ${result.slug} ${result.version} on test store ${storePid} ← ${tunnel.url} (install ${installed.status})`);
+      const store = await this.pickStore(api, flags.store);
+      const installed = await api.devInstall(result.slug, store.p_id).catch((error: Error) => this.error(error.message, { exit: 1 }));
+      this.log(`Dev: ${result.slug} ${result.version} on test store ${store.p_id} ← ${tunnel.url} (install ${installed.status})`);
+      return { installed, store };
     };
 
-    await register();
-    this.log(`Watching ${tomlPath} — save it to re-register. Ctrl+C to stop.`);
+    let current = await cycle();
+    const healthy = await waitForHealthy(`http://127.0.0.1:${port}/health`, 90_000);
+    if (!healthy) {
+      this.logToStderr(`The app did not answer http://127.0.0.1:${port}/health within 90s — its [app] log above says why. The tunnel and install are live; fix the app and it restarts.`);
+    } else {
+      this.links(current.installed, current.store);
+    }
+    this.log(`Watching ${tomlPath} — save it to re-register ([dev] changes need a restart). Ctrl+C to stop.`);
     watch(tomlPath, { persistent: true }, async () => {
       try {
-        await register();
+        current = await cycle();
+        this.links(current.installed, current.store);
       } catch (error) {
         this.logToStderr(`Re-register failed: ${(error as Error).message}`);
       }
     });
     await new Promise(() => {});
+  }
+
+  /**
+   * Start the app with the dev env. Secrets come from `.queek/.env.local`,
+   * minted on first run (rotate-secret / keys-generate / local random) and
+   * stored 0600 — the values are never printed. The project's own `.env`
+   * fills the rest, but CLI-owned keys always win.
+   */
+  private async startApp(
+    api: DeveloperApi,
+    dir: string,
+    slug: string,
+    tunnelUrl: string,
+    port: number,
+    command: string,
+  ): Promise<{ stop: () => void }> {
+    const appDir = resolve(dir);
+    const queek = queekDir(dir);
+    mkdirSync(queek, { recursive: true });
+    const local = readEnvFile(envLocalPath(queek));
+    const secrets = await ensureDevSecrets(api, slug, local, (line) => this.log(line)).catch((error: Error) =>
+      this.error(error.message, { exit: 1 }),
+    );
+    if (secrets.generated.length > 0) {
+      const keep: Record<string, string> = {};
+      for (const name of secrets.generated) keep[name] = secrets.values[name] as string;
+      const file = writeEnvLocal(queek, keep);
+      this.log(`Dev credentials written to ${file} (gitignored, 0600 — values are never printed).`);
+    }
+    const projectEnv = readEnvFile(join(appDir, '.env'));
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      ...projectEnv,
+      APP_BASE_URL: new URL(tunnelUrl).origin,
+      PORT: String(port),
+      NODE_ENV: 'development',
+      QUEEK_API_BASE: apiBase(),
+      ...secrets.values,
+      PATH: `${join(appDir, 'node_modules', '.bin')}${delimiter}${process.env.PATH ?? ''}`,
+    };
+    this.log(`Starting the app: ${command} (port ${port})`);
+    return startSupervised({
+      command,
+      cwd: appDir,
+      env,
+      log: (line) => this.log(line),
+      logError: (line) => this.logToStderr(line),
+    });
+  }
+
+  /** The two links, once the app answers its health route. URL shapes come
+   * from the API (dev-install) — never constructed here. Until the backend
+   * serves them, the fallback names the store to open in the dashboard. */
+  private links(installed: DevInstallResult, store: { p_id: number; name: string; slug: string }): void {
+    const admin = installed.admin_url ?? `the dashboard → test store '${store.name}' → launch the dev install`;
+    const front = installed.storefront_url ?? `the dashboard → test store '${store.name}'`;
+    this.log(`Store admin: ${admin}`);
+    this.log(`Storefront: ${front}`);
   }
 
   private async tunnel(dir: string, url: string | undefined, port: number): Promise<Tunnel> {
@@ -122,7 +197,7 @@ export default class AppDev extends BaseCommand {
     return startCloudflared(port, join(queek, 'cloudflared.log')).catch((error: Error) => this.error(error.message, { exit: 2 }));
   }
 
-  private async pickStore(api: DeveloperApi, wanted: string | undefined): Promise<number> {
+  private async pickStore(api: DeveloperApi, wanted: string | undefined): Promise<{ p_id: number; name: string; slug: string }> {
     const { data: stores, total } = await api.allTestStores().catch((error: Error) => this.error(error.message, { exit: 1 }));
     if (stores.length === 0) this.error('No owned test stores — create one on the dashboard first.', { exit: 2 });
     if (wanted) {
@@ -130,9 +205,9 @@ export default class AppDev extends BaseCommand {
       if (!found) {
         this.error(`No owned test store '${wanted}'. Yours: ${stores.map((store) => `${store.p_id} (${store.name})`).join(', ')}.`, { exit: 2 });
       }
-      return found.p_id;
+      return found;
     }
-    if (total === 1) return stores[0].p_id;
+    if (total === 1 && stores[0]) return stores[0];
     this.error(`You own ${total} test stores — pass --store. Yours: ${stores.map((store) => `${store.p_id} (${store.name})`).join(', ')}.`, { exit: 2 });
   }
 }

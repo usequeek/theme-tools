@@ -64,6 +64,8 @@ export interface TestStore {
   p_id: number;
   name: string;
   slug: string;
+  /** Served when the backend attaches it; the CLI never constructs store URLs itself. */
+  storefront_url?: string;
 }
 
 export interface AppVersion {
@@ -121,6 +123,9 @@ export interface DevInstallResult {
   app_p_id: string;
   status: string;
   installed_version: string;
+  /** Served when the backend attaches them; the CLI never constructs dashboard/store URLs itself. */
+  admin_url?: string;
+  storefront_url?: string;
 }
 
 const VENDOR_PREFIX = '/api/v1/biz/vendor/developer';
@@ -451,6 +456,33 @@ export class DeveloperApi {
       version: typeof data.version === 'string' ? data.version : input,
       sequence: typeof data.sequence === 'number' ? data.sequence : sequence,
     };
+  }
+
+  /**
+   * Mint a keypair for the app (DeveloperAppKeyController.php `generate`):
+   * POST …/keys/generate → 201 `data.{kid, added_at, private_key}`. The
+   * private PEM is shown ONCE — a replayed request answers `private_key:
+   * null`, which reads as an error here (generate again instead).
+   */
+  async generateAppKey(app: string): Promise<{ kid: string; privateKey: string }> {
+    const { data } = await this.vendor<Record<string, unknown>>('POST', `/apps/${encodeURIComponent(app)}/keys/generate`, `generating a key for '${app}'`, {}, app);
+    if (typeof data.kid !== 'string' || typeof data.private_key !== 'string' || data.private_key === '') {
+      throw new ApiError(`Key generation for '${app}' returned no private key — it was already shown once; generate a new key if it was lost.`, 200, data);
+    }
+    return { kid: data.kid, privateKey: data.private_key };
+  }
+
+  /**
+   * Rotate the app signing secret (DeveloperAppKeyController.php
+   * `rotateSecret`): POST …/rotate-secret → `data.signing_secret`, shown
+   * once. This invalidates the previous secret — callers say so out loud.
+   */
+  async rotateAppSecret(app: string): Promise<string> {
+    const { data } = await this.vendor<Record<string, unknown>>('POST', `/apps/${encodeURIComponent(app)}/rotate-secret`, `rotating the signing secret of '${app}'`, {}, app);
+    if (typeof data.signing_secret !== 'string' || data.signing_secret === '') {
+      throw new ApiError(`Rotating the signing secret of '${app}' returned no secret.`, 200, data);
+    }
+    return data.signing_secret;
   }
 
   /** Submit for review (DeveloperAppController.php:72). */
