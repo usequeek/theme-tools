@@ -2,7 +2,7 @@ import { chmodSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { DeveloperApi } from '../src/lib/app-api.js';
+import { ApiError, AutomationTokenError, type DeveloperApi } from '../src/lib/app-api.js';
 import {
   ensureDevSecrets,
   envLocalPath,
@@ -10,6 +10,7 @@ import {
   MissingSecretError,
   parseDotEnv,
   readEnvFile,
+  resolveDevSecret,
   toOneLineBase64,
   writeEnvLocal,
 } from '../src/lib/app-env.js';
@@ -149,5 +150,65 @@ describe('ensureDevSecrets (local first, minted otherwise, never printed, never 
     expect(error).not.toBeInstanceOf(MissingSecretError);
     expect((error as Error).message).toContain('already has 3 keys');
     expect(api.generateAppKey).not.toHaveBeenCalled();
+  });
+});
+
+describe('resolveDevSecret (local, env, then the owner re-view — never a rotation)', () => {
+  const secretApi = (secret = 'whsec_fetched') =>
+    apiWith({ appSigningSecret: vi.fn(async () => ({ secret, previousExpiresAt: null })) });
+
+  it('fetches a missing secret over the session and merges it into .env.local', async () => {
+    const api = secretApi();
+    const queek = join(stage(), '.queek');
+    writeEnvLocal(queek, { APP_KEY_ID: 'k1' });
+    const lines: string[] = [];
+    await resolveDevSecret(api, 'hello', queek, readEnvFile(envLocalPath(queek)), undefined, (line) => lines.push(line));
+    expect(api.appSigningSecret).toHaveBeenCalledWith('hello');
+    expect(readEnvFile(envLocalPath(queek))).toEqual({ APP_KEY_ID: 'k1', QUEEK_APP_SECRET: 'whsec_fetched' });
+    expect(lines.join('\n')).not.toContain('whsec_fetched');
+    expect(lines.join('\n')).toContain(envLocalPath(queek));
+  });
+
+  it('skips the fetch when the file or the environment already holds the secret', async () => {
+    const api = secretApi();
+    const queek = join(stage(), '.queek');
+    const lines: string[] = [];
+    await resolveDevSecret(api, 'hello', queek, { QUEEK_APP_SECRET: 'whsec_old' }, undefined, (line) => lines.push(line));
+    await resolveDevSecret(api, 'hello', queek, {}, 'whsec_env', (line) => lines.push(line));
+    expect(api.appSigningSecret).not.toHaveBeenCalled();
+    expect(lines).toEqual([]);
+  });
+
+  it('falls back to the dashboard-Reveal message when the fetch fails', async () => {
+    const api = apiWith({ appSigningSecret: vi.fn(async () => { throw new ApiError('App not found.', 404, null); }) });
+    const queek = join(stage(), '.queek');
+    const error = await resolveDevSecret(api, 'hello', queek, {}, undefined, () => {}).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(MissingSecretError);
+    expect((error as Error).message).toBe(MISSING_SECRET_MESSAGE);
+    expect((error as Error).message).toContain('Developers → your app → Credentials → Reveal');
+    expect(readEnvFile(envLocalPath(queek))).toEqual({});
+  });
+
+  it('keeps the automation refusal untouched (dev refuses those tokens first)', async () => {
+    const refusal = new AutomationTokenError("This automation token can't do that — it only works for its own app. (Server: Unauthenticated.)", 401, null);
+    const api = apiWith({ appSigningSecret: vi.fn(async () => { throw refusal; }) });
+    const error = await resolveDevSecret(api, 'hello', join(stage(), '.queek'), {}, undefined, () => {}).catch((e: unknown) => e);
+    expect(error).toBe(refusal);
+    expect(error).not.toBeInstanceOf(MissingSecretError);
+  });
+
+  it('never rotates: no rotate call exists on the fetch path', async () => {
+    const api = secretApi();
+    await resolveDevSecret(api, 'hello', join(stage(), '.queek'), {}, undefined, () => {});
+    expect((api as unknown as Record<string, unknown>).rotateSecret).toBeUndefined();
+    expect(api.appSigningSecret).toHaveBeenCalledTimes(1);
+  });
+
+  describe.runIf(process.platform !== 'win32')('file mode', () => {
+    it('writes the fetched secret 0600', async () => {
+      const queek = join(stage(), '.queek');
+      await resolveDevSecret(secretApi(), 'hello', queek, {}, undefined, () => {});
+      expect(statSync(envLocalPath(queek)).mode & 0o777).toBe(0o600);
+    });
   });
 });

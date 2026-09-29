@@ -5,7 +5,7 @@ import { LoginNeededError, type DeveloperApi } from '../../lib/app-api.js';
 import { apiBase } from '../../lib/app-auth.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
-import { ensureDevSecrets, envLocalPath, MISSING_SECRET_MESSAGE, MissingSecretError, readEnvFile, writeEnvLocal } from '../../lib/app-env.js';
+import { ensureDevSecrets, envLocalPath, MissingSecretError, readEnvFile, resolveDevSecret, writeEnvLocal } from '../../lib/app-env.js';
 import { startSupervised, waitForHealthy } from '../../lib/app-run.js';
 import { manualTunnel, startCloudflared, type Tunnel } from '../../lib/app-tunnel.js';
 import { BaseCommand } from '../../lib/base-command.js';
@@ -90,15 +90,18 @@ export default class AppDev extends BaseCommand {
     }
     const port = flags.port ?? dev.port ?? DEFAULT_DEV_PORT;
 
-    // The signing secret is never minted here — dev and production share one
-    // app record, so rotating would break every live install. Stop before
-    // starting anything (tunnel included) when it is nowhere to be found.
+    // The signing secret is never minted or rotated here — dev and
+    // production share one app record, so rotating would break every live
+    // install. When it is nowhere to be found, the owner's re-view fetches
+    // it back over this developer session (automation never reaches here:
+    // the kind gate above kept its error); only a failed fetch stops the
+    // run before starting anything (tunnel included).
     const queek = queekDir(flags.path);
     mkdirSync(queek, { recursive: true });
     const recorded = readEnvFile(envLocalPath(queek));
-    if (!recorded.QUEEK_APP_SECRET && !process.env.QUEEK_APP_SECRET) {
-      this.error(MISSING_SECRET_MESSAGE, { exit: 2 });
-    }
+    await resolveDevSecret(api, first.manifest.slug, queek, recorded, process.env.QUEEK_APP_SECRET, (line) => this.log(line)).catch(
+      (error: Error) => this.error(error.message, { exit: error instanceof MissingSecretError ? 2 : 1 }),
+    );
 
     const tomlPath = resolveTomlPath(flags.path, flags.config);
     const tunnel = await this.tunnel(flags.path, flags.url, port);
@@ -155,8 +158,9 @@ export default class AppDev extends BaseCommand {
    * (or the environment for the secret), minted on first run (keys-generate
    * once / local random) and stored 0600 — the values are never printed. The
    * signing secret is NEVER rotated here (dev and production share one app
-   * record): the early gate in run() already stopped when it is missing. The
-   * project's own `.env` fills the rest, but CLI-owned keys always win.
+   * record): the run() gate already fetched a missing one back over the
+   * developer session or stopped. The project's own `.env` fills the
+   * rest, but CLI-owned keys always win.
    */
   private async startApp(
     api: DeveloperApi,

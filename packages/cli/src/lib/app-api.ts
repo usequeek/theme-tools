@@ -621,6 +621,32 @@ export class DeveloperApi {
   }
 
   /**
+   * Owner-only secret re-view (DeveloperAppKeyController.php `showSecret`):
+   * GET …/signing-secret → `data.{signing_secret, previous_expires_at?}`.
+   * Read over the signed-in developer's session — an automation token 401s
+   * here by backend design (AutomationTokenError, never retried), so
+   * `queek app dev` refuses those before calling this. There is
+   * deliberately no rotate wrapper: dev and production share one app
+   * record, so rotation is never automatic.
+   */
+  async appSigningSecret(app: string): Promise<{ secret: string; previousExpiresAt: string | null }> {
+    const { data } = await this.vendor<Record<string, unknown>>(
+      'GET',
+      `/apps/${encodeURIComponent(app)}/signing-secret`,
+      `reading the signing secret of '${app}'`,
+      undefined,
+      app,
+    );
+    if (typeof data.signing_secret !== 'string' || data.signing_secret === '') {
+      throw new ApiError(`The signing secret of '${app}' was not returned — reveal it on the Developer page (your app → Credentials → Reveal).`, 200, data);
+    }
+    return {
+      secret: data.signing_secret,
+      previousExpiresAt: typeof data.previous_expires_at === 'string' ? data.previous_expires_at : null,
+    };
+  }
+
+  /**
    * Readiness checklist for one owned version (DeveloperAppController.php
    * `submission`): stored checks return with zero egress when fresh,
    * otherwise the server re-probes. `review_note`/`submitted`/`attestation`/

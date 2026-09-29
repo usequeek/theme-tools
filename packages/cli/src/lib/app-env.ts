@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import type { DeveloperApi } from './app-api.js';
+import { ApiError, AutomationTokenError, type DeveloperApi } from './app-api.js';
 
 /**
  * `.env`-shaped files for `queek app dev`: the project's own `.env` (read)
@@ -92,9 +92,43 @@ export interface DevSecrets {
 /** A missing signing secret: exit 2 with the recovery message, never a rotation. */
 export class MissingSecretError extends Error {}
 
-/** The one recovery message, shared by the early gate and the secrets resolver. */
+/** The one recovery message, shared by the dev gate and the secrets resolver. */
 export const MISSING_SECRET_MESSAGE =
-  "Missing QUEEK_APP_SECRET. Put the signing secret you saved at registration into .queek/.env.local, or develop against a separate development app: create queek.app.development.toml with its own slug and run `queek app dev -c development` (Shopify's recommended pattern).";
+  'Missing QUEEK_APP_SECRET and it could not be fetched for this app. Reveal it on the dashboard (Developers → your app → Credentials → Reveal) and put it into .queek/.env.local — or develop against a separate development app: create queek.app.development.toml with its own slug and run `queek app dev -c development` (Shopify\u2019s recommended pattern).';
+
+/**
+ * The dev-time signing secret, in precedence order: `.queek/.env.local`
+ * first, then the environment (used as-is, never written back), then the
+ * owner's re-view — GET signing-secret over the signed-in developer's
+ * session, merged into `.queek/.env.local` (0600) so the next run finds
+ * it. Never a rotation: dev and production share one app record.
+ * Automation tokens never reach here (`queek app dev` refuses them first);
+ * an automation refusal passes through untouched so it keeps its own
+ * wording, while a failed fetch (404/403/network) reads as
+ * MissingSecretError with the dashboard-Reveal recovery message.
+ * Nothing logged carries the value — the file path is the receipt.
+ */
+export async function resolveDevSecret(
+  api: DeveloperApi,
+  slug: string,
+  queek: string,
+  local: Record<string, string>,
+  envSecret: string | undefined,
+  log: (line: string) => void,
+): Promise<void> {
+  if (typeof local.QUEEK_APP_SECRET === 'string' && local.QUEEK_APP_SECRET !== '') return;
+  if (typeof envSecret === 'string' && envSecret !== '') return;
+  let secret: string;
+  try {
+    secret = (await api.appSigningSecret(slug)).secret;
+  } catch (error) {
+    if (error instanceof AutomationTokenError) throw error;
+    if (error instanceof ApiError) throw new MissingSecretError(MISSING_SECRET_MESSAGE);
+    throw error;
+  }
+  writeEnvLocal(queek, { QUEEK_APP_SECRET: secret });
+  log(`Fetched the signing secret into ${envLocalPath(queek)} (gitignored, 0600 — values are never printed).`);
+}
 
 /** The app record holds at most this many keys — minting past it stops, it never fails mid-flow. */
 export const MAX_APP_KEYS = 3;

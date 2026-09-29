@@ -471,6 +471,43 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(refreshed).not.toHaveBeenCalled();
   });
 
+  it('reads the signing secret re-view with its rotation stamp', async () => {
+    const { fetchImpl, calls } = mockFetch({
+      'GET /api/v1/biz/vendor/developer/apps/hello/signing-secret': ok({ signing_secret: 'whsec_live', previous_expires_at: '2026-09-30T10:00:00+01:00' }),
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    const result = await api.appSigningSecret('hello');
+    expect(result).toEqual({ secret: 'whsec_live', previousExpiresAt: '2026-09-30T10:00:00+01:00' });
+    expect(calls[0].method).toBe('GET');
+  });
+
+  it('reads the signing secret without a stamp before any rotation', async () => {
+    const { fetchImpl } = mockFetch({
+      'GET /api/v1/biz/vendor/developer/apps/hello/signing-secret': ok({ signing_secret: 'whsec_live' }),
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    await expect(api.appSigningSecret('hello')).resolves.toEqual({ secret: 'whsec_live', previousExpiresAt: null });
+  });
+
+  it.each([401, 403])('refuses the signing secret to automation tokens as out-of-grant (%i)', async (denied) => {
+    const fetchImpl: FetchImpl = vi.fn(async () => (
+      { ok: false, status: denied, json: async () => ({ status: 'failed', error: 'Unauthenticated.', message: 'Unauthenticated.' }) } as Response
+    ));
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: autoAuth() });
+    const error = await api.appSigningSecret('hello').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(AutomationTokenError);
+  });
+
+  it('errors when the re-view answers no usable secret', async () => {
+    const { fetchImpl } = mockFetch({
+      'GET /api/v1/biz/vendor/developer/apps/hello/signing-secret': ok({ signing_secret: '' }),
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    const error = await api.appSigningSecret('hello').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as Error).message).toContain('Credentials → Reveal');
+  });
+
   it('throws LoginNeededError-shaped auth failures with the server sentence', async () => {
     const { fetchImpl } = mockFetch({ 'POST /api/v1/biz/vendor/developer/apps': fail(422, 'The slug is taken.') });
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
