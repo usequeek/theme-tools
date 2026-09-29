@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUSINESS_KEYS, businessRoot, isBusinessKey, vocabularyViewOf } from '../src/utils/business-vocabulary.js';
 import { demoStoresRule, fontsSelfHostedRule, frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templateDesignsRule, templatePagesRule, templateVersionsRule, compositionVariantsRule } from '../src/rules/static.js';
-import { copyViolations } from '../src/utils/template-copy.js';
+import { copyViolations, manifestViolations } from '../src/utils/template-copy.js';
 import { checkTheme } from '../src/run.js';
 import type { DeclaredDemo, DemoStore, ThemeContext } from '../src/types.js';
 
@@ -139,6 +139,232 @@ describe('theme/template-copy', () => {
     ]) {
       expect(copyViolations(text, null), text).toEqual([]);
     }
+  });
+
+  it('rejects schedules only the vendor can keep — response and delivery windows, weekday drops, daily freshness, 24/7', () => {
+    for (const text of [
+      'Delivery within the hour', 'We answer within the hour', 'We reply within the hour',
+      'Same day', 'Next-day', 'Overnight delivery',
+      'New shirts land every Friday', 'New In Every Friday', 'Fresh drops on Fridays',
+      'Cooked fresh every morning', 'Market-fresh every morning', 'Cooked fresh daily',
+      'Chapman and zobo are mixed every morning',
+      'Coals lit every evening', 'Restocked every week', 'Baked daily', '24/7 Support',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^promises a schedule: "/)]),
+      );
+    }
+  });
+
+  it('does not mistake usage advice or product purpose for a schedule', () => {
+    for (const text of [
+      'SPF every morning, rain or shine', 'Finish with SPF, every morning.',
+      'Sunscreen as the last step of every morning',
+      'Two drops every morning', 'Made to be worn every day',
+      'Hoops, studs and chains made for daily wear',
+      'The aisles you shop every week',
+      'Vitamin C and hyaluronic serums for daily routines', 'The daily ritual',
+      'Deep curls that return after every wash', 'Two burners for daily cooking',
+      'Why SPF Every Day Matters',
+      'Open the box on Friday', 'Sunday best',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual([]);
+    }
+  });
+
+  it('counts same-day and next-day only about delivery, dispatch or pickup — never twice', () => {
+    expect(copyViolations('Bread baked the next day tastes better toasted', null)).toEqual([]);
+    expect(copyViolations('Sealed the same day', null)).toEqual([]);
+    for (const text of ['same-day delivery', 'next day dispatch', 'Delivered the same day', 'Same day', 'Next-day']) {
+      expect(copyViolations(text, null), text).toHaveLength(1);
+    }
+    expect(copyViolations('Ships the same day', null)).toHaveLength(1);
+    expect(copyViolations('Ships the same day', null)).toEqual([expect.stringMatching(/^makes a promise/)]);
+  });
+
+  // Ported from the storefront's tests/theme-templates.test.ts describe('template copy'):
+  // its review of 24/9/26 ran these through the gate, and a pattern change
+  // that breaks either list must fail here instead of in the storefront.
+  it('finds places, naira amounts and promises; not the craft', () => {
+    expect(copyViolations('Hot across Surulere and VI', null)).toEqual(['names places (VI, Surulere)']);
+    expect(copyViolations('Free delivery over ₦25,000', null)).toEqual(['states a naira amount', 'makes a promise ("Free delivery")']);
+    expect(copyViolations('Orders over N5,000 ship', null)).toEqual(['states a naira amount']);
+    expect(copyViolations('Lagos orders arrive in 1–2 days', null)).toEqual(['names a place (Lagos)', 'makes a promise ("arrive in 1–2 days")']);
+    for (const promise of ['Ships the same day', '30-day returns', 'Freshness Guaranteed', 'Delivery in 45 min', 'Resized free within 30 days']) {
+      expect(copyViolations(promise, null), promise).toHaveLength(1);
+    }
+    for (const history of ['Cooked over open flame since 2014', 'We started in 2019 with one table', 'Est. 2016']) {
+      expect(copyViolations(history, null), history).toEqual([expect.stringMatching(/^dates the store/)]);
+    }
+    expect(copyViolations('Email hello@zurijewellery.ng to see what we hold.', null)).toEqual(['gives the store’s contact details ("hello@zurijewellery.ng")']);
+    expect(copyViolations('**Phone:** +234 800 100 2000', null)).toEqual(['gives the store’s contact details ("+234 800 100 2000")']);
+    // Process, fabric, seasons and adjectives are not places, promises or history.
+    expect(copyViolations('Spring / Summer 2026', null)).toEqual([]);
+    for (const fine of ['Sourdough fermented for 36 hours', 'Ankara prints, cut to order', 'Nigerian kitchen classics', 'across the island', '2 minutes · 4 questions']) {
+      expect(copyViolations(fine, 'Bloom Bakehouse'), fine).toEqual([]);
+    }
+  });
+
+  // The review of 24/9/26 ran these through the gate: each list is what it must catch
+  // and what it must leave alone. A pattern change that breaks either fails here.
+  it.each([
+    'Save 20% with code RAINS20', 'code ADAORA10 takes 10% off', 'Up to 25% off duos and trios',
+    'Half-Price Luxury', 'Half price Friday', 'Shop the sale', 'The clearance sale is on', 'Sale ends Sunday midnight',
+    'Free shipping on orders over ₦200,000', 'Free delivery on orders over ₦15,000',
+    'Bring the jar back for a refill at a discount', 'Clip the coupon below',
+    'Six years, two stores', 'Established in 2016', 'In 2014 we opened the kitchen',
+    'Open daily from 11am', 'Doors open 11am to 10pm', 'Open early, from 6 AM', 'Weekdays 12–3pm',
+    'Delivered in 2 hours', 'Ships in 24 hours', '24-hour delivery', '30-minute delivery', '1–2 day delivery',
+    'Free doorstep delivery', 'We reply within a day',
+    'Orders over N5000 ship', '5,000 naira minimum',
+    'Call +234-803-123-4567', 'Call 0803 1234 567', 'wa.me/2348031234567',
+    'Computer Village prices', 'Made in China',
+    'Complimentary delivery on every order', 'Free samples with every order', 'Free styling on every unit',
+    'Made to measure in ten days', 'New drop every Friday, 7pm', 'Easy returns, always', 'One inbox, answered fast',
+  ])('flags %s', (text) => {
+    expect(copyViolations(text, null)).not.toEqual([]);
+  });
+
+  it.each([
+    'Cold brewed for 12–24 hours', 'Marinated 24-48 hours', 'Best eaten within 3 days', 'Noodles ready in 3 minutes',
+    'Bread baked the next day tastes better toasted', 'Sealed the same day', 'Collection VI', 'New York cheesecake',
+    'Dubai chocolate bar', 'London Dry gin', 'The Florence midi dress', 'Opened the 2026 season with linen',
+    'Glow before *8am*', 'Trace your feet after 6pm', 'UK size 8',
+    'Wholesale bags on request', 'Ask our salesperson for help', 'Beans sold for sale by the kilo',
+    'Free-range eggs', 'Hands-free cooking', 'Made to measure', 'Always in season: tomatoes and peppers',
+    'Open the box on Friday', 'Alterations on every trouser',
+  ])('leaves %s alone', (text) => {
+    expect(copyViolations(text, null)).toEqual([]);
+  });
+
+  it('leaves schedules in testimonials and reviews alone', async () => {
+    const found = await templateCopyRule.run(context({
+      manifest: { slug: 'x', variants } as unknown as ThemeContext['manifest'],
+      demos: [store([
+        { type: 'content', variant: 'testimonials', data: { items: [{ quote: 'Arrived same-day, repackaged beautifully', author: 'Tolu' }] } },
+        { type: 'content', variant: 'steps', data: { heading: 'Fresh bread', items: [{ title: 'Morning', text: 'Baked daily at dawn.' }] } },
+      ])],
+    }));
+    expect(found).toHaveLength(1);
+    expect(found[0].where).toBe('theme/demos/food.json → pages.home.content[1] (content.steps)');
+    expect(found[0].found).toContain('promises a schedule: "Baked daily"');
+    expect(found[0].fix).toContain('Name the section, not when the store does things');
+  });
+
+  it('reads a manifest’s purposes and field notes as template copy', async () => {
+    const manifest = {
+      slug: 'x',
+      variants: {
+        content: [
+          {
+            id: 'hero',
+            purpose: 'A headline and sub line',
+            fields: {
+              sticker: 'string (words around the turning sticker, e.g. "Cruelty free")',
+              tagline: 'string (short line, e.g. "New in")',
+            },
+          },
+          {
+            id: 'badges',
+            purpose: 'A line icon, a serif title and one line each — materials, certification, a service.',
+            fields: { title: { type: 'string', note: 'The badge title.' } },
+          },
+          {
+            id: 'offer',
+            purpose: 'A strip inviting shoppers to "save 15% today"',
+            fields: {},
+          },
+        ],
+        header: [
+          {
+            id: 'bar',
+            purpose: 'A slim bar above the nav',
+            fields: { text: { type: 'string', note: 'One line, e.g. "Same-day dispatch on every order".' } },
+          },
+        ],
+        footer: [
+          { id: 'columns', purpose: 'Link columns and the copyright bar', fields: { heading: 'string' } },
+        ],
+      },
+    } as unknown as ThemeContext['manifest'];
+    const found = await templateCopyRule.run(context({ manifest }));
+    const where = found.map((f) => f.where);
+    expect(where).toEqual([
+      'theme/manifest.ts → content/hero → fields.sticker',
+      'theme/manifest.ts → content/badges → purpose',
+      'theme/manifest.ts → content/offer → purpose',
+      'theme/manifest.ts → header/bar → fields.text',
+    ]);
+    expect(found[0].found).toContain('manifest example:');
+    expect(found[0].found).toContain('claim only the vendor can make: "Cruelty free"');
+    expect(found[1].found).toContain('claim only the vendor can make: "certification"');
+    expect(found[2].found).toContain('states an offer ("save 15%")');
+    expect(found[3].found).toContain('makes a promise ("Same-day dispatch")');
+    expect(found[3].found).not.toContain('promises a schedule');
+    for (const f of found) {
+      expect(f.rule).toBe('theme/template-copy');
+      expect(f.severity).toBe('reject');
+      expect(f.fix).toContain('Name the section, not when the store does things');
+    }
+  });
+
+  it('lets manifest prose describe the section; offers and promises count only in quoted examples', async () => {
+    const prose = {
+      slug: 'x',
+      variants: {
+        content: [
+          { id: 'grid', purpose: 'Four cards across with the price and the strike-through on sale.', fields: {} },
+          { id: 'badges', purpose: 'Icons in a row: delivery, returns, a guarantee, how it is made.', fields: {} },
+          { id: 'code', purpose: 'A strip', fields: { code: { type: 'string', note: 'A discount code shown as a chip.' } } },
+        ],
+      },
+    } as unknown as ThemeContext['manifest'];
+    expect(await templateCopyRule.run(context({ manifest: prose }))).toEqual([]);
+    const quoted = {
+      slug: 'x',
+      variants: {
+        content: [
+          { id: 'grid', purpose: 'Four cards across, e.g. "Sale ends Sunday".', fields: {} },
+          { id: 'badges', purpose: 'Icons in a row, e.g. "Free delivery and a lifetime guarantee".', fields: {} },
+          { id: 'code', purpose: 'A strip', fields: { code: { type: 'string', note: 'The chip, e.g. "20% off the set".' } } },
+        ],
+      },
+    } as unknown as ThemeContext['manifest'];
+    const found = await templateCopyRule.run(context({ manifest: quoted }));
+    expect(found.map((f) => f.where)).toEqual([
+      'theme/manifest.ts → content/grid → purpose',
+      'theme/manifest.ts → content/badges → purpose',
+      'theme/manifest.ts → content/code → fields.code',
+    ]);
+    expect(found[0].found).toContain('states an offer ("Sale")');
+    expect(found[1].found).toContain('makes a promise ("Free delivery")');
+    expect(found[2].found).toContain('states an offer ("20% off")');
+  });
+
+  it('flags claims and schedules anywhere in manifest text', () => {
+    expect(manifestViolations('A line icon, a title and one line each — materials, certification, a service.')).toEqual([
+      'claim only the vendor can make: "certification"',
+    ]);
+    expect(manifestViolations('Shelves restocked every week.')).toEqual([
+      'promises a schedule: "restocked every week"',
+    ]);
+    // each finding once, even when the example repeats the prose
+    expect(manifestViolations('Certified picks, e.g. "certified picks".')).toEqual([
+      'claim only the vendor can make: "Certified"',
+    ]);
+  });
+
+  it('names manifest findings under env.root, theme-relative', async () => {
+    const manifest = {
+      slug: 'x',
+      variants: { content: [{ id: 'hero', purpose: 'Badges, certification and more', fields: {} }] },
+    } as unknown as ThemeContext['manifest'];
+    const ctx = context({ manifest });
+    ctx.env.root = 'themes/carat/';
+    const found = await templateCopyRule.run(ctx);
+    expect(found).toHaveLength(1);
+    expect(found[0].where).toBe('themes/carat/manifest.ts → content/hero → purpose');
+    expect(found[0].where?.startsWith(`${ctx.env.root}manifest.ts →`)).toBe(true);
   });
 
   it('leaves claims in testimonials and reviews alone', async () => {

@@ -1,6 +1,6 @@
 {
   "name": "@usequeek/cli",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "The Queek developer CLI: themes (queek theme …) and installable apps (queek app …, queek auth login).",
   "license": "MIT",
   "type": "module",
