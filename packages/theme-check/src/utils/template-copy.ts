@@ -110,6 +110,8 @@ const NAIRA_AMOUNT = [
 const OFFER = [
   /\b(?:code|coupon|promo(?: code)?)\s*:?\s*[A-Z][A-Z0-9]{3,}\b/,
   /\b\d{1,3}\s?%\s?(?:off|discount)\b|\bsave\s+(?:up to\s+)?\d{1,3}\s?%|\bup to\s+\d{1,3}\s?%/i,
+  // the same offer spelled out: "Twenty percent off", "save fifteen per cent" ("100 percent cotton" is no offer)
+  /\b(?:\d{1,3}|five|ten|fifteen|twenty(?:[- ]five)?|thirty|forty|fifty|sixty|seventy)\s?per\s?cent\s?(?:off|discount)\b|\bsave\s+(?:up to\s+)?(?:\d{1,3}|five|ten|fifteen|twenty(?:[- ]five)?|thirty|forty|fifty|sixty|seventy)\s?per\s?cent\b/i,
   /\bhalf[\s-]price\b/i,
   /\b(?<!for )sale\b(?! by the kilo)/i,
   /\b(?:coupon|discount)s?\b/i,

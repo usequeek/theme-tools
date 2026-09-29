@@ -105,6 +105,7 @@ describe('theme/template-copy', () => {
       'Bring the jar back for a refill at a discount', 'Clip the coupon below',
       'Complimentary delivery on every order', 'Free samples with every order', 'Free styling on every unit',
       'Made to measure in ten days', 'New drop every Friday, 7pm', 'Easy returns, always', 'One inbox, answered fast',
+      'Twenty percent off every body butter and oil', 'Fifteen per cent off every set', 'Save twenty percent on kits',
     ]) {
       expect(copyViolations(text, null), text).not.toEqual([]);
     }
@@ -112,6 +113,7 @@ describe('theme/template-copy', () => {
       'Wholesale bags on request', 'Ask our salesperson for help', 'Beans sold for sale by the kilo',
       'Free-range eggs', 'Hands-free cooking', 'Ready to wear',
       'Always in season: tomatoes and peppers', 'Open the box on Friday', 'Tape measures and rulers',
+      '100 percent cotton', 'Twenty percent more in every jar',
     ]) {
       // BE30b: a named service ("Made to measure", "Alterations…") is a claim even without a window.
       expect(copyViolations(text, null), text).toEqual([]);
