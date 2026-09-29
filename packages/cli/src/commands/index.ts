@@ -11,6 +11,7 @@ import AuthLogin from './auth/login.js';
 import AuthLogout from './auth/logout.js';
 import AppInit from './app/init.js';
 import AppDev from './app/dev.js';
+import AppInfo from './app/info.js';
 import AppDeploy from './app/deploy.js';
 import AppConfigLink from './app/config/link.js';
 import AppVersionsList from './app/versions/list.js';
@@ -40,6 +41,7 @@ export const COMMANDS = {
   'auth:logout': AuthLogout,
   'app:init': AppInit,
   'app:dev': AppDev,
+  'app:info': AppInfo,
   'app:deploy': AppDeploy,
   'app:config:link': AppConfigLink,
   'app:versions:list': AppVersionsList,
