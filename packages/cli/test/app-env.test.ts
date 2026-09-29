@@ -53,15 +53,22 @@ describe('writeEnvLocal (merge, 0600, path is the receipt)', () => {
     expect(first).toBe(second);
     expect(second).toBe(envLocalPath(queek));
     expect(readEnvFile(second)).toEqual({ QUEEK_APP_SECRET: 'whsec_1', APP_KEY_ID: 'k2' });
-    expect(statSync(second).mode & 0o777).toBe(0o600);
   });
 
-  it('repairs the mode when the file already exists', () => {
-    const queek = join(stage(), '.queek');
-    const file = writeEnvLocal(queek, { A: '1' });
-    chmodSync(file, 0o644);
-    writeEnvLocal(queek, { B: '2' });
-    expect(statSync(file).mode & 0o777).toBe(0o600);
+  // Windows has no POSIX permission bits — Node's chmod only toggles read-only.
+  describe.runIf(process.platform !== 'win32')('file mode', () => {
+    it('writes the file 0600', () => {
+      const file = writeEnvLocal(join(stage(), '.queek'), { A: '1' });
+      expect(statSync(file).mode & 0o777).toBe(0o600);
+    });
+
+    it('repairs the mode when the file already exists', () => {
+      const queek = join(stage(), '.queek');
+      const file = writeEnvLocal(queek, { A: '1' });
+      chmodSync(file, 0o644);
+      writeEnvLocal(queek, { B: '2' });
+      expect(statSync(file).mode & 0o777).toBe(0o600);
+    });
   });
 });
 
