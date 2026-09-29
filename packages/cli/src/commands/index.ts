@@ -16,6 +16,7 @@ import AppConfigLink from './app/config/link.js';
 import AppVersionsList from './app/versions/list.js';
 import AppRelease from './app/release.js';
 import AppSubmit from './app/submit.js';
+import AppWithdraw from './app/withdraw.js';
 
 /**
  * Every command, listed explicitly (oclif's `explicit` strategy) rather than
@@ -44,4 +45,5 @@ export const COMMANDS = {
   'app:versions:list': AppVersionsList,
   'app:release': AppRelease,
   'app:submit': AppSubmit,
+  'app:withdraw': AppWithdraw,
 };
