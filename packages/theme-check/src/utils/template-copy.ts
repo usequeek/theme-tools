@@ -247,18 +247,18 @@ export const TEMPLATE_COPY_CLAIMS: readonly RegExp[] = [
   // your size", "Measuring cups and spoons", "Ankara prints, cut to order",
   // "Ask our salesperson for help", "Cured in-house", hardware "fittings",
   // "Fitted sheets", "a close-fitting knit" and "Hemming tape and kits".
-  /\bbook\s+an?\s+\*?(?:fittings?|appointments?|facials?|consults?|consultations?|custom units?)\*?\b/iu,
+  /\bbook\s+(?:an?|your|the)\s+(?:[\w-]+\s+)?\*?(?:fittings?|appointments?|facials?|consults?|consultations?|custom units?|installs?|installations?|sessions?)\*?\b/iu,
   /\b(?:by|private)\s+appointments?\b|\bwalk[- ]?ins?\s+and\s+appointments?\b/iu,
   /\b(?:start|request)\b[^.!?\n]{0,30}?\bconsultations?\b|\bfit\s+consultations?\b/iu,
-  /\bexplore\s+bespoke\b|\bbespoke\s+orders?\b/iu,
+  /\bbespoke\b/iu,
   /\bmade[- ]to[- ]measure\b|\bcut\s+to\s+measure\b|\bmeasure\s+and\s+off\s+the\s+rail\b/iu,
-  /\bfirst\s+\*?fittings?\*?\b|\bfittings?\b[^.!?\n]{0,30}?\batelier\b/iu,
+  /\bfirst\s+\*?fittings?\*?\b|\b(?:one|two|three|four|\d+)\s+fittings?\b|\bfittings?\b[^.!?\n]{0,30}?\batelier\b/iu,
   /\balterations?\s+on\s+every\b|\bask\b[^.!?\n]{0,30}?\balterations?\b|\balterations?\b[^.!?\n]{0,30}?\bask\b/iu,
   // in-house making (BE30b): a making word must sit before "in-house", so
   // "Cured in-house" (a finish, not a service) stays out; "our in-house
   // team" names the makers instead. Asterisks pass through: "Cut
   // *in-house*", "bottled *in-house*".
-  /\b(?:fitted|cut|blended|bottled|tailored|styled)\b[^.!?\n]{0,30}?\bin\*?-?\*?house\b/iu,
+  /\b(?:made|fitted|cut|sewn|stitched|blended|mixed|bottled|filled|poured|baked|roasted|brewed|printed|dyed|tailored|styled)\b[^.!?\n]{0,30}?\bin\*?-?\*?house\b/iu,
   /\bour\s+\*?in\*?-?\*?house\s+team\b/iu,
 ];
 
@@ -348,7 +348,10 @@ const firstSpan = (patterns: RegExp[], text: string): { match: string; start: nu
 };
 
 /** Why one copy string could not go live on another store unchanged; empty when it can. */
-export function copyViolations(text: string, storeName: string | null | undefined): string[] {
+export function copyViolations(copy: string, storeName: string | null | undefined): string[] {
+  // Headings mark emphasis with asterisks ("Built by *hand*", "Cut *in-house*");
+  // read the words without them, or every pattern misses an emphasised phrase.
+  const text = copy.replace(/\*+/g, '');
   const found: string[] = [];
   const name = storeNameForms(storeName).find((form) => wordPattern(form).test(text));
   if (name) found.push(`names the store ("${name}")`);

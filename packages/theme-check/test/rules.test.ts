@@ -471,6 +471,11 @@ describe('theme/template-copy', () => {
       'Fitted in-house', 'Cut *in-house*', 'Blended in-house, bottled in small runs',
       'Dew, bottled *in-house*', 'our in-house team', 'cut and styled in-house by our stylists',
       'Real wax prints tailored in-house',
+      // wider than the audit's own lines: other articles, one adjective, bare bespoke, made in-house
+      'Book your fitting', 'Book an install', 'Try pieces on, or book a bespoke consultation',
+      'After something *Bespoke*?', 'Made in-house', 'Every jacket gets two fittings',
+      // emphasis asterisks inside a phrase: every pattern reads the words without them
+      'Built by *hand*',
     ]) {
       expect(copyViolations(text, null), text).toEqual(
         expect.arrayContaining([expect.stringMatching(/^claim only the vendor can make: "/)]),
