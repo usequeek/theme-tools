@@ -30,6 +30,9 @@
     "topics": {
       "theme": {
         "description": "Build, preview, check and package a storefront theme."
+      },
+      "theme:add": {
+        "description": "Add a template, design or page to your theme."
       }
     },
     "commands": {
@@ -46,6 +49,7 @@
     }
   },
   "dependencies": {
+    "@clack/prompts": "^1.8.1",
     "@oclif/core": "^5.0.0",
     "@oclif/plugin-warn-if-update-available": "^4.0.0",
     "@usequeek/create-theme": "workspace:^",

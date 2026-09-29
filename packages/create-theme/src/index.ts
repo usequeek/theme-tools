@@ -10,7 +10,10 @@ import { setupTheme, type Answers } from './setup.js';
 
 export { UsageError, CancelledError, type Flags, type Prompter, type PackageManager } from './options.js';
 export { setupTheme, type Answers } from './setup.js';
-export { clackPrompter } from './prompts.js';
+export { buildDemoStore, optionalPagesOf, TEMPLATE_DESCRIPTION, type OptionalPage, type SkeletonStore } from './setup.js';
+export { appendDemoEntry, setDesignLabel } from './config-edit.js';
+export { planAddTemplate, planAddDesign, planAddPage, applyAddPlan, vocabularyLists, type AddPlan } from './add.js';
+export { clackPrompter, templateOptions } from './prompts.js';
 export { bundledLists, cachedLists, createLists, getActiveLists, setActiveLists, SHOP_HINT, SHOP_KEY, SHOP_LABEL, type BusinessLists, type BusinessOption, type ListsData } from './lists.js';
 /** The rename `npm create` applies to the starter, for tools that copy a theme under a new name (Queek's `yarn theme:new`). */
 export { renameTheme, SKELETON, type Identity } from './rename.js';
