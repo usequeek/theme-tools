@@ -1,6 +1,6 @@
 {
   "name": "@usequeek/theme-check",
-  "version": "0.9.1",
+  "version": "0.12.1",
   "description": "The rules a Queek storefront theme is checked against, as a library.",
   "license": "MIT",
   "type": "module",
@@ -29,7 +29,7 @@
   "dependencies": {
     "jiti": "^2.7.0",
     "picomatch": "^4.0.7",
-    "typescript": "~5.9.3",
+    "typescript": "~6.0.3",
     "yaml": "^2.9.1"
   },
   "peerDependencies": {

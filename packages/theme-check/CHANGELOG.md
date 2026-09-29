@@ -1,5 +1,23 @@
 # @usequeek/theme-check
 
+## 0.12.1
+
+### Patch Changes
+
+- Template copy may not state a spelled-out percentage offer ("Twenty percent off", "save fifteen per cent"); "100 percent cotton" still passes.
+
+## 0.12.0
+
+### Minor Changes
+
+- Template copy may not offer a service (fittings, appointments, consultations, bespoke, made to measure), claim in-house making, or set a restock day or working-day turnaround. Template copy is read without emphasis asterisks, so "Built by *hand*" no longer hides a phrase.
+
+## 0.11.0
+
+### Minor Changes
+
+- Template copy may not claim how a store makes things (by hand, in our studio, small batches, we test…) or promise a turnaround (ten days, ready in 3 days).
+
 ## 0.9.1
 
 ### Patch Changes

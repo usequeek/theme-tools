@@ -1,5 +1,35 @@
 # @usequeek/create-theme
 
+## 0.12.0
+
+### Patch Changes
+
+- Updated dependencies [`0b3f76c`]:
+  - @usequeek/theme-check@0.12.0
+
+## 0.11.0
+
+### Patch Changes
+
+- Updated dependencies [`9186281`]:
+  - @usequeek/theme-check@0.11.0
+
+## 0.10.1
+
+### Patch Changes
+
+- [#8](https://github.com/usequeek/theme-tools/pull/8) [`17ac64f`](https://github.com/usequeek/theme-tools/commit/17ac64f7674a815e5284e2720903e6371d813694) Thanks [@ichie-benjamin](https://github.com/ichie-benjamin)! - `queek theme add` creates the `demos` folder on Windows too: it built the folder from a `/`-split relative path, and Windows paths use `\`.
+
+## 0.10.0
+
+### Minor Changes
+
+- `queek theme add template|design|page`: grow a theme after scaffolding — a template (new demo store from the bundled skeleton, declared in theme.config.ts), a second or third design of a template, and the contact/faq page on a design's store. Config edits go through the AST (magicast), every prompt has a flag, `--dry-run` writes nothing, `--json` prints `{ added, files }`.
+
+### Patch Changes
+
+- Closing next steps point at the guides (https://docs.usequeek.com/docs/themes)
+
 ## 0.9.0
 
 ### Patch Changes

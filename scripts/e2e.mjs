@@ -72,10 +72,15 @@ try {
   const help = sh(process.execPath, [queek(), '--help'], project);
   if (!help.stdout.includes('theme')) throw new Error(`queek --help does not list the theme topic:\n${help.stdout}`);
   const themeHelp = sh(process.execPath, [queek(), 'theme', '--help'], project);
-  for (const command of ['check', 'dev', 'init', 'package', 'screenshot']) {
+  for (const command of ['check', 'dev', 'info', 'init', 'package', 'screenshot']) {
     if (!themeHelp.stdout.includes(command)) throw new Error(`queek theme --help does not list ${command}:\n${themeHelp.stdout}`);
   }
-  console.log('e2e: help ✓ (queek --help lists the theme topic, queek theme --help lists the five commands)');
+  console.log('e2e: help ✓ (queek --help lists the theme topic, queek theme --help lists the six commands)');
+  const addHelp = sh(process.execPath, [queek(), 'theme', 'add', '--help'], project);
+  for (const command of ['design', 'page', 'template']) {
+    if (!addHelp.stdout.includes(command)) throw new Error(`queek theme add --help does not list ${command}:\n${addHelp.stdout}`);
+  }
+  console.log('e2e: help ✓ (queek theme add --help lists design, page and template)');
 
   const check = sh(process.execPath, [queek(), 'theme', 'check', '--format', 'json'], project, true);
   const report = JSON.parse(check.stdout);
@@ -83,6 +88,25 @@ try {
   const todo = ['theme/placeholder-content', 'theme/structure', 'theme/template-description', 'theme/template-screenshot', 'theme/template-versions'];
   if (JSON.stringify(rejects) !== JSON.stringify(todo)) throw new Error(`check after create: expected exactly the to-do list ${todo.join(', ')}, got ${rejects.join(', ')}`);
   console.log(`e2e: check ✓ (exactly the to-do list: ${todo.join(', ')})`);
+
+  const info = JSON.parse(sh(process.execPath, [queek(), 'theme', 'info', '--json'], project).stdout);
+  if (!info.project || info.project.slug !== 'my-theme') throw new Error(`info: expected the project slug my-theme, got ${JSON.stringify(info.project)}`);
+  if (typeof info.port !== 'number') throw new Error(`info: expected a port number, got ${JSON.stringify(info.port)}`);
+  console.log(`e2e: info ✓ (queek theme info --json names the project slug ${info.project.slug})`);
+  // Release 2 — `queek theme add`: a second template plus its second design.
+  // Both arrive in the same placeholder state create leaves (a description to
+  // write, a screenshot to capture, placeholder products, one shared home),
+  // and both declare complete templates — so the to-do list gains no
+  // structural rule (no theme/template-designs, theme/template-business or
+  // theme/demo-stores).
+  sh(process.execPath, [queek(), 'theme', 'add', 'template', 'jewelry', '--yes', '--offline'], project);
+  console.log('e2e: add template ✓ (jewelry)');
+  sh(process.execPath, [queek(), 'theme', 'add', 'design', 'jewelry', '--label', 'Second look', '--first-label', 'Main', '--yes', '--offline'], project);
+  console.log('e2e: add design ✓ (jewelry-2, design 1 named)');
+  const added = JSON.parse(sh(process.execPath, [queek(), 'theme', 'check', '--format', 'json'], project, true).stdout);
+  const addedRejects = [...new Set(added.findings.filter((f) => f.level === 'error').map((f) => f.rule))].sort();
+  if (JSON.stringify(addedRejects) !== JSON.stringify(todo)) throw new Error(`check after add: expected exactly the to-do list ${todo.join(', ')}, got ${addedRejects.join(', ')}`);
+  console.log(`e2e: check after add ✓ (still exactly the to-do list: ${todo.join(', ')})`);
 
   sh(process.execPath, [queek(), 'theme', 'package'], project);
   console.log('e2e: package ✓');

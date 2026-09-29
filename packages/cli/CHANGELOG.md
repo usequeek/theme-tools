@@ -2,6 +2,49 @@
 
 Formerly `@usequeek/theme-cli` (bin `queek-theme`); from 0.7.0 the CLI is `@usequeek/cli`, bin `queek`, with the theme commands under `queek theme`.
 
+## 0.12.0
+
+### Patch Changes
+
+- Updated dependencies [`0b3f76c`]:
+  - @usequeek/theme-check@0.12.0
+  - @usequeek/create-theme@0.12.0
+
+## 0.11.0
+
+### Patch Changes
+
+- Updated dependencies [`9186281`]:
+  - @usequeek/theme-check@0.11.0
+  - @usequeek/create-theme@0.11.0
+
+## 0.10.1
+
+### Patch Changes
+
+- `queek theme add` works on Windows: it creates the `demos` folder, edits a CRLF `theme.config.ts` in place, and `--json` reports paths with `/`.
+- Updated dependencies [[`17ac64f`](https://github.com/usequeek/theme-tools/commit/17ac64f7674a815e5284e2720903e6371d813694)]:
+  - @usequeek/create-theme@0.10.1
+
+## 0.10.0
+
+### Minor Changes
+
+- `queek theme add template|design|page`: grow a theme after scaffolding — a template (new demo store from the bundled skeleton, declared in theme.config.ts), a second or third design of a template, and the contact/faq page on a design's store. Config edits go through the AST (magicast), every prompt has a flag, `--dry-run` writes nothing, `--json` prints `{ added, files }`.
+
+- `queek theme info` prints what a bug report needs
+
+### Patch Changes
+
+- Updated dependencies [`977c8b3`, `314a322`]:
+  - @usequeek/create-theme@0.10.0
+
+## 0.9.2
+
+### Patch Changes
+
+- Runs on @oclif/core 5 and the version-check plugin 4; commands, flags and output are unchanged.
+
 ## 0.9.0
 
 ### Patch Changes

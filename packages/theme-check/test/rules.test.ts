@@ -105,14 +105,17 @@ describe('theme/template-copy', () => {
       'Bring the jar back for a refill at a discount', 'Clip the coupon below',
       'Complimentary delivery on every order', 'Free samples with every order', 'Free styling on every unit',
       'Made to measure in ten days', 'New drop every Friday, 7pm', 'Easy returns, always', 'One inbox, answered fast',
+      'Twenty percent off every body butter and oil', 'Fifteen per cent off every set', 'Save twenty percent on kits',
     ]) {
       expect(copyViolations(text, null), text).not.toEqual([]);
     }
     for (const text of [
       'Wholesale bags on request', 'Ask our salesperson for help', 'Beans sold for sale by the kilo',
-      'Free-range eggs', 'Hands-free cooking', 'Made to measure',
-      'Always in season: tomatoes and peppers', 'Open the box on Friday', 'Alterations on every trouser',
+      'Free-range eggs', 'Hands-free cooking', 'Ready to wear',
+      'Always in season: tomatoes and peppers', 'Open the box on Friday', 'Tape measures and rulers',
+      '100 percent cotton', 'Twenty percent more in every jar',
     ]) {
+      // BE30b: a named service ("Made to measure", "Alterations…") is a claim even without a window.
       expect(copyViolations(text, null), text).toEqual([]);
     }
   });
@@ -231,9 +234,10 @@ describe('theme/template-copy', () => {
     'Dubai chocolate bar', 'London Dry gin', 'The Florence midi dress', 'Opened the 2026 season with linen',
     'Glow before *8am*', 'Trace your feet after 6pm', 'UK size 8',
     'Wholesale bags on request', 'Ask our salesperson for help', 'Beans sold for sale by the kilo',
-    'Free-range eggs', 'Hands-free cooking', 'Made to measure', 'Always in season: tomatoes and peppers',
-    'Open the box on Friday', 'Alterations on every trouser',
+    'Free-range eggs', 'Hands-free cooking', 'Ready to wear', 'Always in season: tomatoes and peppers',
+    'Open the box on Friday', 'Tape measures and rulers',
   ])('leaves %s alone', (text) => {
+    // BE30b: a named service ("Made to measure", "Alterations…") is a claim even without a window.
     expect(copyViolations(text, null)).toEqual([]);
   });
 
@@ -396,6 +400,128 @@ describe('theme/template-copy', () => {
     expect(disabled).toHaveLength(1);
     expect(disabled[0].where).toBe('theme/demos/food.json → config.header.announcement.text');
     expect(await templateCopyRule.run(withManifest([announced('New arrivals are in', true)]))).toEqual([]);
+  });
+
+  it('rejects production claims — how the store makes things (BE30)', () => {
+    for (const text of [
+      'Every jar is filled by hand in our studio',
+      'Made in small batches', 'Small-batch roasting',
+      'We test every shade on deep skin first', 'Tested on real skin',
+      'Hand-poured candles', 'Hand-stitched leather',
+      'Sewn in our own workshop', 'Blended in our lab',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^claim only the vendor can make: "/)]),
+      );
+    }
+    expect(copyViolations('Handmade in Lagos', null)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^claim only the vendor can make: "/)]),
+    );
+    expect(copyViolations('Baked in our kitchen every morning', null)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^claim only the vendor can make: "/)]),
+    );
+  });
+
+  it('does not mistake products and use for production claims (BE30)', () => {
+    for (const text of [
+      'Hand cream and body lotion', 'Handbags and wallets', 'Second-hand phones', 'Hands-free cooking',
+      'Studio lighting kits', 'Kitchen tools and pans', 'Lab coats and scrubs', 'Workshop tools',
+      'Our kitchen classics',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual([]);
+    }
+  });
+
+  it('rejects turnarounds — how fast the store promises things (BE30)', () => {
+    for (const text of [
+      'One fitting, ten days', 'Ready in 3 days',
+      'Made to order in two weeks',
+      'Alterations take five days', 'Two-week turnaround',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^promises a schedule: "/)]),
+      );
+    }
+    // already reported through the promise category: flagged, never twice
+    for (const text of ['Delivered within 2–4 working days', 'Dispatched in 48 hours']) {
+      expect(copyViolations(text, null), text).toHaveLength(1);
+    }
+  });
+
+  it('does not mistake process durations and product facts for turnarounds (BE30)', () => {
+    for (const text of [
+      'Sourdough fermented for 36 hours', 'Dry-aged for 28 days', 'Aged 30 days in oak',
+      'Steeped for two weeks', 'Marinated for 24 hours', 'The 30-day skin plan',
+      'A week of looks',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual([]);
+    }
+  });
+
+  it('rejects named services — bookings, consultations, bespoke, made to measure, fittings, alterations, in-house making (BE30b)', () => {
+    for (const text of [
+      'Book a fitting', 'Book a *fitting*',
+      'Book an appointment', 'Book An *Appointment*', 'Sunday by appointment',
+      'Open for walk-ins and appointments', 'Private appointments to try the capsule',
+      'Book a facial', 'Book a consult', 'Book a custom unit',
+      'Start a consultation', 'Request a wardrobe consultation', 'Fit consultation',
+      'Explore bespoke', 'Bespoke Orders',
+      'Made to measure', 'Made-to-measure in-house', 'Cut to measure', 'to measure and off the rail',
+      'Every bridal and aso-ebi order gets two fittings at our atelier', 'First fitting',
+      'Sizing, orders, alterations — ask anything', 'Alterations on every trouser',
+      'Ask us which alterations suit each piece',
+      'Fitted in-house', 'Cut *in-house*', 'Blended in-house, bottled in small runs',
+      'Dew, bottled *in-house*', 'our in-house team', 'cut and styled in-house by our stylists',
+      'Real wax prints tailored in-house',
+      // wider than the audit's own lines: other articles, one adjective, bare bespoke, made in-house
+      'Book your fitting', 'Book an install', 'Try pieces on, or book a bespoke consultation',
+      'After something *Bespoke*?', 'Made in-house', 'Every jacket gets two fittings',
+      // emphasis asterisks inside a phrase: every pattern reads the words without them
+      'Built by *hand*',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^claim only the vendor can make: "/)]),
+      );
+    }
+    // free or on-the-house services read through the promise, which already owns "free alterations"
+    for (const text of ['Off the peg, altered free', 'Every trouser is hemmed free']) {
+      expect(copyViolations(text, null), text).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^makes a promise/)]),
+      );
+    }
+  });
+
+  it('rejects restock days and working-day turnarounds (BE30b)', () => {
+    for (const text of [
+      'New sets added weekly', 'Restocked every Friday', 'Retros return *Friday*',
+      'Ten working days, pressed and bagged', 'Units made to your head size in 5 working days',
+      'Feasts need two hours notice',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^promises a schedule: "/)]),
+      );
+    }
+  });
+
+  it('does not mistake hardware, products, verbs and ordinary words for services (BE30b)', () => {
+    for (const text of [
+      'Solid brass fittings', 'Light fittings and fixtures', 'Pipe fittings and valves',
+      'Fitted sheets and pillowcases', 'A close-fitting knit',
+      'How to measure your size', 'Tape measures and rulers', 'Measuring cups and spoons',
+      'Consult the size guide', 'Consult a pharmacist before use',
+      'Appointment diaries and planners', 'Houseplants and pots', 'Home and house goods',
+      'Hemming tape and sewing kits',
+      'Friday night outfits', 'Weekend bags', 'Deep curls that return after every wash',
+      'Book club picks', 'Books and stationery', 'Book a *table*',
+      'Ready to wear',
+    ]) {
+      expect(copyViolations(text, null), text).toEqual([]);
+    }
+  });
+
+  it('reports an on-the-house fitting once, and a measured turnaround once (BE30b)', () => {
+    expect(copyViolations('A fitting, *on the house*', null)).toHaveLength(1);
+    expect(copyViolations('Made to measure in ten days', null)).toHaveLength(1);
   });
 });
 

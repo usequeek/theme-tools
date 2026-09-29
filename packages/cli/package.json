@@ -1,6 +1,6 @@
 {
   "name": "@usequeek/cli",
-  "version": "0.9.0",
+  "version": "0.12.0",
   "description": "The Queek developer CLI: themes (queek theme …) and installable apps (queek app …, queek auth login).",
   "license": "MIT",
   "type": "module",
@@ -36,6 +36,9 @@
       },
       "auth": {
         "description": "Developer sign-in for the app commands (usually automatic)."
+      },
+      "theme:add": {
+        "description": "Add a template, design or page to your theme."
       }
     },
     "commands": {
@@ -52,8 +55,9 @@
     }
   },
   "dependencies": {
-    "@oclif/core": "^4.14.0",
-    "@oclif/plugin-warn-if-update-available": "^3.1.0",
+    "@clack/prompts": "^1.8.1",
+    "@oclif/core": "^5.0.0",
+    "@oclif/plugin-warn-if-update-available": "^4.0.0",
     "@usequeek/create-app": "workspace:^",
     "@usequeek/create-theme": "workspace:^",
     "@usequeek/theme-check": "workspace:^",
