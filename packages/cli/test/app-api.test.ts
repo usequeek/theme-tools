@@ -204,6 +204,36 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     });
   });
 
+  it('never throws on slow_down/429: null + onSlowDown, keeps polling (B1)', async () => {
+    let slowed = 0;
+    const fetchImpl: FetchImpl = vi.fn(async () => ({
+      ok: false, status: 400, json: async () => ({ error: 'slow_down', error_description: 'Polling too fast; slow down.' }),
+    }) as Response);
+    const api = new DeveloperApi('https://api.test', { fetchImpl });
+    expect(await api.deviceStatus('d', { onSlowDown: () => { slowed += 1; } })).toBeNull();
+    expect(slowed).toBe(1);
+    const throttled = new DeveloperApi('https://api.test', {
+      fetchImpl: mockFetch({ 'GET /oauth/device/status?code=d': [429, { status: 'failed', message: 'Too Many Attempts.' }] }).fetchImpl,
+    });
+    expect(await throttled.deviceStatus('d', { onSlowDown: () => { slowed += 1; } })).toBeNull();
+    expect(slowed).toBe(2);
+  });
+
+  it('lists dev stores + creates one with sample_data and Idempotency-Key (S-A contract)', async () => {
+    const store = { id: 7, p_id: 12, name: 'Hello dev', slug: 'hello-dev', storefront_url: 'https://hello-dev.example.com', admin_url: 'https://admin.example.com/store/hello-dev', created_at: '2026-09-29T00:00:00Z' };
+    const { fetchImpl, calls } = mockFetch({
+      'GET /api/v1/biz/vendor/developer/dev-stores': [200, { status: 'success', message: 'ok', data: [store] }],
+      'POST /api/v1/biz/vendor/developer/dev-stores': [201, { status: 'success', message: 'Dev store created.', data: store }],
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    expect(await api.devStores()).toEqual({ data: [store] });
+    expect(await api.createDevStore('Hello dev', true, 'key-1')).toEqual(store);
+    const post = calls.find((call) => call.method === 'POST');
+    expect(post?.body).toEqual({ name: 'Hello dev', sample_data: true });
+    expect(post?.headers['Idempotency-Key']).toBe('key-1');
+    await expect(api.createDevStore('x'.repeat(61), true, 'key-2')).rejects.toThrow('allows 60');
+  });
+
   it('exchanges the PKCE code with NO client_secret (public native client)', async () => {
     const { fetchImpl, calls } = mockFetch({
       'POST /oauth/token': [200, { access_token: 'a', refresh_token: 'r', expires_in: 3600, scope: 'developer-cli', token_type: 'Bearer' }],

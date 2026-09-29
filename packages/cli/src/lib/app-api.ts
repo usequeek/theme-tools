@@ -70,6 +70,22 @@ export interface TestStore {
   storefront_url: string | null;
 }
 
+/**
+ * A developer-owned dev store (S-A contract): `is_test` plus the
+ * `is_dev_store` flag, standalone (`test_of_vendor_id` NULL) — never a mode
+ * of a merchant's live store. The preview URL is built from `admin_url`,
+ * served here, never constructed in commands.
+ */
+export interface DevStore {
+  id: number;
+  p_id: number;
+  name: string;
+  slug: string;
+  storefront_url: string | null;
+  admin_url: string | null;
+  created_at: string | null;
+}
+
 export interface AppVersion {
   version: string;
   sequence: number;
@@ -361,13 +377,20 @@ export class DeveloperApi {
    * Poll until approval (AgentOAuthController.php:97): 202 pending → null,
    * 200 → token pair, 403 access_denied → DeniedError (user denied, stop
    * polling), 404 / expired_token → expired message (fetch a fresh code).
+   * RFC 8628 §3.5 `slow_down` (usually 400) and the 429 throttle are NOT
+   * errors: they report through `onSlowDown` and read as null (keep polling,
+   * slower) — the B1 crash was throwing on them.
    */
-  async deviceStatus(deviceCode: string): Promise<TokenPair | null> {
+  async deviceStatus(deviceCode: string, hooks?: { onSlowDown?: () => void }): Promise<TokenPair | null> {
     const { status, body } = await this.raw(`${this.base}${OAUTH_PREFIX}/device/status?code=${encodeURIComponent(deviceCode)}`, {
       headers: { accept: 'application/json' },
     });
     if (status === 202) return null;
     const errorCode = (body as { error?: unknown } | null)?.error;
+    if (errorCode === 'slow_down' || status === 429) {
+      hooks?.onSlowDown?.();
+      return null;
+    }
     if (errorCode === 'access_denied') {
       throw new DeniedError('Sign-in was denied in the dashboard.', status, body);
     }
@@ -494,6 +517,36 @@ export class DeveloperApi {
       'listing test stores',
     );
     return { data: data.data, total: data.meta.total };
+  }
+
+  /** The developer's own dev stores, is_dev_store only (S-A contract). */
+  async devStores(): Promise<{ data: DevStore[] }> {
+    const { data } = await this.vendor<DevStore[]>(
+      'GET',
+      '/dev-stores',
+      'listing dev stores',
+    );
+    return { data };
+  }
+
+  /**
+   * Create a dev store (S-A contract): POST /dev-stores
+   * {name (≤60), sample_data} → 201 the store. Idempotency-Key is
+   * caller-owned like submit (fresh per store, reused on retry).
+   */
+  async createDevStore(name: string, sampleData: boolean, idempotencyKey: string): Promise<DevStore> {
+    const trimmed = name.trim();
+    if (trimmed === '') throw new Error('A dev store needs a name.');
+    if (trimmed.length > 60) throw new Error(`Dev store name '${trimmed}' is ${trimmed.length} characters — the dashboard allows 60.`);
+    const { data } = await this.vendor<DevStore>(
+      'POST',
+      '/dev-stores',
+      `creating dev store '${trimmed}'`,
+      { name: trimmed, sample_data: sampleData },
+      undefined,
+      { 'Idempotency-Key': idempotencyKey },
+    );
+    return data;
   }
 
   /** Every owned test store, across pages (the `--store` selector never strands large owners). */
