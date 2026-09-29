@@ -519,14 +519,27 @@ export class DeveloperApi {
     return { data: data.data, total: data.meta.total };
   }
 
-  /** The developer's own dev stores, is_dev_store only (S-A contract). */
-  async devStores(): Promise<{ data: DevStore[] }> {
-    const { data } = await this.vendor<DevStore[]>(
+  /** One page of owned dev stores (DeveloperAppController.php:855). */
+  async devStoresPage(page = 1): Promise<{ data: DevStore[]; total: number }> {
+    const { data } = await this.vendor<{ data: DevStore[]; meta?: { total?: number } }>(
       'GET',
-      '/dev-stores',
+      `/dev-stores?per_page=50&page=${page}`,
       'listing dev stores',
     );
-    return { data };
+    const total = typeof data.meta?.total === 'number' ? data.meta.total : data.data.length;
+    return { data: data.data, total };
+  }
+
+  /** Every owned dev store, across pages (the `--store` selector never strands large owners). */
+  async devStores(): Promise<{ data: DevStore[] }> {
+    const first = await this.devStoresPage(1);
+    const all = [...first.data];
+    const pages = Math.ceil(first.total / 50);
+    for (let page = 2; page <= pages; page += 1) {
+      const next = await this.devStoresPage(page);
+      all.push(...next.data);
+    }
+    return { data: all };
   }
 
   /**

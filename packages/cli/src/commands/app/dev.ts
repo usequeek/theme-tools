@@ -179,7 +179,7 @@ export default class AppDev extends BaseCommand {
       process.once('SIGINT', stop);
       process.once('SIGTERM', stop);
 
-      const cycle = async (): Promise<{ store: DevStore; appPid: string }> => {
+      const cycle = async (): Promise<{ store: DevStore; slug: string; appPid: string }> => {
         const { manifest } = loadApp(flags.path, flags.config);
         const devManifest = withDevUrls(manifest, tunnel.url);
         const result = await api.deploy(devManifest).catch((error: Error) => this.error(error.message, { exit: 1 }));

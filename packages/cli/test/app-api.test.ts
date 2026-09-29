@@ -222,7 +222,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
   it('lists dev stores + creates one with test_data and Idempotency-Key (S-A contract, D1)', async () => {
     const store = { id: 7, p_id: 12, name: 'Hello dev', slug: 'hello-dev', storefront_url: 'https://hello-dev.example.com', admin_url: 'https://admin.example.com/store/hello-dev', created_at: '2026-09-29T00:00:00Z' };
     const { fetchImpl, calls } = mockFetch({
-      'GET /api/v1/biz/vendor/developer/dev-stores': [200, { status: 'success', message: 'ok', data: [store] }],
+      'GET /api/v1/biz/vendor/developer/dev-stores?per_page=50&page=1': [200, { status: 'success', message: 'ok', data: { data: [store], meta: { total: 1 } } }],
       'POST /api/v1/biz/vendor/developer/dev-stores': [201, { status: 'success', message: 'Dev store created.', data: store }],
     });
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
@@ -232,6 +232,19 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(post?.body).toEqual({ name: 'Hello dev', test_data: true });
     expect(post?.headers['Idempotency-Key']).toBe('key-1');
     await expect(api.createDevStore('x'.repeat(61), true, 'key-2')).rejects.toThrow('allows 60');
+  });
+
+  it('walks dev-store pages to the backend total (default page is 15, max 50)', async () => {
+    const store = (p_id: number): unknown => ({ id: p_id, p_id, name: `dev ${p_id}`, slug: `dev-${p_id}`, storefront_url: null, admin_url: `https://dash/open-store?store=${p_id}`, created_at: null });
+    const page1 = Array.from({ length: 50 }, (_, i) => store(i + 1));
+    const { fetchImpl, calls } = mockFetch({
+      'GET /api/v1/biz/vendor/developer/dev-stores?per_page=50&page=1': [200, { status: 'success', message: 'ok', data: { data: page1, meta: { total: 51 } } }],
+      'GET /api/v1/biz/vendor/developer/dev-stores?per_page=50&page=2': [200, { status: 'success', message: 'ok', data: { data: [store(51)], meta: { total: 51 } } }],
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    const { data } = await api.devStores();
+    expect(data).toHaveLength(51);
+    expect(calls.filter((call) => call.method === 'GET')).toHaveLength(2);
   });
 
   it('exchanges the PKCE code with NO client_secret (public native client)', async () => {
