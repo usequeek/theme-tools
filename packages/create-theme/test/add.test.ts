@@ -96,6 +96,19 @@ describe('config edits', () => {
   it('refuses an unknown design id', async () => {
     expect(() => setDesignLabel(medley(), 'no-such-design', 'X')).toThrow(UsageError);
   });
+
+  // A Windows checkout (and many Windows editors) writes CRLF. The edit must land in
+  // the same place and keep the file's own line endings — Windows CI caught a
+  // CRLF config getting its neighbouring lines rewritten (29/9/26).
+  it('edits a CRLF config exactly as it edits the LF one, keeping CRLF', () => {
+    const crlf = (text: string): string => text.replace(/\r?\n/g, '\r\n');
+    const lf = (text: string): string => text.replace(/\r\n/g, '\n');
+    for (const source of [lf(starter()), lf(medley())]) {
+      expect(appendDemoEntry(crlf(source), entry)).toBe(crlf(appendDemoEntry(source, entry)));
+    }
+    expect(setDesignLabel(crlf(lf(starter())), 'default', 'General store')).toBe(crlf(setDesignLabel(lf(starter()), 'default', 'General store')));
+    expect(setDesignLabel(crlf(lf(medley())), 'clothes', 'New look')).toBe(crlf(setDesignLabel(lf(medley()), 'clothes', 'New look')));
+  });
 });
 
 describe('planAddTemplate', () => {

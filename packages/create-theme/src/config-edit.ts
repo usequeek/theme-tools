@@ -133,6 +133,17 @@ function lastSignificantChar(source: string, from: number, to: number): string |
 const newlineOf = (source: string): string => (source.includes('\r\n') ? '\r\n' : '\n');
 
 /**
+ * Edit a CRLF file (a Windows checkout, many Windows editors) as LF and give it back
+ * as CRLF. The parser's node offsets do not line up with a CRLF source, so an edit
+ * spliced at them lands mid-line and rewrites its neighbours (Windows CI, 29/9/26).
+ */
+function preservingLineEndings(source: string, edit: (lf: string) => string): string {
+  if (!source.includes('\r\n')) return edit(source);
+
+  return edit(source.replace(/\r\n/g, '\n')).replace(/\r?\n/g, '\r\n');
+}
+
+/**
  * `key: value` freshly rendered, spliced before the object's closing brace.
  * The text between the last property and the brace decides the comma: a
  * trailing comma already there means none is added, otherwise one is.
@@ -163,6 +174,10 @@ function insertProperty(source: string, obj: AstNode, key: string, renderedValue
 
 /** Push a demos[] entry, creating the array when the config has none. Everything else stays byte-identical. */
 export function appendDemoEntry(source: string, entry: Record<string, unknown>): string {
+  return preservingLineEndings(source, (lf) => appendDemoEntryLf(lf, entry));
+}
+
+function appendDemoEntryLf(source: string, entry: Record<string, unknown>): string {
   const config = configObjectOf(source);
   const demos = objectProperty(config, 'demos');
   const newline = newlineOf(source);
@@ -196,6 +211,10 @@ export function appendDemoEntry(source: string, entry: Record<string, unknown>):
  * or a demos[] entry, replacing it when present. Everything else stays byte-identical.
  */
 export function setDesignLabel(source: string, designId: string, label: string): string {
+  return preservingLineEndings(source, (lf) => setDesignLabelLf(lf, designId, label));
+}
+
+function setDesignLabelLf(source: string, designId: string, label: string): string {
   const config = configObjectOf(source);
   let target: AstNode | null = null;
   if (designId === 'default') {
