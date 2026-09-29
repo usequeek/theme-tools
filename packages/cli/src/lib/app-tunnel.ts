@@ -1,4 +1,4 @@
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createWriteStream, existsSync, readFileSync } from 'node:fs';
 
 /**
@@ -29,17 +29,26 @@ export function hasCloudflared(): boolean {
  * wait up to 25s for its public URL, and hand back a stopper. The tunnel
  * lives until `stop()` — `app dev` wires that to Ctrl+C.
  */
+/** One line, three OSes — a missing tunnel binary must never read as a crash. */
+const MISSING_CLOUDFLARED =
+  'No cloudflared on PATH — install it (macOS: `brew install cloudflared`; Windows: `winget install --id Cloudflare.cloudflared`; Linux: the .deb/.rpm at https://github.com/cloudflare/cloudflared/releases) or pass --url with a tunnel URL from another tool.';
+
 export async function startCloudflared(port: number, logFile: string): Promise<Tunnel> {
+  // Fail fast: spawn() reports a missing binary as an async 'error' event,
+  // never a sync throw, so without this the process crashes instead of
+  // printing the install line.
+  if (!hasCloudflared()) throw new Error(MISSING_CLOUDFLARED);
   const log = createWriteStream(logFile, { flags: 'a' });
-  let child: ChildProcess;
-  try {
-    child = spawn('cloudflared', ['tunnel', '--url', `http://127.0.0.1:${port}`], {
-      detached: true,
-      stdio: ['ignore', log, log],
-    });
-  } catch {
-    throw new Error('Could not start `cloudflared` (is it installed?). Pass --url with a tunnel URL from another tool instead.');
-  }
+  const child = spawn('cloudflared', ['tunnel', '--url', `http://127.0.0.1:${port}`], {
+    detached: true,
+    stdio: ['ignore', log, log],
+  });
+  // The binary can vanish between the check and the spawn (or die on exec):
+  // capture the event so the loop below reports it instead of crashing.
+  let spawnError: Error | null = null;
+  child.once('error', (error: Error) => {
+    spawnError = error;
+  });
   child.unref();
   const stop = (): void => {
     try {
@@ -54,6 +63,10 @@ export async function startCloudflared(port: number, logFile: string): Promise<T
     if (existsSync(logFile)) {
       const url = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/i.exec(readFileSync(logFile, 'utf8'))?.[0];
       if (url) return { url, how: 'cloudflared', stop };
+    }
+    if (spawnError) {
+      stop();
+      throw new Error(`${MISSING_CLOUDFLARED} (${(spawnError as Error).message})`);
     }
     if (child.exitCode !== null) {
       stop();
