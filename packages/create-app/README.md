@@ -25,7 +25,7 @@ and with no folder the folder is named after the slug (my-app with --yes or no t
 ```
 
 Next: `cd my-app`, `queek auth login`, `queek app dev` (creates a dev store
-with sample data when you have none).
+with test data when you have none).
 
 Every scaffolded app also ships the AI setup: `AGENTS.md` (how to build a
 Queek app — SDK, `queek.app.toml`, dev loop, the docs at

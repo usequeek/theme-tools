@@ -22,7 +22,7 @@ You are working in a Queek installable app (scaffolded by \`@usequeek/create-app
 
 - SDK: \`@usequeek/app-sdk\` — install/uninstall/settings/webhooks handlers live in \`src/\`. The SDK README in \`node_modules/@usequeek/app-sdk\` is the handler contract.
 - Config: \`queek.app.toml\` IS the app — scopes (\`[access]\`), webhook topics (\`[webhooks]\`), app URLs (\`[app]\`), merchant settings (\`[[settings]]\`). \`queek app config link\` pulls the live config into the file; \`queek app deploy\` validates the whole config server-side and releases a version.
-- Dev loop: \`queek app dev\` — creates a dev store with sample data when you have none, then tunnels, installs (scopes auto-granted, no consent screen) and watches. \`queek app info\` shows the current configuration.
+- Dev loop: \`queek app dev\` — creates a dev store with test data when you have none, then tunnels, installs (scopes auto-granted, no consent screen) and watches. \`queek app info\` shows the current configuration.
 - Docs: ${QUEEK_DOCS_URL} — the reference for the manifest, scopes, webhooks and the review submission flow.
 - Queek MCP: not published yet. \`.mcp.json\` (and \`.cursor/mcp.json\`) is the standard location — wire the Queek MCP there when it ships; until then use the docs above.
 

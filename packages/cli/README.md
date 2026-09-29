@@ -183,7 +183,7 @@ business days.`
 
 `dev` only installs on a dev store (`--store` takes a p_id, slug or name;
 merchant and test stores are refused with the wrong-kind copy). With no dev
-store it asks once to create one named after the app with sample data
+store it asks once to create one named after the app with test data
 (`--create-dev-store` in CI). The ready block prints the tunnel URL and the
 Preview URL (the app open inside the dev store's dashboard); every install
 and app line logs with time + source. Device sign-in backs off on
