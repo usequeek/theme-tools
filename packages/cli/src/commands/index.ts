@@ -1,5 +1,6 @@
 import Check from './check.js';
 import Dev from './dev.js';
+import Info from './info.js';
 import Init from './init.js';
 import Package from './package.js';
 import Screenshot from './screenshot.js';
@@ -14,6 +15,7 @@ import Screenshot from './screenshot.js';
 export const COMMANDS = {
   'theme:check': Check,
   'theme:dev': Dev,
+  'theme:info': Info,
   'theme:init': Init,
   'theme:package': Package,
   'theme:screenshot': Screenshot,

@@ -9,6 +9,8 @@ npm install --save-dev @usequeek/cli
 
 New theme? Start with `npm create @usequeek/theme my-theme`; it installs this for you.
 
+Guides: [docs.usequeek.com/docs/themes](https://docs.usequeek.com/docs/themes).
+
 Requires Node.js 22.12 or later, and in your project: `@usequeek/theme-kit`, `next` 16,
 `react` and `react-dom` 19.
 
@@ -101,6 +103,18 @@ human line; `--verbose` debugs on stderr like `check`.
 
 ```bash
 queek theme package --output dist/my-theme.zip
+```
+
+### `queek theme info`
+
+Prints what a bug report needs — tool versions, the project (slug, templates,
+designs, package manager), the installed framework versions, the vocabulary
+source, the preview port and the screenshot browser — in one paste. Works
+outside a theme project too. `--json` prints the same data as one object;
+`--online` allows the network when resolving the vocabulary.
+
+```bash
+queek theme info
 ```
 
 ### `queek theme init [dir]`

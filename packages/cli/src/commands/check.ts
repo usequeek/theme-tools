@@ -110,6 +110,9 @@ With --init, writes a starter ${CONFIG_FILE_NAME} in the project instead of chec
     const color = process.stdout.isTTY === true && !process.env.NO_COLOR && process.env.TERM !== 'dumb';
     const output = flags.format === 'json' ? formatJson(result) : flags.format === 'github-actions' ? formatGithubActions(result) : formatStylish(result, { color });
     if (output) this.log(output);
+    // The command's send-off, not the library's format: the stylish report
+    // for people ends with the guides link (never the machine formats).
+    if (flags.format === 'stylish') this.log('Guides: https://docs.usequeek.com/docs/themes/checks');
 
     if (failed) this.exit(1);
   }

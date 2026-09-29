@@ -36,6 +36,7 @@ body:
         - dev
         - package
         - init
+        - info
         - create-theme (`npm create @usequeek/theme`)
         - theme-check library API (not the CLI)
         - not sure / other
@@ -45,11 +46,9 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Paste the output of these commands plus your OS.
+      description: Paste the output of this command.
       placeholder: |
-        $ npx queek --version
-        $ node --version
-        OS: Ubuntu 24.04 / macOS 15 / Windows 11
+        $ npx queek theme info
       render: shell
     validations:
       required: true

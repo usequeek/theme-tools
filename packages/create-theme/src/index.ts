@@ -200,6 +200,7 @@ export async function createTheme(dir: string, answers: Answers, options: { inst
   if (!options.install) log(`  ${options.pm} install`);
   log(`  ${run} dev     # preview every template`);
   log(`  ${run} check   # your to-do list: each template's description, its own home and screenshot, your products and photos`);
+  log('Guides: https://docs.usequeek.com/docs/themes');
   log('');
   log(`To repeat this setup: ${equivalentCommand(options.pm, dir, answers, { template: options.template, install: options.install, git: options.git, offline: options.offline, vocabularyFile: options.vocabularyFile })}`);
 }

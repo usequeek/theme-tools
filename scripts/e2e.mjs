@@ -72,10 +72,10 @@ try {
   const help = sh(process.execPath, [queek(), '--help'], project);
   if (!help.stdout.includes('theme')) throw new Error(`queek --help does not list the theme topic:\n${help.stdout}`);
   const themeHelp = sh(process.execPath, [queek(), 'theme', '--help'], project);
-  for (const command of ['check', 'dev', 'init', 'package', 'screenshot']) {
+  for (const command of ['check', 'dev', 'info', 'init', 'package', 'screenshot']) {
     if (!themeHelp.stdout.includes(command)) throw new Error(`queek theme --help does not list ${command}:\n${themeHelp.stdout}`);
   }
-  console.log('e2e: help ✓ (queek --help lists the theme topic, queek theme --help lists the five commands)');
+  console.log('e2e: help ✓ (queek --help lists the theme topic, queek theme --help lists the six commands)');
 
   const check = sh(process.execPath, [queek(), 'theme', 'check', '--format', 'json'], project, true);
   const report = JSON.parse(check.stdout);
@@ -83,6 +83,11 @@ try {
   const todo = ['theme/placeholder-content', 'theme/structure', 'theme/template-description', 'theme/template-screenshot', 'theme/template-versions'];
   if (JSON.stringify(rejects) !== JSON.stringify(todo)) throw new Error(`check after create: expected exactly the to-do list ${todo.join(', ')}, got ${rejects.join(', ')}`);
   console.log(`e2e: check ✓ (exactly the to-do list: ${todo.join(', ')})`);
+
+  const info = JSON.parse(sh(process.execPath, [queek(), 'theme', 'info', '--json'], project).stdout);
+  if (!info.project || info.project.slug !== 'my-theme') throw new Error(`info: expected the project slug my-theme, got ${JSON.stringify(info.project)}`);
+  if (typeof info.port !== 'number') throw new Error(`info: expected a port number, got ${JSON.stringify(info.port)}`);
+  console.log(`e2e: info ✓ (queek theme info --json names the project slug ${info.project.slug})`);
 
   sh(process.execPath, [queek(), 'theme', 'package'], project);
   console.log('e2e: package ✓');

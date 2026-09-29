@@ -7,6 +7,8 @@
 Tools for building themes for [Queek](https://usequeek.com) storefronts: preview a theme as a
 whole store, check it against the theme contract, and package it for submission.
 
+Guides: [docs.usequeek.com/docs/themes](https://docs.usequeek.com/docs/themes).
+
 ```bash
 npm create @usequeek/theme my-theme
 cd my-theme
@@ -21,7 +23,7 @@ update with `npm update`, never touching your files.
 
 | Package | What it is |
 |---|---|
-| [`@usequeek/cli`](packages/cli) | The `queek` command: `queek theme dev`, `check`, `package`, `init`. |
+| [`@usequeek/cli`](packages/cli) | The `queek` command: `queek theme dev`, `check`, `package`, `init`, `info`. |
 | [`@usequeek/create-theme`](packages/create-theme) | `npm create @usequeek/theme` — starts a theme from [usequeek/theme-starter](https://github.com/usequeek/theme-starter). |
 | [`@usequeek/theme-check`](packages/theme-check) | The rules a theme is checked against, as a library. |
 

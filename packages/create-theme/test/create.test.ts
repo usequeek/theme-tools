@@ -222,6 +222,13 @@ describe('the closing lines', () => {
     expect(lines).toContain("  cd 'My Theme'");
   });
 
+  it('ends the next steps with the Guides line', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'create-'));
+    const lines: string[] = [];
+    await inFolder(cwd, () => runCreate(flags('my-theme'), null, (line) => lines.push(line)));
+    expect(lines).toContain('Guides: https://docs.usequeek.com/docs/themes');
+  });
+
   it('repeat --template, --no-install and --no-git when they were given', async () => {
     const dir = join(mkdtempSync(join(tmpdir(), 'create-')), 'my-theme');
     const template = starterProject();
