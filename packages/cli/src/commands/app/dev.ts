@@ -201,29 +201,51 @@ export default class AppDev extends BaseCommand {
           storeSlug: flags['dev-store-address'],
           interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
         });
-        const installed = await api.devInstall(result.slug, store.p_id).catch((error: Error) => {
-          // The backend requires a dev store (422 dev_store_required): a
-          // store that stopped being one must read as wrong-kind, with the
-          // server's reason verbatim.
-          const failure = apiFailureOf(error);
-          if (failure?.errorType === 'dev_store_required') {
-            this.error(`Could not install on '${store.name}': ${failure.message} \`queek app dev\` needs a dev store (dashboard → Developers → Dev stores).`, { exit: 1 });
+        // The backend delivers the install handoff to the app THROUGH the
+        // tunnel, so a fresh quick-tunnel host that is not resolvable yet
+        // answers 502 app_handoff_failed: retry a few times before giving up.
+        const installOnce = () => api.devInstall(result.slug, store.p_id);
+        let installed: Awaited<ReturnType<typeof installOnce>> | undefined;
+        for (let attempt = 1; installed === undefined; attempt++) {
+          try {
+            installed = await installOnce();
+          } catch (error) {
+            const failure = apiFailureOf(error);
+            // The backend requires a dev store (422 dev_store_required): a
+            // store that stopped being one must read as wrong-kind, with the
+            // server's reason verbatim.
+            if (failure?.errorType === 'dev_store_required') {
+              this.error(`Could not install on '${store.name}': ${failure.message} \`queek app dev\` needs a dev store (dashboard → Developers → Dev stores).`, { exit: 1 });
+            }
+            const retryable = failure?.status === 502 || failure?.errorType === 'app_handoff_failed';
+            if (retryable && attempt < 4) {
+              this.log(handoffLine('queek', `Install handoff could not reach ${tunnel.url} yet — retrying (${attempt}/3)…`));
+              await new Promise((done) => setTimeout(done, 5_000));
+              continue;
+            }
+            const reason = failure ? `${failure.message}${failure.errorType ? ` (${failure.errorType})` : ''}` : (error as Error).message;
+            this.error(`Dev install on '${store.name}' failed: ${reason}. Queek calls your app at ${tunnel.url} — check the [app] log above and that ${tunnel.url}/health answers.`, { exit: 1 });
           }
-          this.error(error.message, { exit: 1 });
-        });
+        }
         this.log(handoffLine('queek', `Dev install: ${result.slug} ${result.version} on dev store '${store.name}' ← ${tunnel.url} (install ${installed.status})`));
         // The served preview wins; admin_url+slug rebuilds only as fallback.
         const preview = resolvePreview(installed.preview_url, store.admin_url, result.slug);
         return { store, preview, appPid: result.p_id };
       };
 
-      let current = await cycle();
+      // Install only once the app answers locally AND through the tunnel —
+      // the backend's install handoff goes app ← tunnel, so installing first
+      // races a cold app and a not-yet-resolvable tunnel host.
       const healthy = await waitForHealthy(`http://127.0.0.1:${port}/health`, 90_000);
       if (!healthy) {
-        this.logToStderr(`The app did not answer http://127.0.0.1:${port}/health within 90s — its [app] log above says why. The tunnel and install are live; fix the app and it restarts.`);
-      } else {
-        this.readyBlock(tunnel.url, current.preview, current.store, current.appPid);
+        this.error(`The app did not answer http://127.0.0.1:${port}/health within 90s — its [app] log above says why. Fix it and run \`queek app dev\` again.`, { exit: 1 });
       }
+      const reachable = await waitForHealthy(`${tunnel.url}/health`, 60_000);
+      if (!reachable) {
+        this.logToStderr(`The tunnel ${tunnel.url} did not answer /health within 60s — installing anyway; the install retries if Queek cannot reach it yet.`);
+      }
+      let current = await cycle();
+      this.readyBlock(tunnel.url, current.preview, current.store, current.appPid);
       this.log(`Watching ${tomlPath} — save it to re-register ([dev] changes need a restart). Ctrl+C to stop.`);
       watch(tomlPath, { persistent: true }, async () => {
         try {

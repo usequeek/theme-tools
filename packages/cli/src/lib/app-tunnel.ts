@@ -41,7 +41,9 @@ export async function startCloudflared(port: number, logFile: string): Promise<T
   // spawn() needs an OPEN descriptor: a fresh WriteStream has fd null until
   // its async 'open', which spawn rejects. The child keeps its own copy, so
   // the parent closes its handle right after spawning.
-  const log = openSync(logFile, 'a');
+  // Fresh per run: the URL is read back from this file, and an appended
+  // log would hand back an earlier run's (dead) tunnel URL first.
+  const log = openSync(logFile, 'w');
   let child: ReturnType<typeof spawn>;
   try {
     child = spawn('cloudflared', ['tunnel', '--url', `http://127.0.0.1:${port}`], {
