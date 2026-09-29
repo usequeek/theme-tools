@@ -4,7 +4,7 @@ import { Args, Flags } from '@oclif/core';
 import * as p from '@clack/prompts';
 import { apiFailureOf, LoginNeededError } from '../../lib/app-api.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
-import { blockingErrors, failureLine, formatCheck, latestSequence, submitBody, unackedWarnings } from '../../lib/app-submit.js';
+import { blockingErrors, checkLabel, formatCheck, latestSequence, submitBody, unackedWarnings, wordSubmitFailure } from '../../lib/app-submit.js';
 import { BaseCommand } from '../../lib/base-command.js';
 
 export default class AppSubmit extends BaseCommand {
@@ -66,9 +66,9 @@ export default class AppSubmit extends BaseCommand {
         );
       }
       for (const check of remaining) {
-        const ok = this.answer<boolean>(
-          await p.confirm({ message: `Acknowledge warning '${check.key}'? ${shortDetail(check.detail)}` }),
-        );
+        const label = checkLabel(check);
+        const prompt = check.message ? `Submit without '${label}'? ${check.message}` : `Submit without '${label}'?`;
+        const ok = this.answer<boolean>(await p.confirm({ message: prompt }));
         if (ok) acknowledged = [...acknowledged, check.key];
       }
       remaining = unackedWarnings(checklist.checks, acknowledged);
@@ -82,7 +82,7 @@ export default class AppSubmit extends BaseCommand {
     let attested: string[] | undefined;
     if (attestationRequired) {
       if (clauses.length === 0) {
-        this.error('The checklist requires attestation but served no clauses — cannot attest. Retry later; the senior reconciles the report.', { exit: 1 });
+        this.error('Queek asked for data-protection confirmations but sent none — try again in a minute. If it keeps happening, contact developer support.', { exit: 1 });
       }
       this.log('This version needs attestation — every clause, agreed:');
       for (const clause of clauses) this.log(`  [${clause.key}] ${clause.text}`);
@@ -162,26 +162,11 @@ export default class AppSubmit extends BaseCommand {
   private submitError(error: Error, version: string, sequence: number): { version: string; sequence: number; fresh: boolean } {
     const failure = apiFailureOf(error);
     if (!failure) this.error(error.message, { exit: 1 });
-    if (failure.errorType === 'already_submitted') {
+    const worded = wordSubmitFailure(failure);
+    if (worded.already) {
       this.log('That version was already submitted for review — nothing to do.');
       return { version, sequence, fresh: false };
     }
-    if (failure.errorCode === 'IDEMPOTENCY_KEY_REUSE') {
-      this.error('That Idempotency-Key was already used with a different body — retry with a fresh key (re-run the command).', { exit: 1 });
-    }
-    if (failure.errorType === 'invalid_submission' && failure.failures.length > 0) {
-      const lines = failure.failures.map((row) => `  ${failureLine(row.key, row.reason)}`).join('\n');
-      this.error(`Submission refused:\n${lines}`, { exit: 1 });
-    }
-    if (failure.status === 429) {
-      this.error('Submit rate limited (5/day) — try again tomorrow.', { exit: 1 });
-    }
-    this.error(failure.message, { exit: 1 });
+    this.error(worded.message, { exit: worded.exit });
   }
-}
-
-function shortDetail(detail: unknown): string {
-  if (detail === null || detail === undefined) return '';
-  const text = typeof detail === 'string' ? detail : JSON.stringify(detail);
-  return text.length > 160 ? `${text.slice(0, 160)}…` : text;
 }

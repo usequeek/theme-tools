@@ -1,4 +1,4 @@
-import type { SubmissionCheck, SubmitBody } from './app-api.js';
+import type { ApiFailure, SubmissionCheck, SubmitBody } from './app-api.js';
 
 /**
  * Pure submit plumbing for `queek app submit` (tested in
@@ -23,13 +23,22 @@ export function unackedWarnings(checks: SubmissionCheck[], acknowledged: string[
   return checks.filter((check) => check.level === 'warning' && !check.ok && !acknowledged.includes(check.key));
 }
 
-/** One checklist row: `✓/✗ key [level]`, failing detail appended (bounded). */
+/**
+ * One checklist row in the server's own words: `✓/✗/! {label} — {message}`
+ * (✗ a failing error, ! a failing warning). Detail JSON is never printed —
+ * the sentences are built from it server-side. An older server that sends
+ * neither falls back to the key and nothing else.
+ */
 export function formatCheck(check: SubmissionCheck): string {
-  const mark = check.ok ? '✓' : '✗';
-  if (check.ok || check.detail === null || check.detail === undefined) return `${mark} ${check.key} [${check.level}]`;
-  const detail = JSON.stringify(check.detail);
-  const shown = detail.length > 300 ? `${detail.slice(0, 300)}…` : detail;
-  return `${mark} ${check.key} [${check.level}] — ${shown}`;
+  const mark = check.ok ? '✓' : check.level === 'warning' ? '!' : '✗';
+  const label = check.label && check.label !== '' ? check.label : check.key;
+  const message = typeof check.message === 'string' && check.message !== '' ? check.message : '';
+  return message === '' ? `${mark} ${label}` : `${mark} ${label} — ${message}`;
+}
+
+/** The display label for prompts (server sentence, else the key). */
+export function checkLabel(check: SubmissionCheck): string {
+  return check.label && check.label !== '' ? check.label : check.key;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -92,4 +101,22 @@ export function failureLine(key: string, reason: string): string {
   if (reason === 'warning_unacknowledged') return `${key}: warning not acknowledged`;
   if (reason === 'stale') return `${key}: checks went stale — run \`queek app submit\` again to re-probe`;
   return `${key}: ${reason}`;
+}
+
+/** How a thrown submit failure reads: already-submitted is a no-op, the rest are fatal with clear messages. */
+export function wordSubmitFailure(failure: ApiFailure): { already: true } | { already: false; message: string; exit: number } {
+  if (failure.errorType === 'already_submitted') return { already: true };
+  if (failure.errorCode === 'idempotency_key_reuse') {
+    return { already: false, message: 'That Idempotency-Key was already used with a different body — retry with a fresh key (re-run the command).', exit: 1 };
+  }
+  if (failure.errorCode === 'idempotency_key_in_progress') {
+    return { already: false, message: 'Another submit with this key is still running — wait a minute before retrying.', exit: 1 };
+  }
+  if (failure.errorType === 'invalid_submission' && failure.failures.length > 0) {
+    return { already: false, message: `Submission refused:\n${failure.failures.map((row) => `  ${failureLine(row.key, row.reason)}`).join('\n')}`, exit: 1 };
+  }
+  if (failure.status === 429) {
+    return { already: false, message: 'Submit rate limited (5/day) — try again tomorrow.', exit: 1 };
+  }
+  return { already: false, message: failure.message, exit: 1 };
 }

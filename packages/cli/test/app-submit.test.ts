@@ -6,6 +6,7 @@ import {
   latestSequence,
   submitBody,
   unackedWarnings,
+  wordSubmitFailure,
 } from '../src/lib/app-submit.js';
 import type { SubmissionCheck } from '../src/lib/app-api.js';
 
@@ -47,13 +48,23 @@ describe('blockingErrors / unackedWarnings (checklist gates)', () => {
   });
 });
 
-describe('formatCheck (one row per probe)', () => {
-  it('marks ok rows and appends failing detail bounded', () => {
-    expect(formatCheck(check())).toBe('✓ listing [error]');
-    expect(formatCheck(check({ key: 'tested', ok: false, detail: { missing: ['demo'] } }))).toBe(
-      '✗ tested [error] — {"missing":["demo"]}',
+describe('formatCheck (server sentences, never detail JSON)', () => {
+  it('prints label + message with ✓/✗/! marks', () => {
+    expect(formatCheck(check({ label: 'Store listing', message: 'Name and icon look good.' }))).toBe(
+      '✓ Store listing — Name and icon look good.',
     );
-    expect(formatCheck(check({ ok: false, detail: 'x'.repeat(400) }))).toMatch(/…$/);
+    expect(formatCheck(check({ key: 'listing', level: 'error', ok: false, label: 'Store listing', message: 'No description.' }))).toBe(
+      '✗ Store listing — No description.',
+    );
+    expect(
+      formatCheck(check({ key: 'embedded_frame', level: 'warning', ok: false, label: 'Embedded frame', message: 'Framing is off.' })),
+    ).toBe('! Embedded frame — Framing is off.');
+  });
+
+  it('falls back to the key and nothing else on older servers', () => {
+    expect(formatCheck(check())).toBe('✓ listing');
+    expect(formatCheck(check({ key: 'tested', level: 'error', ok: false, detail: { missing: ['demo'] } }))).toBe('✗ tested');
+    expect(formatCheck(check({ key: 'embedded_frame', level: 'warning', ok: false }))).toBe('! embedded_frame');
   });
 });
 
@@ -94,5 +105,34 @@ describe('failureLine (per-key refusal wording)', () => {
     expect(failureLine('listing', 'error_failed')).toBe('listing: check failed');
     expect(failureLine('embedded_frame', 'warning_unacknowledged')).toBe('embedded_frame: warning not acknowledged');
     expect(failureLine('tested', 'stale')).toBe('tested: checks went stale — run `queek app submit` again to re-probe');
+  });
+});
+
+describe('wordSubmitFailure (thrown submit failures, worded)', () => {
+  const base = { status: 409, message: 'Failed.', failures: [] as Array<{ key: string; reason: string }> };
+  it('no-ops an already-submitted version', () => {
+    expect(wordSubmitFailure({ ...base, errorType: 'already_submitted' })).toEqual({ already: true });
+  });
+  it('matches the real lowercase idempotency codes (ApiError.php:222)', () => {
+    expect(wordSubmitFailure({ ...base, errorCode: 'idempotency_key_reuse' })).toMatchObject({
+      already: false,
+      message: expect.stringContaining('fresh key'),
+      exit: 1,
+    });
+    expect(wordSubmitFailure({ ...base, errorCode: 'idempotency_key_in_progress' })).toMatchObject({
+      already: false,
+      message: expect.stringContaining('still running'),
+      exit: 1,
+    });
+  });
+  it('lists per-key invalid_submission failures and names the 5/day throttle', () => {
+    expect(
+      wordSubmitFailure({ ...base, status: 422, errorType: 'invalid_submission', failures: [{ key: 'listing', reason: 'error_failed' }] }),
+    ).toMatchObject({ already: false, message: expect.stringContaining('listing: check failed'), exit: 1 });
+    expect(wordSubmitFailure({ ...base, status: 429, message: 'Too many.' })).toMatchObject({
+      already: false,
+      message: expect.stringContaining('5/day'),
+      exit: 1,
+    });
   });
 });
