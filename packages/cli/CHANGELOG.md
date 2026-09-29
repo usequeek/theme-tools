@@ -2,6 +2,14 @@
 
 Formerly `@usequeek/theme-cli` (bin `queek-theme`); from 0.7.0 the CLI is `@usequeek/cli`, bin `queek`, with the theme commands under `queek theme`.
 
+## 0.10.1
+
+### Patch Changes
+
+- `queek theme add` works on Windows: it creates the `demos` folder, edits a CRLF `theme.config.ts` in place, and `--json` reports paths with `/`.
+- Updated dependencies [[`17ac64f`](https://github.com/usequeek/theme-tools/commit/17ac64f7674a815e5284e2720903e6371d813694)]:
+  - @usequeek/create-theme@0.10.1
+
 ## 0.10.0
 
 ### Minor Changes

@@ -1,5 +1,11 @@
 # @usequeek/create-theme
 
+## 0.10.1
+
+### Patch Changes
+
+- [#8](https://github.com/usequeek/theme-tools/pull/8) [`17ac64f`](https://github.com/usequeek/theme-tools/commit/17ac64f7674a815e5284e2720903e6371d813694) Thanks [@ichie-benjamin](https://github.com/ichie-benjamin)! - `queek theme add` creates the `demos` folder on Windows too: it built the folder from a `/`-split relative path, and Windows paths use `\`.
+
 ## 0.10.0
 
 ### Minor Changes
