@@ -237,7 +237,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
       'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/release': ok({ status: 'released', version: '1.0.1', sequence: 2 }),
       'GET /api/v1/biz/vendor/developer/apps/hello/versions/2/submission': ok({
         version: '1.0.1', sequence: 2, review_status: 'development',
-        checks: [{ key: 'listing', level: 'error', ok: true, detail: null, at: '2026-09-30T00:00:00Z' }],
+        checks: [{ key: 'listing', level: 'error', ok: true, detail: null, at: '2026-09-30T00:00:00Z', label: 'Store listing', message: 'Name and icon look good.' }],
       }),
       'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/submit': ok({ submitted_version: { version: '1.0.1', sequence: 2, review_status: 'in_review' } }),
       'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/withdraw': ok({
@@ -255,7 +255,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(await api.releaseVersion('hello', '1.0.1')).toEqual({ status: 'released', version: '1.0.1', sequence: 2 });
     const checklist = await api.submission('hello', 2);
     expect(checklist.checks).toHaveLength(1);
-    expect(checklist.checks[0]).toMatchObject({ key: 'listing', level: 'error', ok: true });
+    expect(checklist.checks[0]).toMatchObject({ key: 'listing', level: 'error', ok: true, label: 'Store listing', message: 'Name and icon look good.' });
     const submitted = await api.submitVersion('hello', 2, SUBMIT_BODY, 'key-1');
     expect(submitted).toEqual({ version: '1.0.1', sequence: 2, review_status: 'in_review' });
     const withdrawn = await api.withdrawVersion('hello', 2);
@@ -332,6 +332,20 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(error).toBeInstanceOf(ApiError);
     expect(reviewRequiredOf(error)).toBeNull();
     expect(apiFailureOf(error)).toMatchObject({ status: 409, errorType: 'already_submitted' });
+  });
+
+  it('matches the real idempotency envelopes (lowercase error_code, ApiError.php:222)', async () => {
+    const api = new DeveloperApi('https://api.test', {
+      fetchImpl: mockFetch({
+        'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/submit': [
+          409,
+          { status: 'failed', error_code: 'idempotency_key_reuse', message: 'This Idempotency-Key was already used for a different request body. Use a new key for a new request.', data: null },
+        ],
+      }).fetchImpl,
+      getAuth: userAuth(),
+    });
+    const error = await api.submitVersion('hello', 2, SUBMIT_BODY, 'key-1').catch((e: unknown) => e);
+    expect(apiFailureOf(error)).toMatchObject({ status: 409, errorCode: 'idempotency_key_reuse' });
   });
 
   it('decodes 422 per-key failures and 429 for the command to word', async () => {

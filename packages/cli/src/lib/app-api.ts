@@ -124,13 +124,15 @@ export interface ReviewRequired {
   submission_url: string | null;
 }
 
-/** One readiness probe (SubmissionCheckService.php `run`). */
+/** One readiness probe (SubmissionCheckService.php `run`). `label`/`message` are the server-written sentences; older servers send neither. */
 export interface SubmissionCheck {
   key: string;
   level: string;
   ok: boolean;
   detail: unknown;
   at: string;
+  label?: string;
+  message?: string | null;
 }
 
 /** Attestation block of the checklist (lands in a parallel backend slice — all optional here). */
@@ -620,8 +622,7 @@ export class DeveloperApi {
    * Readiness checklist for one owned version (DeveloperAppController.php
    * `submission`): stored checks return with zero egress when fresh,
    * otherwise the server re-probes. `review_note`/`submitted`/`attestation`/
-   * `thread` land in a parallel backend slice — read by exact name, default
-   * the rest (the senior reconciles any drift).
+   * `thread` are read by exact name and defaulted when absent.
    */
   async submission(app: string, sequence: number): Promise<SubmissionChecklist> {
     const { data } = await this.vendor<Record<string, unknown>>(
@@ -644,6 +645,8 @@ export class DeveloperApi {
           ok: check.ok === true,
           detail: check.detail ?? null,
           at: typeof check.at === 'string' ? check.at : '',
+          ...(typeof check.label === 'string' && check.label !== '' ? { label: check.label } : {}),
+          ...(typeof check.message === 'string' && check.message !== '' ? { message: check.message } : {}),
         };
       }),
       ...(typeof data.review_note === 'string' ? { review_note: data.review_note } : {}),
