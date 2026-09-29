@@ -35,7 +35,8 @@ export function setupApp(stage: string, answers: Answers): { files: string[] } {
       configFile,
       configBefore
         .replace(/^export const APP_SLUG = ".*";/m, `export const APP_SLUG = "${answers.slug}";`)
-        .replace(/^export const DEFAULT_BASE_URL = ".*";/m, `export const DEFAULT_BASE_URL = "https://${answers.slug}.apps.queek.com.ng";`),
+        .replace(/^export const DEFAULT_BASE_URL = ".*";/m, `export const DEFAULT_BASE_URL = "https://${answers.slug}.apps.queek.com.ng";`)
+        .replaceAll('"./data/my-app.db"', `"./data/${answers.slug}.db"`),
     );
   }
 
@@ -45,9 +46,34 @@ export function setupApp(stage: string, answers: Answers): { files: string[] } {
     pkg.name = answers.slug;
     writeFileSync(pkgFile, `${JSON.stringify(pkg, null, 2)}\n`);
   }
+  // A staged lockfile keeps the template's pinned tree; only its root name
+  // follows the rename (`npm install` would rewrite it anyway).
+  const lockFile = join(stage, 'package-lock.json');
+  if (existsSync(lockFile)) {
+    const lock = JSON.parse(readFileSync(lockFile, 'utf8')) as { name?: unknown; packages?: Record<string, { name?: unknown }> };
+    lock.name = answers.slug;
+    if (lock.packages?.['']) lock.packages[''].name = answers.slug;
+    writeFileSync(lockFile, `${JSON.stringify(lock, null, 2)}\n`);
+  }
   const readme = join(stage, 'README.md');
   if (existsSync(readme)) {
-    writeFileSync(readme, readFileSync(readme, 'utf8').replace(/^# .*/m, `# ${answers.name}`));
+    writeFileSync(
+      readme,
+      readFileSync(readme, 'utf8')
+        .replace(/^# .*/m, `# ${answers.name}`)
+        .replaceAll('my-app.apps.queek.com.ng', `${answers.slug}.apps.queek.com.ng`),
+    );
+  }
+  const dockerfile = join(stage, 'Dockerfile');
+  if (existsSync(dockerfile)) {
+    writeFileSync(dockerfile, readFileSync(dockerfile, 'utf8').replace('docker build -t my-app', `docker build -t ${answers.slug}`));
+  }
+  // The dev database path bakes the template slug in three places.
+  for (const file of ['Dockerfile', '.env.example'] as const) {
+    const target = join(stage, file);
+    if (existsSync(target)) {
+      writeFileSync(target, readFileSync(target, 'utf8').replaceAll('my-app.db', `${answers.slug}.db`));
+    }
   }
   const files = readdirSync(stage).sort();
   return { files };
@@ -63,11 +89,26 @@ export interface CreateOptions {
   log?: (line: string) => void;
 }
 
+/**
+ * Never scaffolded: VCS history, installed dependencies, build output, local
+ * data and secrets. A local `--template` folder usually contains all of
+ * these (a 123 MB node_modules, a foreign .git); the GitHub tarball never
+ * does. `.env` stays behind, `.env.example` ships.
+ */
+const STAGE_DENY = new Set(['.git', 'node_modules', 'dist', 'data', '.queek', '.env']);
+
+function stageable(path: string): boolean {
+  const base = basename(path);
+  if (STAGE_DENY.has(base)) return false;
+  if (/\.db(-wal|-shm)?$/.test(base)) return false;
+  return true;
+}
+
 /** Fetch the starter (pinned GitHub template, `--template`, or a local folder) into `into`. */
 export async function fetchStarter(into: string, template: string | undefined, starter: string): Promise<string> {
   const source = template ?? starter;
   if (existsSync(source) && statSync(source).isDirectory()) {
-    cpSync(source, into, { recursive: true });
+    cpSync(source, into, { recursive: true, filter: stageable });
     return `local folder ${source}`;
   }
   try {
