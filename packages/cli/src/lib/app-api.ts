@@ -176,6 +176,7 @@ export interface ApiFailure {
   errorType?: string;
   errorCode?: string;
   failures: SubmitFailure[];
+  data: Record<string, unknown>;
 }
 
 /** Pull the gated outcome out of a thrown error, if it is one. */
@@ -209,6 +210,7 @@ export function apiFailureOf(error: unknown): ApiFailure | null {
     ...(typeof body.error_type === 'string' ? { errorType: body.error_type } : {}),
     ...(typeof body.error_code === 'string' ? { errorCode: body.error_code } : {}),
     failures,
+    data: data !== null && typeof data === 'object' && !Array.isArray(data) ? (data as Record<string, unknown>) : {},
   };
 }
 

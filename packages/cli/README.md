@@ -165,6 +165,10 @@ queek auth login            # rarely needed: app commands sign in automatically
 queek auth logout
 ```
 
+If your Developer Terms are stale, `submit` answers HTTP 409
+`terms_update_required`: accept the current terms in the dashboard
+(Developers → the banner at the top), then run `queek app submit` again.
+
 Behind the backend's explicit-submit switch, `deploy` and `release` can answer
 HTTP 409 `review_required` instead of releasing: the CLI prints
 `v{version} is ready for review. Run: queek app submit …` and exits 0 — a

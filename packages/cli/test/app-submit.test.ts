@@ -109,7 +109,7 @@ describe('failureLine (per-key refusal wording)', () => {
 });
 
 describe('wordSubmitFailure (thrown submit failures, worded)', () => {
-  const base = { status: 409, message: 'Failed.', failures: [] as Array<{ key: string; reason: string }> };
+  const base = { status: 409, message: 'Failed.', failures: [] as Array<{ key: string; reason: string }>, data: {} as Record<string, unknown> };
   it('no-ops an already-submitted version', () => {
     expect(wordSubmitFailure({ ...base, errorType: 'already_submitted' })).toEqual({ already: true });
   });
@@ -122,6 +122,20 @@ describe('wordSubmitFailure (thrown submit failures, worded)', () => {
     expect(wordSubmitFailure({ ...base, errorCode: 'idempotency_key_in_progress' })).toMatchObject({
       already: false,
       message: expect.stringContaining('still running'),
+      exit: 1,
+    });
+  });
+  it('words the stale-terms gate before the generic path (exact CLI copy)', () => {
+    const worded = wordSubmitFailure({
+      ...base,
+      errorType: 'terms_update_required',
+      message: 'The developer terms were updated — accept the current revision before submitting.',
+      data: { terms_version: '1.2', terms_url: 'https://usequeek.com/developers/terms' },
+    });
+    expect(worded).toEqual({
+      already: false,
+      message:
+        'Queek updated its Developer Terms (v1.2). Review and accept them in the dashboard — Developers → the banner at the top — then run `queek app submit` again. Terms: https://usequeek.com/developers/terms',
       exit: 1,
     });
   });

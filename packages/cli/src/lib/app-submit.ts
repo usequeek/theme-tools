@@ -106,6 +106,16 @@ export function failureLine(key: string, reason: string): string {
 /** How a thrown submit failure reads: already-submitted is a no-op, the rest are fatal with clear messages. */
 export function wordSubmitFailure(failure: ApiFailure): { already: true } | { already: false; message: string; exit: number } {
   if (failure.errorType === 'already_submitted') return { already: true };
+  if (failure.errorType === 'terms_update_required') {
+    const version = typeof failure.data.terms_version === 'string' ? failure.data.terms_version : 'current';
+    const url = typeof failure.data.terms_url === 'string' ? failure.data.terms_url : '';
+    const terms = url === '' ? '' : ` Terms: ${url}`;
+    return {
+      already: false,
+      message: `Queek updated its Developer Terms (v${version}). Review and accept them in the dashboard — Developers → the banner at the top — then run \`queek app submit\` again.${terms}`,
+      exit: 1,
+    };
+  }
   if (failure.errorCode === 'idempotency_key_reuse') {
     return { already: false, message: 'That Idempotency-Key was already used with a different body — retry with a fresh key (re-run the command).', exit: 1 };
   }

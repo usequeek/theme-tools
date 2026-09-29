@@ -348,6 +348,25 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(apiFailureOf(error)).toMatchObject({ status: 409, errorCode: 'idempotency_key_reuse' });
   });
 
+  it('decodes the stale-terms 409 with its real envelope (SubmitAppVersionRequest failedAuthorization)', async () => {
+    const api = new DeveloperApi('https://api.test', {
+      fetchImpl: mockFetch({
+        'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/submit': [
+          409,
+          { status: 'failed', error: 'The developer terms were updated — accept the current revision before submitting.', message: 'The developer terms were updated — accept the current revision before submitting.', error_type: 'terms_update_required', data: { terms_version: '1.2', terms_url: 'https://usequeek.com/developers/terms' }, title: 'Updated terms' },
+        ],
+      }).fetchImpl,
+      getAuth: userAuth(),
+    });
+    const error = await api.submitVersion('hello', 2, SUBMIT_BODY, 'key-1').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(apiFailureOf(error)).toMatchObject({
+      status: 409,
+      errorType: 'terms_update_required',
+      data: { terms_version: '1.2', terms_url: 'https://usequeek.com/developers/terms' },
+    });
+  });
+
   it('decodes 422 per-key failures and 429 for the command to word', async () => {
     const api = new DeveloperApi('https://api.test', {
       fetchImpl: mockFetch({
