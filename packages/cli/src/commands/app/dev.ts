@@ -116,6 +116,15 @@ export default class AppDev extends BaseCommand {
       const { manifest } = loadApp(flags.path, flags.config);
       const devManifest = withDevUrls(manifest, tunnel.url);
       const result = await api.deploy(devManifest).catch((error: Error) => this.error(error.message, { exit: 1 }));
+      // Development builds release even with the explicit-submit switch on —
+      // but if the backend ever gates one, dev cannot install what was never
+      // created: say so instead of crashing on the union.
+      if (result.status === 'review_required') {
+        this.error(
+          `v${result.version} needs review before it can install — run \`queek app submit ${devManifest.slug} --sequence ${result.sequence}\`, then \`queek app dev\` again.`,
+          { exit: 1 },
+        );
+      }
       const store = await this.pickStore(api, flags.store);
       const installed = await api.devInstall(result.slug, store.p_id).catch((error: Error) => this.error(error.message, { exit: 1 }));
       this.log(`Dev: ${result.slug} ${result.version} on test store ${store.p_id} ← ${tunnel.url} (install ${installed.status})`);

@@ -36,6 +36,11 @@ export default class AppRelease extends BaseCommand {
       debug: (line) => this.debug(line),
     }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
     const result = await api.releaseVersion(args.app, version).catch((error: Error) => this.error(error.message, { exit: 1 }));
+    if (result.status === 'review_required') {
+      this.log(`v${result.version} is ready for review. Run: queek app submit ${args.app} --sequence ${result.sequence}`);
+      this.log('Track it on the Developer page: https://dashboard.usequeek.com/developers');
+      return { app: args.app, version: result.version, sequence: result.sequence, status: result.status };
+    }
     if (result.status === 'in_review') {
       this.log(`Version ${result.version} submitted for review — it releases when approved.`);
     } else {
