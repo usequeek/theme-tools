@@ -114,6 +114,10 @@ With --init, writes a starter ${CONFIG_FILE_NAME} in the project instead of chec
     // for people ends with the guides link (never the machine formats).
     if (flags.format === 'stylish') this.log('Guides: https://docs.usequeek.com/docs/themes/checks');
 
-    if (failed) this.exit(1);
+    // process.exitCode, not this.exit(1): oclif's error path calls
+    // process.exit without flushing, which truncates piped reports past ~8K
+    // (spawnSync callers then JSON.parse a cut string). Returning lets node
+    // flush stdout on natural exit — the --json flag above does the same.
+    if (failed) process.exitCode = 1;
   }
 }
