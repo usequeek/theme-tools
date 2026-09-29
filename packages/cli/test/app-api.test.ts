@@ -220,18 +220,32 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
   });
 
   it('lists dev stores + creates one with test_data and Idempotency-Key (S-A contract, D1)', async () => {
-    const store = { id: 7, p_id: 12, name: 'Hello dev', slug: 'hello-dev', storefront_url: 'https://hello-dev.example.com', admin_url: 'https://admin.example.com/store/hello-dev', created_at: '2026-09-29T00:00:00Z' };
+    const store = { id: 7, p_id: 12, name: 'Hello dev', slug: 'hello-dev', storefront_url: 'https://hello-dev.example.com', admin_url: 'https://admin.example.com/store/hello-dev', created_at: '2026-09-29T00:00:00Z', storefront_password: 'dev-pass-123' };
     const { fetchImpl, calls } = mockFetch({
       'GET /api/v1/biz/vendor/developer/dev-stores?per_page=50&page=1': [200, { status: 'success', message: 'ok', data: { data: [store], meta: { total: 1 } } }],
       'POST /api/v1/biz/vendor/developer/dev-stores': [201, { status: 'success', message: 'Dev store created.', data: store }],
     });
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
     expect(await api.devStores()).toEqual({ data: [store] });
+    // The 201's storefront password threads through (r27 must_fix: never dropped).
     expect(await api.createDevStore('Hello dev', true, 'key-1')).toEqual(store);
     const post = calls.find((call) => call.method === 'POST');
     expect(post?.body).toEqual({ name: 'Hello dev', test_data: true });
     expect(post?.headers['Idempotency-Key']).toBe('key-1');
     await expect(api.createDevStore('x'.repeat(61), true, 'key-2')).rejects.toThrow('allows 60');
+  });
+
+  it('sends an explicit slug (R2 --dev-store-address), omits it for the backend default', async () => {
+    const store = { id: 7, p_id: 12, name: 'Hello dev', slug: 'hello-dev', storefront_url: null, admin_url: null, created_at: null };
+    const { fetchImpl, calls } = mockFetch({
+      'POST /api/v1/biz/vendor/developer/dev-stores': [201, { status: 'success', message: 'Dev store created.', data: store }],
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    await api.createDevStore('Hello dev', true, 'key-1', 'my-address');
+    await api.createDevStore('Hello dev', true, 'key-2');
+    const posts = calls.filter((call) => call.method === 'POST');
+    expect(posts[0]?.body).toEqual({ name: 'Hello dev', slug: 'my-address', test_data: true });
+    expect(posts[1]?.body).toEqual({ name: 'Hello dev', test_data: true });
   });
 
   it('walks dev-store pages to the backend total (default page is 15, max 50)', async () => {

@@ -124,6 +124,8 @@ export default class AppDev extends BaseCommand {
     ...appFlags,
     store: Flags.string({ summary: 'The owned dev store (numeric p_id, slug or name). The only store when you own exactly one. Merchant and test stores are refused.', env: 'QUEEK_APP_STORE' }),
     'create-dev-store': Flags.boolean({ summary: 'With no dev store, create one named after the app with test data instead of asking (CI).', default: false }),
+    'dev-store-name': Flags.string({ summary: 'Name for a first-run created dev store (default: "<app name> dev").', env: 'QUEEK_APP_DEV_STORE_NAME' }),
+    'dev-store-address': Flags.string({ summary: 'Slug (address) for a first-run created dev store (default: backend derives it from the name). Taken slugs 422 with a suggestion.', env: 'QUEEK_APP_DEV_STORE_SLUG' }),
     port: Flags.integer({ summary: 'Your local app server port the tunnel forwards to (default: [dev].port, else 3000).', min: 1, max: 65535 }),
     url: Flags.string({ summary: 'Your own tunnel URL (https). Skips starting cloudflared.' }),
   };
@@ -195,6 +197,8 @@ export default class AppDev extends BaseCommand {
         const store = await this.pickDevStore(api, flags.store, {
           appName: first.manifest.name,
           create: flags['create-dev-store'],
+          storeName: flags['dev-store-name'],
+          storeSlug: flags['dev-store-address'],
           interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
         });
         const installed = await api.devInstall(result.slug, store.p_id).catch((error: Error) => {
@@ -293,10 +297,7 @@ export default class AppDev extends BaseCommand {
    * constructed here.
    */
   private readyBlock(tunnelUrl: string, preview: string | null, store: DevStore, appPid: string): void {
-    this.log('✅ Ready, watching for changes');
-    this.log(`Tunnel: ${tunnelUrl}`);
-    if (preview) this.log(`Preview URL: ${preview}`);
-    else for (const line of devLinks(store, appPid)) this.log(line);
+    for (const line of readyLines(tunnelUrl, preview, store, appPid)) this.log(line);
   }
 
   private async tunnel(dir: string, url: string | undefined, port: number): Promise<Tunnel> {
@@ -311,22 +312,29 @@ export default class AppDev extends BaseCommand {
    * The dev-store selector. `--store` takes a p_id, slug or name and only
    * ever matches a dev store (anything else reads as wrong-kind, Shopify's
    * refusal shape). With no dev store at all: --create-dev-store (CI) or one
-   * TTY question creates it named after the app with test data; a
-   * non-interactive run without the flag errors with the dashboard path.
+   * TTY question creates it with test data — named "<app name> dev" (R2)
+   * unless --dev-store-name says otherwise, slug backend-derived unless
+   * --dev-store-address names one; a non-interactive run without the flag
+   * errors with the dashboard path. The 201's storefront password prints
+   * once on stdout (never logs/debug) — the backend will not resend it.
    */
   private async pickDevStore(
     api: DeveloperApi,
     wanted: string | undefined,
-    options: { appName: string; create: boolean; interactive: boolean },
+    options: { appName: string; create: boolean; storeName?: string; storeSlug?: string; interactive: boolean },
   ): Promise<DevStore> {
     const { data: stores } = await api.devStores().catch((error: Error) => this.error(error.message, { exit: 1 }));
     if (stores.length === 0) {
+      const name = options.storeName ?? defaultDevStoreName(options.appName);
       const ask = options.create || (options.interactive && this.answer<boolean>(await p.confirm({
-        message: `No dev stores yet — create one named '${options.appName}' with test data?`,
+        message: `No dev stores yet — create one named '${name}' with test data?`,
       })));
       if (ask) {
-        const created = await api.createDevStore(options.appName, true, randomUUID()).catch((error: Error) => this.error(error.message, { exit: 1 }));
+        const created = await api.createDevStore(name, true, randomUUID(), options.storeSlug).catch((error: Error) => this.error(error.message, { exit: 1 }));
         this.log(`Created dev store '${created.name}' with test data.`);
+        if (typeof created.storefront_password === 'string' && created.storefront_password !== '') {
+          this.log(`Storefront password: ${created.storefront_password}`);
+        }
         return created;
       }
       this.error('No dev stores — create one on the dashboard (Developers → Dev stores), or pass --create-dev-store to make one named after this app with test data.', { exit: 2 });
@@ -361,4 +369,29 @@ export function devLinks(store: { name: string; storefront_url: string | null },
  */
 export function resolvePreview(served: string | undefined, adminUrl: string | null, appSlug: string): string | null {
   return served ?? previewUrl(adminUrl, appSlug);
+}
+
+/**
+ * First-run default dev-store name (R2): "<app name> dev" — the backend
+ * derives the slug (slugified name + "-dev") unless --dev-store-address
+ * names one explicitly.
+ */
+export function defaultDevStoreName(appName: string): string {
+  return `${appName} dev`;
+}
+
+/**
+ * The Shopify-style ready block lines, pure for tests. The storefront
+ * password (R1) is a shareable dev password, shown like Shopify shows it —
+ * stdout only, one line, omitted when the backend did not serve one. It
+ * never reaches debug output or logs: readyLines callers print, never store.
+ */
+export function readyLines(tunnelUrl: string, preview: string | null, store: DevStore, appPid: string): string[] {
+  const lines = ['✅ Ready, watching for changes', `Tunnel: ${tunnelUrl}`];
+  if (preview) lines.push(`Preview URL: ${preview}`);
+  else lines.push(...devLinks(store, appPid));
+  if (typeof store.storefront_password === 'string' && store.storefront_password !== '') {
+    lines.push(`Storefront password: ${store.storefront_password}`);
+  }
+  return lines;
 }

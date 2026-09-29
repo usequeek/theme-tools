@@ -84,6 +84,14 @@ export interface DevStore {
   storefront_url: string | null;
   admin_url: string | null;
   created_at: string | null;
+  /**
+   * Shareable dev storefront password (R1: re-viewable by the owner, NOT a
+   * credential key). Carried on GET rows for the owner and on the POST 201 —
+   * the backend never resends a lost one outside these payloads. Displayed
+   * on stdout only (ready block / info / after creation); never in debug
+   * output, and never logged.
+   */
+  storefront_password?: string;
 }
 
 export interface AppVersion {
@@ -557,12 +565,16 @@ export class DeveloperApi {
   }
 
   /**
-   * Create a dev store (S-A contract, D1): POST /dev-stores
-   * {name (≤60), test_data} → 201 the store. Idempotency-Key is fresh per
-   * creation attempt; a re-run lists first and only creates when still
-   * absent — list-then-create is the dedupe, not key reuse.
+   * Create a dev store (S-A contract, D1; names R2): POST /dev-stores
+   * {name (≤60), slug?, test_data} → 201 the store incl. storefront_password.
+   * Slug omitted means the backend default (slugified name + "-dev");
+   * taken → 422 with a suggested free slug, surfaced verbatim. The 201's
+   * storefront_password is threaded through (never dropped): it is the only
+   * copy the backend will show. Idempotency-Key is fresh per creation
+   * attempt; a re-run lists first and only creates when still absent —
+   * list-then-create is the dedupe, not key reuse.
    */
-  async createDevStore(name: string, testData: boolean, idempotencyKey: string): Promise<DevStore> {
+  async createDevStore(name: string, testData: boolean, idempotencyKey: string, slug?: string): Promise<DevStore> {
     const trimmed = name.trim();
     if (trimmed === '') throw new Error('A dev store needs a name.');
     if (trimmed.length > 60) throw new Error(`Dev store name '${trimmed}' is ${trimmed.length} characters — the dashboard allows 60.`);
@@ -570,7 +582,7 @@ export class DeveloperApi {
       'POST',
       '/dev-stores',
       `creating dev store '${trimmed}'`,
-      { name: trimmed, test_data: testData },
+      { name: trimmed, ...(slug !== undefined && slug !== '' ? { slug } : {}), test_data: testData },
       undefined,
       { 'Idempotency-Key': idempotencyKey },
     );

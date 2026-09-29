@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { devLinks, devStoreRefusal, handoffLine, previewUrl, resolvePreview, withDevResources, withDevUrls } from '../src/commands/app/dev.js';
+import { defaultDevStoreName, devLinks, devStoreRefusal, handoffLine, previewUrl, readyLines, resolvePreview, withDevResources, withDevUrls } from '../src/commands/app/dev.js';
 import type { DevStore } from '../src/lib/app-api.js';
 import type { AppManifest } from '../src/lib/app-manifest.js';
 
@@ -25,6 +25,25 @@ describe('dev ready block helpers (Shopify parity)', () => {
     );
     expect(resolvePreview(undefined, 'https://dash/open-store?store=12', 'hello')).toBe('https://dash/open-store?store=12&app=hello');
     expect(resolvePreview(undefined, null, 'hello')).toBeNull();
+  });
+
+  it('defaults the first-run name to "<app name> dev" (R2)', () => {
+    expect(defaultDevStoreName('Hello')).toBe('Hello dev');
+  });
+
+  it('prints the storefront password once in the ready block (R1), omits it when unserved', () => {
+    expect(readyLines('https://abc.trycloudflare.com', 'https://dash/open-store?store=12&app=hello', { ...STORE, storefront_password: 'dev-pass-123' }, 'app_1')).toEqual([
+      '✅ Ready, watching for changes',
+      'Tunnel: https://abc.trycloudflare.com',
+      'Preview URL: https://dash/open-store?store=12&app=hello',
+      'Storefront password: dev-pass-123',
+    ]);
+    expect(readyLines('https://abc.trycloudflare.com', null, STORE, 'app_1')).toEqual([
+      '✅ Ready, watching for changes',
+      'Tunnel: https://abc.trycloudflare.com',
+      'Store admin: https://dashboard.usequeek.com/developers?section=test&app=app_1',
+      "Storefront: the dashboard → test store 'Hello dev'",
+    ]);
   });
 
   it('refuses a non-dev --store with the wrong-kind copy, never bare not-found', () => {
