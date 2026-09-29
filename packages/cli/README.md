@@ -183,16 +183,18 @@ business days.`
 
 `dev` only installs on a dev store (`--store` takes a p_id, slug or name;
 merchant and test stores are refused with the wrong-kind copy). With no dev
-store it asks once to create one named after the app with test data
-(`--create-dev-store` in CI). The ready block prints the tunnel URL and the
-Preview URL (the app open inside the dev store's dashboard); every install
-and app line logs with time + source. Device sign-in backs off on
-`slow_down`/429 (+5s per signal, capped) and keeps polling until the code
-expires. Every `dev` error path stops the tunnel — cloudflared is never left
-running. `info` prints the CURRENT APP CONFIGURATION box (config file, app,
-app ID, scopes, dev store, user). `deploy` prints `New version released —
-<slug>-N · <message> · <version page link>`; server validation errors surface
-verbatim.
+store it asks once to create one named "<app name> dev" with test data
+(`--create-dev-store` in CI; `--dev-store-name` / `--dev-store-address`
+override the name/slug). The ready block prints the tunnel URL, the Preview
+URL (admin_url + `&app={slug}`) and the storefront password (a shareable dev
+password, stdout only — never logs); every install and app line logs with
+time + source. Device sign-in backs off on `slow_down`/429 (server interval
+when sent, else +5s, capped) and keeps polling until the code expires,
+waiting out transient 5xx. Every `dev` error path stops the tunnel —
+cloudflared is never left running. `info` prints the CURRENT APP
+CONFIGURATION box (config file, app, app ID, scopes, dev store, storefront
+password, user). `deploy` prints `New version released — <slug>-N ·
+<message> · <version page link>`; server validation errors surface verbatim.
 
 `queek.app.toml` is the local source of truth (same names as the server manifest,
 grouped: `[listing]`, `[access]`, `[webhooks]`, `[app]`, `[[settings]]`,
