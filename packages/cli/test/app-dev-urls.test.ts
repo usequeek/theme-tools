@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { defaultDevStoreName, devLinks, devStoreRefusal, handoffLine, previewUrl, readyLines, resolvePreview, withDevResources, withDevUrls } from '../src/commands/app/dev.js';
-import type { DevStore } from '../src/lib/app-api.js';
+import { defaultDevStoreName, devLinks, devStoreRefusal, handoffLine, isRetryableHandoffFailure, previewUrl, readyLines, resolvePreview, withDevResources, withDevUrls } from '../src/commands/app/dev.js';
+import { ApiError, apiFailureOf, type DevStore } from '../src/lib/app-api.js';
 import type { AppManifest } from '../src/lib/app-manifest.js';
 
 const STORE: DevStore = { id: 7, p_id: 12, name: 'Hello dev', slug: 'hello-dev', storefront_url: null, admin_url: 'https://admin.example.com/store/hello-dev', created_at: null };
@@ -50,6 +50,32 @@ describe('dev ready block helpers (Shopify parity)', () => {
     const refusal = devStoreRefusal('live-shop', [STORE]);
     expect(refusal).toContain("Could not find dev store 'live-shop'");
     expect(refusal).toContain('Ensure the store is a dev store');
+  });
+});
+
+describe('install-handoff retry (backend 502 → 424 Failed Dependency)', () => {
+  const failureOf = (status: number, errorType?: string) =>
+    apiFailureOf(new ApiError('Handoff failed.', status, errorType ? { error_type: errorType } : {}));
+
+  it('retries the new 424 app_handoff_failed', () => {
+    expect(isRetryableHandoffFailure(failureOf(424, 'app_handoff_failed'))).toBe(true);
+  });
+
+  it('keeps retrying the old 502 for backward compatibility during rollout', () => {
+    expect(isRetryableHandoffFailure(failureOf(502, 'app_handoff_failed'))).toBe(true);
+  });
+
+  it('retries a bare 424/502 status and an errorType without a status match', () => {
+    expect(isRetryableHandoffFailure(failureOf(424))).toBe(true);
+    expect(isRetryableHandoffFailure(failureOf(502))).toBe(true);
+    expect(isRetryableHandoffFailure(failureOf(500, 'app_handoff_failed'))).toBe(true);
+  });
+
+  it('does not retry other failures, null or undefined', () => {
+    expect(isRetryableHandoffFailure(failureOf(422, 'dev_store_required'))).toBe(false);
+    expect(isRetryableHandoffFailure(failureOf(401))).toBe(false);
+    expect(isRetryableHandoffFailure(null)).toBe(false);
+    expect(isRetryableHandoffFailure(undefined)).toBe(false);
   });
 });
 

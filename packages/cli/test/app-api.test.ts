@@ -339,6 +339,23 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(submitCall?.body).toEqual(SUBMIT_BODY);
   });
 
+  it('surfaces a 424 dev-install handoff failure with its error_type (backend 502 → 424)', async () => {
+    const api = new DeveloperApi('https://api.test', {
+      fetchImpl: mockFetch({
+        'POST /api/v1/biz/vendor/developer/apps/hello/dev-installs': [
+          424,
+          { status: 'failed', error: 'Handoff failed.', message: 'The app could not be reached.', error_type: 'app_handoff_failed', data: null },
+        ],
+      }).fetchImpl,
+      getAuth: userAuth(),
+    });
+    const error = await api.devInstall('hello', 12).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    const failure = apiFailureOf(error);
+    expect(failure?.status).toBe(424);
+    expect(failure?.errorType).toBe('app_handoff_failed');
+  });
+
   it('accepts the real in_review release: HTTP 202, outcome from data.status', async () => {
     const { fetchImpl } = mockFetch({
       'POST /api/v1/biz/vendor/developer/apps/hello/versions/3/release': [202, { status: 'success', message: 'ok', data: {

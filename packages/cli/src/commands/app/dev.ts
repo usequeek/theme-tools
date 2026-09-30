@@ -3,7 +3,7 @@ import { mkdirSync, watch } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
 import * as p from '@clack/prompts';
 import { Flags } from '@oclif/core';
-import { apiFailureOf, DASHBOARD_URL, LoginNeededError, type DeveloperApi, type DevStore } from '../../lib/app-api.js';
+import { apiFailureOf, DASHBOARD_URL, LoginNeededError, type ApiFailure, type DeveloperApi, type DevStore } from '../../lib/app-api.js';
 import { apiBase } from '../../lib/app-auth.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
@@ -84,6 +84,18 @@ export function formatDevStores(stores: DevStore[]): string {
  */
 export function devStoreRefusal(wanted: string, stores: DevStore[]): string {
   return `Could not find dev store '${wanted}'. Yours: ${formatDevStores(stores)}. Ensure the store is a dev store (dashboard → Developers → Dev stores) — merchant and test stores cannot run \`queek app dev\`.`;
+}
+
+/**
+ * Install-handoff retry gate: the backend answers 424 Failed Dependency when
+ * the app handoff fails (Cloudflare replaces an origin 502 with its own
+ * error page, so our JSON never reaches the CLI on 502). 502 stays
+ * retryable for backward compatibility until every backend has rolled out;
+ * the errorType alone also retries (shape-proof when the status is masked).
+ */
+export function isRetryableHandoffFailure(failure: ApiFailure | null | undefined): boolean {
+  if (!failure) return false;
+  return failure.status === 502 || failure.status === 424 || failure.errorType === 'app_handoff_failed';
 }
 
 /**
@@ -617,7 +629,8 @@ export default class AppDev extends BaseCommand {
         });
         // The backend delivers the install handoff to the app THROUGH the
         // tunnel, so a fresh quick-tunnel host that is not resolvable yet
-        // answers 502 app_handoff_failed: retry a few times before giving up.
+        // answers 424 app_handoff_failed (502 before the Cloudflare fix):
+        // retry a few times before giving up.
         const installOnce = () => api.devInstall(result.slug, store.p_id);
         let installed: Awaited<ReturnType<typeof installOnce>> | undefined;
         for (let attempt = 1; installed === undefined; attempt++) {
@@ -631,7 +644,7 @@ export default class AppDev extends BaseCommand {
             if (failure?.errorType === 'dev_store_required') {
               this.error(`Could not install on '${store.name}': ${failure.message} \`queek app dev\` needs a dev store (dashboard → Developers → Dev stores).`, { exit: 1 });
             }
-            const retryable = failure?.status === 502 || failure?.errorType === 'app_handoff_failed';
+            const retryable = isRetryableHandoffFailure(failure);
             if (retryable && attempt < 4) {
               this.log(handoffLine('queek', `Install handoff could not reach ${tunnelUrl} yet — retrying (${attempt}/3)…`));
               await new Promise((done) => setTimeout(done, 5_000));
