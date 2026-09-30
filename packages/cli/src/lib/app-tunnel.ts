@@ -112,3 +112,18 @@ export function manualTunnel(url: string): Tunnel {
   if (!url.startsWith('https://')) throw new Error('The --url tunnel must be an https URL (Queek calls back over https).');
   return { url: url.replace(/\/+$/, ''), how: 'flag', stop: noop };
 }
+
+/**
+ * True when cloudflared's log shows creation refused (error 1015 / HTTP
+ * 429): making more tunnels only extends the ban, so the supervisor stops
+ * instead of retrying. Best effort — a missing log reads as not limited.
+ */
+export function cloudflaredRateLimited(logFile: string): boolean {
+  let tail = '';
+  try {
+    tail = readFileSync(logFile, 'utf8').slice(-4000);
+  } catch {
+    return false;
+  }
+  return /\b1015\b|HTTP.?429|status.?429|rate.?limit/i.test(tail);
+}

@@ -2,12 +2,16 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   buildDevAppEnv,
   countTunnelMiss,
+  DevTunnelSupervisor,
+  isTunnelRateLimited,
   MAX_TUNNEL_RESTARTS,
+  MAX_TUNNEL_RESTARTS_PER_WINDOW,
   restartDevTunnel,
   TUNNEL_FAILURES_BEFORE_RESTART,
   tunnelProbe,
   tunnelRestartBackoffMs,
   tunnelRestartLine,
+  TunnelRateLimitedError,
 } from '../src/commands/app/dev.js';
 import type { Tunnel } from '../src/lib/app-tunnel.js';
 
@@ -331,5 +335,281 @@ describe('countTunnelMiss (restart on N misses in a row)', () => {
 
   it('a single miss below the threshold only counts', () => {
     expect(countTunnelMiss(false, 0)).toEqual({ misses: 1, restart: false });
+  });
+});
+
+describe('isTunnelRateLimited (refused creation stops supervision)', () => {
+  it('matches Cloudflare 429/1015 and Too Many Attempts, nothing else', () => {
+    expect(isTunnelRateLimited(new Error('ERROR 1015: temporarily banned'))).toBe(true);
+    expect(isTunnelRateLimited(new Error('tunnel creation failed: HTTP 429'))).toBe(true);
+    expect(isTunnelRateLimited(new Error('Too Many Attempts.'))).toBe(true);
+    expect(isTunnelRateLimited(new Error('You are being rate limited, please wait'))).toBe(true);
+    expect(isTunnelRateLimited(new Error('network is down'))).toBe(false);
+    expect(isTunnelRateLimited(new Error('cloudflared exited before printing a tunnel URL (see log)'))).toBe(false);
+    expect(isTunnelRateLimited(new Error('clean'), '... error 1015 ...')).toBe(true);
+  });
+});
+
+/** A watched fake tunnel: stop() kills the child, which fires exit — like the real one. */
+function fakeWatchedTunnel(calls: string[], url: string): { tunnel: Tunnel; fireExit: () => void } {
+  const exits: Array<() => void> = [];
+  const fire = (): void => {
+    for (const listener of [...exits]) listener();
+  };
+  const tunnel: Tunnel = {
+    url,
+    how: 'cloudflared',
+    stop: () => {
+      calls.push(`stop:${url}`);
+      fire();
+    },
+    onExit: (listener: () => void) => {
+      exits.push(listener);
+    },
+  };
+  return { tunnel, fireExit: fire };
+}
+
+function supervisorHarness(hooks: {
+  probeHealthy?: boolean;
+  startTunnel?: () => Promise<Tunnel>;
+  reregister?: (url: string) => Promise<{ preview: string | null }>;
+  isFatalStartError?: (error: unknown) => boolean;
+} = {}): {
+  sup: DevTunnelSupervisor;
+  calls: string[];
+  tunnels: Tunnel[];
+  stopped: string[];
+  advance: (ms: number) => void;
+} {
+  let now = 0;
+  const calls: string[] = [];
+  const tunnels: Tunnel[] = [];
+  const stopped: string[] = [];
+  let n = 0;
+  const sup = new DevTunnelSupervisor({
+    startTunnel: hooks.startTunnel ??
+      (async () => {
+        n += 1;
+        const url = `https://t${n}.trycloudflare.com`;
+        calls.push(`start:${url}`);
+        const created = fakeWatchedTunnel(calls, url);
+        tunnels.push(created.tunnel);
+        return created.tunnel;
+      }),
+    stopApp: () => {
+      calls.push('stopOldApp');
+    },
+    startApp: async (url) => {
+      calls.push(`startApp:${url}`);
+      return {
+        stop: () => {
+          calls.push('stopNewApp');
+        },
+      };
+    },
+    waitForApp: async () => true,
+    reregister: hooks.reregister ??
+      (async (url) => {
+        calls.push(`reregister:${url}`);
+        return { preview: PREVIEW };
+      }),
+    probe: async (url) => {
+      calls.push(`probe:${url}`);
+      return hooks.probeHealthy ?? true;
+    },
+    isFatalStartError: hooks.isFatalStartError ?? isTunnelRateLimited,
+    onTunnel: (next) => {
+      calls.push(`onTunnel:${next.url}`);
+    },
+    onStopped: (message) => {
+      stopped.push(message);
+    },
+    log: (line) => {
+      calls.push(`log:${line}`);
+    },
+    logError: (line) => {
+      calls.push(`error:${line}`);
+    },
+    sleep: async (ms) => {
+      now += ms;
+      calls.push(`sleep:${ms}`);
+    },
+    now: () => now,
+  });
+  return { sup, calls, tunnels, stopped, advance: (ms) => { now += ms; } };
+}
+
+const startsOf = (calls: string[]): string[] => calls.filter((call) => call.startsWith('start:'));
+
+describe('DevTunnelSupervisor (the 30/9/26 restart-storm regression)', () => {
+  it('a killed old tunnel firing exit never causes a second restart', async () => {
+    const { sup, calls, advance } = supervisorHarness({ probeHealthy: false });
+    const old = fakeWatchedTunnel(calls, OLD_URL);
+    sup.watch(old.tunnel);
+    advance(61_000);
+    await sup.tick();
+    await sup.tick();
+    expect(startsOf(calls)).toHaveLength(1);
+    // The stop the restart issued fired the old tunnel's exit; firing it
+    // again (or ticking healthy) must not restart.
+    old.fireExit();
+    await sup.tick();
+    await sup.tick();
+    expect(startsOf(calls)).toHaveLength(1);
+  });
+
+  it('60s of healthy tunnels cause zero restarts', async () => {
+    const { sup, calls, advance } = supervisorHarness({ probeHealthy: true });
+    sup.watch(fakeWatchedTunnel(calls, OLD_URL).tunnel);
+    for (let step = 0; step < 6; step++) {
+      advance(10_000);
+      await sup.tick();
+    }
+    expect(startsOf(calls)).toHaveLength(0);
+    expect(calls.filter((call) => call.startsWith('reregister:'))).toHaveLength(0);
+  });
+
+  it('a fresh tunnel gets a grace period: misses count only after it answers once or 60s pass', async () => {
+    const { sup, calls, advance } = supervisorHarness({ probeHealthy: false });
+    sup.watch(fakeWatchedTunnel(calls, OLD_URL).tunnel);
+    for (let step = 0; step < 5; step++) {
+      advance(10_000);
+      await sup.tick();
+    }
+    expect(startsOf(calls)).toHaveLength(0);
+    advance(11_000);
+    await sup.tick();
+    await sup.tick();
+    expect(startsOf(calls)).toHaveLength(1);
+  });
+
+  it('an exit of the watched tunnel restarts once, then watches the new tunnel', async () => {
+    const { sup, calls, tunnels } = supervisorHarness({ probeHealthy: true });
+    const old = fakeWatchedTunnel(calls, OLD_URL);
+    sup.watch(old.tunnel);
+    await sup.notifyExit(old.tunnel);
+    expect(startsOf(calls)).toHaveLength(1);
+    expect(calls).toContain(`onTunnel:${tunnels[0]?.url}`);
+    // The new tunnel is watched: its exit restarts, the old one's does not.
+    old.fireExit();
+    expect(startsOf(calls)).toHaveLength(1);
+    await sup.notifyExit(tunnels[0] as Tunnel);
+    expect(startsOf(calls)).toHaveLength(2);
+  });
+
+  it('at most one restart in flight: exits and ticks during a restart do nothing', async () => {
+    let release!: (tunnel: Tunnel) => void;
+    const gate = new Promise<Tunnel>((resolve) => {
+      release = resolve;
+    });
+    const replacement = fakeWatchedTunnel([], NEW_URL).tunnel;
+    const { sup, calls } = supervisorHarness({
+      probeHealthy: true,
+      startTunnel: () => {
+        calls.push('start');
+        return gate;
+      },
+    });
+    const old = fakeWatchedTunnel(calls, OLD_URL);
+    sup.watch(old.tunnel);
+    const pending = sup.notifyExit(old.tunnel);
+    for (let flush = 0; flush < 20 && !calls.includes('start'); flush++) await Promise.resolve();
+    expect(calls.filter((call) => call === 'start')).toHaveLength(1);
+    await sup.tick();
+    await sup.notifyExit(old.tunnel);
+    expect(calls.filter((call) => call === 'start')).toHaveLength(1);
+    release(replacement);
+    await pending;
+    expect(calls).toContain(`onTunnel:${NEW_URL}`);
+  });
+
+  it('caps restarts at 3 per 10 minutes, then stops with a clear message', async () => {
+    const { sup, calls, tunnels, stopped } = supervisorHarness({ probeHealthy: true });
+    const old = fakeWatchedTunnel(calls, OLD_URL);
+    sup.watch(old.tunnel);
+    await sup.notifyExit(old.tunnel);
+    await sup.notifyExit(tunnels[0] as Tunnel);
+    await sup.notifyExit(tunnels[1] as Tunnel);
+    expect(startsOf(calls)).toHaveLength(MAX_TUNNEL_RESTARTS_PER_WINDOW);
+    await sup.notifyExit(tunnels[2] as Tunnel);
+    expect(startsOf(calls)).toHaveLength(MAX_TUNNEL_RESTARTS_PER_WINDOW);
+    expect(stopped).toHaveLength(1);
+    expect(stopped[0]).toContain(`${MAX_TUNNEL_RESTARTS_PER_WINDOW} restarts`);
+    // Re-register ran exactly once per successful restart — never a loop.
+    expect(calls.filter((call) => call.startsWith('reregister:'))).toHaveLength(MAX_TUNNEL_RESTARTS_PER_WINDOW);
+    // Stopped means stopped: further exits and ticks do nothing.
+    await sup.notifyExit(tunnels[2] as Tunnel);
+    await sup.tick();
+    expect(startsOf(calls)).toHaveLength(MAX_TUNNEL_RESTARTS_PER_WINDOW);
+    expect(stopped).toHaveLength(1);
+  });
+
+  it('a refused start stops supervision at once: one attempt, no re-register', async () => {
+    const reregister = vi.fn(async (_url: string) => ({ preview: PREVIEW }));
+    const { sup, calls, stopped } = supervisorHarness({
+      probeHealthy: true,
+      startTunnel: async () => {
+        calls.push('start');
+        throw new Error('ERROR 1015: temporarily banned');
+      },
+      reregister,
+    });
+    const watched = fakeWatchedTunnel(calls, OLD_URL);
+    sup.watch(watched.tunnel);
+    await sup.notifyExit(watched.tunnel);
+    expect(calls.filter((call) => call === 'start')).toHaveLength(1);
+    expect(reregister).not.toHaveBeenCalled();
+    expect(stopped).toHaveLength(1);
+    expect(stopped[0]).toContain('rate-limiting');
+  });
+
+  it('a 429 re-register is attempted once, logged, and keeps the tunnel', async () => {
+    const reregister = vi.fn(async (_url: string): Promise<{ preview: string | null }> => {
+      throw new Error('Too Many Attempts.');
+    });
+    const errors: string[] = [];
+    const old = fakeTunnel(OLD_URL);
+    const next = fakeTunnel(NEW_URL);
+    const result = await restartDevTunnel({
+      oldTunnel: old.tunnel,
+      start: async () => next.tunnel,
+      stopApp: () => {},
+      startApp: async () => ({ stop: () => {} }),
+      waitForApp: async () => true,
+      reregister,
+      log: () => {},
+      logError: (line) => errors.push(line),
+      sleep: async () => {},
+    });
+    expect(result.tunnel.url).toBe(NEW_URL);
+    expect(reregister).toHaveBeenCalledTimes(1);
+    expect(errors).toEqual(['Re-register after tunnel restart failed: Too Many Attempts.']);
+    expect(next.stopped).toEqual([]);
+  });
+
+  it('a fatal start short-circuits the retry loop with TunnelRateLimitedError', async () => {
+    const old = fakeTunnel(OLD_URL);
+    let starts = 0;
+    const error = await restartDevTunnel({
+      oldTunnel: old.tunnel,
+      start: async () => {
+        starts += 1;
+        throw new Error('HTTP 429');
+      },
+      stopApp: () => {},
+      startApp: async () => ({ stop: () => {} }),
+      waitForApp: async () => true,
+      reregister: async () => ({ preview: null }),
+      log: () => {},
+      logError: () => {},
+      sleep: async () => {},
+    }).then(
+      () => null,
+      (caught: Error) => caught,
+    );
+    expect(error).toBeInstanceOf(TunnelRateLimitedError);
+    expect(starts).toBe(1);
+    expect(error?.message).toContain('rate-limiting');
   });
 });

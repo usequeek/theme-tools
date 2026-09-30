@@ -9,7 +9,7 @@ import { appFlags, appSession } from '../../lib/app-command.js';
 import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
 import { ensureDevSecrets, envLocalPath, MissingSecretError, readEnvFile, resolveDevSecret, writeEnvLocal } from '../../lib/app-env.js';
 import { startSupervised, waitForHealthy, type FetchFn } from '../../lib/app-run.js';
-import { manualTunnel, startCloudflared, type Tunnel } from '../../lib/app-tunnel.js';
+import { cloudflaredRateLimited, manualTunnel, startCloudflared, type Tunnel } from '../../lib/app-tunnel.js';
 import { BaseCommand } from '../../lib/base-command.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -112,10 +112,32 @@ export async function withDevResources(stops: Array<() => void>, task: () => Pro
  * backoff, giving up after a sane number of failed starts with a clear
  * message. The restart reuses startCloudflared and the toml-save cycle; the
  * dead tunnel stops on every path, so no orphan cloudflared is left.
+ * Storm guards (30/9/26: exits self-fed ~30 restarts into a 429 ban):
+ * exits restart only the watched tunnel, every restart waits first, fresh
+ * tunnels get a grace period, restarts are capped per 10 minutes, and a
+ * refused start stops supervision.
  */
 export const TUNNEL_PROBE_INTERVAL_MS = 30_000;
 export const TUNNEL_FAILURES_BEFORE_RESTART = 2;
 export const MAX_TUNNEL_RESTARTS = 5;
+/** At most 3 restarts in any 10 minutes — then supervision stops, never hammering tunnel creation. */
+export const MAX_TUNNEL_RESTARTS_PER_WINDOW = 3;
+export const TUNNEL_RESTART_WINDOW_MS = 10 * 60_000;
+/** A fresh tunnel's DNS may not resolve yet: misses don't count until it answers once or this passes. */
+export const TUNNEL_RESTART_GRACE_MS = 60_000;
+
+/**
+ * Cloudflare refused quick-tunnel creation (HTTP 429 / error 1015):
+ * making more tunnels only extends the ban, so supervision stops and the
+ * developer waits instead of retrying into it.
+ */
+export function isTunnelRateLimited(error: unknown, logTail = ''): boolean {
+  const text = `${error instanceof Error ? error.message : String(error)}\n${logTail}`;
+  return /\b(1015|429)\b|rate.?limit|too many/i.test(text);
+}
+
+/** A refused tunnel start that must stop supervision (rate limit): no more tunnels are created. */
+export class TunnelRateLimitedError extends Error {}
 
 /** Backoff between tunnel restarts: 5s, 10s, 20s, then 30s (attempt is 1-based). */
 export function tunnelRestartBackoffMs(attempt: number): number {
@@ -179,10 +201,12 @@ export function buildDevAppEnv(options: {
  * app child with the new APP_BASE_URL, wait for its /health, re-register
  * (the toml-save cycle) with the new URL, print the one restart line.
  * Failed starts back off and give up after MAX_TUNNEL_RESTARTS with a clear
- * message; the dead tunnel stops on every path. A relaunched app that never
- * answers /health stops its child and tunnel and fails the run — installs
- * must never target an app that is not listening. A failed re-register keeps
- * the new tunnel and logs — the tunnel is up, the next save retries it.
+ * message; the dead tunnel stops on every path. A rate-limited start
+ * short-circuits the retries and throws TunnelRateLimitedError instead. A
+ * relaunched app that never answers /health stops its child and tunnel and
+ * fails the run — installs must never target an app that is not listening.
+ * A failed re-register keeps the new tunnel and logs — the tunnel is up,
+ * the next save retries it.
  */
 export async function restartDevTunnel(options: {
   oldTunnel: Tunnel;
@@ -196,10 +220,12 @@ export async function restartDevTunnel(options: {
   sleep?: (ms: number) => Promise<void>;
   maxRestarts?: number;
   backoffMs?: (attempt: number) => number;
+  isFatalStartError?: (error: unknown) => boolean;
 }): Promise<{ tunnel: Tunnel; stopApp: () => void }> {
   const max = options.maxRestarts ?? MAX_TUNNEL_RESTARTS;
   const backoff = options.backoffMs ?? tunnelRestartBackoffMs;
   const sleep = options.sleep ?? ((ms: number) => new Promise((done) => setTimeout(done, ms)));
+  const isFatal = options.isFatalStartError ?? isTunnelRateLimited;
   const stopQuietly = (stop: () => void): void => {
     try {
       stop();
@@ -214,6 +240,15 @@ export async function restartDevTunnel(options: {
     try {
       next = await options.start();
     } catch (error) {
+      // Rate-limited creation must short-circuit the retry loop: every new
+      // attempt extends the ban.
+      if (isFatal(error)) {
+        stopQuietly(() => options.oldTunnel.stop());
+        const detail = error instanceof Error ? `: ${error.message}` : '';
+        throw new TunnelRateLimitedError(
+          `Tunnel restarts paused: Cloudflare is rate-limiting quick-tunnel creation${detail} — the app keeps running locally; wait a few minutes, then run \`queek app dev\` again.`,
+        );
+      }
       lastError = error;
       continue;
     }
@@ -247,6 +282,130 @@ export async function restartDevTunnel(options: {
   stopQuietly(() => options.oldTunnel.stop());
   const reason = lastError instanceof Error ? `: ${lastError.message}` : '';
   throw new Error(`Tunnel restart failed ${max} times${reason} — check your network or pass --url, then run \`queek app dev\` again.`);
+}
+
+export interface DevTunnelSupervisorDeps {
+  startTunnel: () => Promise<Tunnel>;
+  stopApp: () => void;
+  startApp: (tunnelUrl: string) => Promise<{ stop: () => void }>;
+  waitForApp: () => Promise<boolean>;
+  reregister: (url: string) => Promise<{ preview: string | null }>;
+  probe: (url: string) => Promise<boolean>;
+  isFatalStartError: (error: unknown) => boolean;
+  onTunnel: (next: Tunnel, stopApp: () => void) => void;
+  onStopped: (message: string) => void;
+  log: (line: string) => void;
+  logError: (line: string) => void;
+  sleep: (ms: number) => Promise<void>;
+  now: () => number;
+  backoffMs?: (attempt: number) => number;
+}
+
+/**
+ * The tunnel watchdog, extracted so tests drive it with fakes and a virtual
+ * clock. It fixes the 30/9/26 restart storm (~30 restarts in 4 minutes, one
+ * dev version per restart, then a Cloudflare 429 ban): the old code fanned
+ * every stopped tunnel's exit event into a new restart — including the stop
+ * the restart itself had just issued — and applied no backoff, grace, cap,
+ * or rate-limit handling. Now an exit restarts only the still-watched
+ * tunnel, every restart waits first, at most one runs at a time, a fresh
+ * tunnel gets a grace period, restarts are capped per 10 minutes, and a
+ * refused start stops supervision instead of extending the ban.
+ */
+export class DevTunnelSupervisor {
+  private current: Tunnel | null = null;
+  private misses = 0;
+  private restarting = false;
+  private supervised = true;
+  private graceUntil = 0;
+  private restartsAt: number[] = [];
+
+  constructor(private readonly deps: DevTunnelSupervisorDeps) {}
+
+  /** Watch a fresh tunnel: arm its exit event and start its grace period. */
+  watch(tunnel: Tunnel): void {
+    this.current = tunnel;
+    this.misses = 0;
+    this.graceUntil = this.deps.now() + TUNNEL_RESTART_GRACE_MS;
+    tunnel.onExit?.(() => void this.notifyExit(tunnel));
+  }
+
+  /**
+   * A tunnel child exited: restart only when it is still the watched one. A
+   * stop the supervisor issued itself (or any superseded tunnel) is never
+   * current anymore, so it can never self-feed a new restart.
+   */
+  async notifyExit(exited: Tunnel): Promise<void> {
+    if (!this.supervised || this.restarting || exited !== this.current) return;
+    await this.restart();
+  }
+
+  /** One probe step; the owner ticks every TUNNEL_PROBE_INTERVAL_MS. */
+  async tick(): Promise<void> {
+    if (!this.supervised || this.restarting) return;
+    const current = this.current;
+    if (!current) return;
+    if (await this.deps.probe(current.url)) {
+      this.misses = 0;
+      this.graceUntil = 0;
+      return;
+    }
+    // A fresh tunnel's DNS may not resolve yet: watch, don't count, until
+    // it answers once or the grace period passes.
+    if (this.deps.now() < this.graceUntil) return;
+    const stepped = countTunnelMiss(false, this.misses);
+    this.misses = stepped.misses;
+    if (stepped.restart) await this.restart();
+  }
+
+  /** Stop watching (cap reached, creation refused): no more tunnels are made. */
+  stop(message: string): void {
+    if (!this.supervised) return;
+    this.supervised = false;
+    this.deps.onStopped(message);
+  }
+
+  private async restart(): Promise<void> {
+    const current = this.current;
+    if (this.restarting || !this.supervised || !current) return;
+    const now = this.deps.now();
+    this.restartsAt = this.restartsAt.filter((at) => now - at < TUNNEL_RESTART_WINDOW_MS);
+    if (this.restartsAt.length >= MAX_TUNNEL_RESTARTS_PER_WINDOW) {
+      this.stop(
+        `Tunnel restarts paused: ${MAX_TUNNEL_RESTARTS_PER_WINDOW} restarts in the last 10 minutes — keeping this dev session; run \`queek app dev\` again when the network settles.`,
+      );
+      return;
+    }
+    this.restarting = true;
+    try {
+      // Backoff before every restart, not only failed starts.
+      await this.deps.sleep((this.deps.backoffMs ?? tunnelRestartBackoffMs)(this.restartsAt.length + 1));
+      const restarted = await restartDevTunnel({
+        oldTunnel: current,
+        start: this.deps.startTunnel,
+        stopApp: this.deps.stopApp,
+        startApp: this.deps.startApp,
+        waitForApp: this.deps.waitForApp,
+        reregister: this.deps.reregister,
+        log: this.deps.log,
+        logError: this.deps.logError,
+        sleep: this.deps.sleep,
+        backoffMs: this.deps.backoffMs,
+        isFatalStartError: this.deps.isFatalStartError,
+      });
+      this.restartsAt.push(this.deps.now());
+      this.deps.onTunnel(restarted.tunnel, restarted.stopApp);
+      this.watch(restarted.tunnel);
+    } catch (error) {
+      if (error instanceof TunnelRateLimitedError) {
+        this.stop(error.message);
+        return;
+      }
+      throw error instanceof Error ? error : new Error(String(error));
+    } finally {
+      this.restarting = false;
+    }
+  }
 }
 
 export default class AppDev extends BaseCommand {
@@ -413,13 +572,9 @@ export default class AppDev extends BaseCommand {
         failRun = reject;
       });
       if (tunnel.how === 'cloudflared') {
-        this.superviseTunnel({
-          get: () => tunnel,
-          set: (next, stopNewApp) => {
-            tunnel = next;
-            app = { stop: stopNewApp };
-          },
-          restart: () => startCloudflared(port, join(queekDir(flags.path), 'cloudflared.log')),
+        const logFile = join(queekDir(flags.path), 'cloudflared.log');
+        const supervisor = new DevTunnelSupervisor({
+          startTunnel: () => startCloudflared(port, logFile),
           stopApp: () => app.stop(),
           startApp: (url) => this.startApp(api, flags.path, first.manifest.slug, url, port, dev.command),
           // The relaunched app must answer locally before anything installs
@@ -430,8 +585,28 @@ export default class AppDev extends BaseCommand {
             current = await cycle(url);
             return { preview: current.preview };
           },
-          fail: (error) => failRun(error),
+          probe: (url) => tunnelProbe(url),
+          // A refused start (Cloudflare 429/1015 in the error or the log)
+          // stops supervision instead of extending the ban.
+          isFatalStartError: (error) => isTunnelRateLimited(error) || cloudflaredRateLimited(logFile),
+          onTunnel: (next, stopNewApp) => {
+            tunnel = next;
+            app = { stop: stopNewApp };
+          },
+          onStopped: (message) => {
+            clearInterval(timer);
+            this.logToStderr(message);
+          },
+          log: (line) => this.log(line),
+          logError: (line) => this.logToStderr(line),
+          sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
+          now: () => Date.now(),
         });
+        supervisor.watch(tunnel);
+        const timer = setInterval(() => {
+          void supervisor.tick().catch((error: Error) => failRun(error));
+        }, TUNNEL_PROBE_INTERVAL_MS);
+        timer.unref?.();
       }
       await running;
     });
@@ -497,69 +672,6 @@ export default class AppDev extends BaseCommand {
     const queek = queekDir(dir);
     mkdirSync(queek, { recursive: true });
     return startCloudflared(port, join(queek, 'cloudflared.log')).catch((error: Error) => this.error(error.message, { exit: 2 }));
-  }
-
-  /**
-   * Watch a cloudflared tunnel: probe /health every 30s and restart on
-   * consecutive misses, at once on process exit. A restart relaunches the
-   * app with the new APP_BASE_URL and waits for /health before the
-   * re-register. An exit that lands mid-restart queues one more pass
-   * instead of being swallowed. Give-up fails the run (the wait in run()
-   * rejects into the stoppers).
-   */
-  private superviseTunnel(state: {
-    get: () => Tunnel;
-    set: (next: Tunnel, stopApp: () => void) => void;
-    restart: () => Promise<Tunnel>;
-    stopApp: () => void;
-    startApp: (tunnelUrl: string) => Promise<{ stop: () => void }>;
-    waitForApp: () => Promise<boolean>;
-    reregister: (url: string) => Promise<{ preview: string | null }>;
-    fail: (error: Error) => void;
-  }): void {
-    let misses = 0;
-    let restarting = false;
-    let queued = false;
-    const down = async (): Promise<void> => {
-      if (restarting) {
-        queued = true;
-        return;
-      }
-      do {
-        queued = false;
-        restarting = true;
-        try {
-          const restarted = await restartDevTunnel({
-            oldTunnel: state.get(),
-            start: state.restart,
-            stopApp: state.stopApp,
-            startApp: state.startApp,
-            waitForApp: state.waitForApp,
-            reregister: state.reregister,
-            log: (line) => this.log(line),
-            logError: (line) => this.logToStderr(line),
-          });
-          state.set(restarted.tunnel, restarted.stopApp);
-          restarted.tunnel.onExit?.(() => void down());
-          misses = 0;
-        } catch (error) {
-          state.fail(error as Error);
-          return;
-        } finally {
-          restarting = false;
-        }
-      } while (queued);
-    };
-    state.get().onExit?.(() => void down());
-    const timer = setInterval(() => {
-      void (async () => {
-        if (restarting) return;
-        const stepped = countTunnelMiss(await tunnelProbe(state.get().url), misses);
-        misses = stepped.misses;
-        if (stepped.restart) await down();
-      })().catch((error: Error) => state.fail(error));
-    }, TUNNEL_PROBE_INTERVAL_MS);
-    timer.unref?.();
   }
 
   /**
