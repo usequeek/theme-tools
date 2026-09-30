@@ -4,7 +4,7 @@ import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 
 /**
  * `queek.app.toml` — the local source of truth for an app's manifest, mapped
- * EXACTLY to the backend's `AppManifestValidator::topLevelKeys()` (25 keys).
+ * EXACTLY to the backend's `AppManifestValidator::topLevelKeys()` (27 keys).
  * The server never fetches a live manifest URL; `deploy` pushes this file.
  *
  * Secrets NEVER live here: the registration secret (`whsec_…`) goes to
@@ -15,11 +15,11 @@ import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 export const APP_TOML = 'queek.app.toml';
 export const APP_TOML_VARIANT = (name: string): string => `queek.app.${name}.toml`;
 
-/** The 25 manifest keys the backend accepts — nothing else is sent. */
+/** The 27 manifest keys the backend accepts — nothing else is sent. */
 export const MANIFEST_KEYS = [
   'slug', 'name', 'description', 'icon', 'developer', 'version', 'distribution',
   'category', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing',
-  'developer_url', 'privacy_url', 'support_url', 'scopes', 'webhook_topics',
+  'developer_url', 'privacy_url', 'support_url', 'demo_url', 'video_url', 'scopes', 'webhook_topics',
   'settings', 'install_url', 'uninstall_url', 'settings_url', 'webhook_url',
   'extensions', 'dashboard',
 ] as const;
@@ -159,7 +159,7 @@ export function loadTomlFile(path: string): LoadedToml {
 }
 
 /**
- * Map the grouped toml onto the flat 25-key manifest the API takes.
+ * Map the grouped toml onto the flat 27-key manifest the API takes.
  * Throws `TomlError` (exit 2) on anything the backend would refuse —
  * the same names, the same limits, the same error text where it matters.
  */
@@ -263,7 +263,7 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   const webhooks = (doc.webhooks ?? {}) as Record<string, unknown>;
   const app = (doc.app ?? {}) as Record<string, unknown>;
   for (const [group, allowed, where] of [
-    [listing, ['description', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing', 'developer_url', 'privacy_url', 'support_url'], 'manifest.listing'],
+    [listing, ['description', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing', 'developer_url', 'privacy_url', 'support_url', 'demo_url', 'video_url'], 'manifest.listing'],
     [access, ['scopes'], 'manifest.access'],
     [webhooks, ['topics', 'url'], 'manifest.webhooks'],
     [app, ['install_url', 'uninstall_url', 'settings_url'], 'manifest.app'],
@@ -331,10 +331,19 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
     if (doc[key] !== undefined) manifest[key] = doc[key];
   }
   const listingOut: Record<string, unknown> = {};
-  for (const key of ['description', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing', 'developer_url', 'privacy_url', 'support_url']) {
+  for (const key of ['description', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing', 'developer_url', 'privacy_url', 'support_url', 'demo_url', 'video_url']) {
     if (listing[key] !== undefined) listingOut[key] = listing[key];
   }
   if ((listingOut.description_long as string)?.length > 2000) throw fail('The description_long field must be plain text (max 2000).');
+  // Listing promo URLs ride the same guard as the handoff URLs server-side
+  // (assertAppUrl: https + WebhookUrlGuard, capped 2048); the video host is
+  // a NAMED allowlist (YouTube/Vimeo — the store page embeds it). Mirrored
+  // here so a mistake fails on the developer's machine, same error text.
+  if (listingOut.demo_url !== undefined) checkCappedUrl(listingOut.demo_url, 'demo_url', fail);
+  if (listingOut.video_url !== undefined) {
+    checkCappedUrl(listingOut.video_url, 'video_url', fail);
+    if (!isAllowedVideoHost(listingOut.video_url as string)) throw fail('The video_url must be a YouTube or Vimeo URL.');
+  }
   Object.assign(manifest, listingOut);
   manifest.webhook_topics = topics as string[];
   if (webhookUrl !== undefined) manifest.webhook_url = webhookUrl as string;
@@ -346,7 +355,7 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
 
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
 
-  // Closed-world guard: the mapped object carries only the 25 keys, so a
+  // Closed-world guard: the mapped object carries only the 27 keys, so a
   // typo can never smuggle an unknown field past this point.
   for (const key of Object.keys(manifest)) {
     if (!(MANIFEST_KEYS as readonly string[]).includes(key)) throw new TomlError(unknownField(key));
@@ -357,6 +366,21 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
 /** Strict X.Y.Z for `deploy --version` (the backend auto-assigns when absent). */
 export function assertSemver(version: string): void {
   if (!SEMVER_RE.test(version)) throw new TomlError('The --version must be strict X.Y.Z (e.g. 1.2.0).');
+}
+
+/**
+ * The promo-video host allowlist, mirroring the backend's isAllowedVideoHost
+ * (YouTube/Vimeo — the store page embeds it): exact host or any subdomain,
+ * case-insensitive. Anything else is refused at deploy, so refuse it here.
+ */
+function isAllowedVideoHost(value: string): boolean {
+  let host = '';
+  try {
+    host = new URL(value).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return ['youtube.com', 'youtu.be', 'vimeo.com'].some((allowed) => host === allowed || host.endsWith(`.${allowed}`));
 }
 
 /** Offline https check mirroring assertAppUrl's scheme line (the guard's DNS half stays server-side). */
@@ -569,7 +593,7 @@ export function fromManifest(manifest: Record<string, unknown>): string {
     if (manifest[key] !== undefined) doc[key] = manifest[key];
   }
   const listing: Record<string, unknown> = {};
-  for (const key of ['description', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing', 'developer_url', 'privacy_url', 'support_url']) {
+  for (const key of ['description', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing', 'developer_url', 'privacy_url', 'support_url', 'demo_url', 'video_url']) {
     if (manifest[key] !== undefined) listing[key] = manifest[key];
   }
   if (Object.keys(listing).length > 0) doc.listing = listing;

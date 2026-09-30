@@ -115,6 +115,7 @@ describe('queek.app.toml', () => {
       slug: 'hello', name: 'Hello', version: '1.2.0', scopes: ['merchant-business_profile-read'],
       install_url: 'https://hello.example.com/install', uninstall_url: 'https://hello.example.com/uninstall',
       webhook_topics: ['orders/updated'], webhook_url: 'https://hello.example.com/hook',
+      demo_url: 'https://hello.example.com/demo', video_url: 'https://youtu.be/dQw4w9WgXcQ',
       settings: [{ key: 'greeting', label: 'Greeting', type: 'string' }],
     };
     const toml = fromManifest(server);
@@ -125,7 +126,41 @@ describe('queek.app.toml', () => {
     expect(back.manifest.version).toBeUndefined();
     expect(back.warnings).toEqual([]);
     expect(back.manifest.webhook_topics).toEqual(['orders/updated']);
+    expect(back.manifest.demo_url).toBe('https://hello.example.com/demo');
+    expect(back.manifest.video_url).toBe('https://youtu.be/dQw4w9WgXcQ');
     expect(back.manifest.settings).toEqual([{ key: 'greeting', label: 'Greeting', type: 'string' }]);
+  });
+
+  it('maps listing demo_url/video_url and refuses what the backend refuses', () => {
+    const promo = (demo: string, video: string): string => `${BASE}\n[listing]\ndemo_url = "${demo}"\nvideo_url = "${video}"\n`;
+    const ok = toManifest(loadTomlFile(stageFile(promo('https://hello.example.com/demo', 'https://www.youtube.com/watch?v=x'))).doc);
+    expect(ok.manifest.demo_url).toBe('https://hello.example.com/demo');
+    expect(ok.manifest.video_url).toBe('https://www.youtube.com/watch?v=x');
+    const vimeo = toManifest(loadTomlFile(stageFile(promo('https://hello.example.com/demo', 'https://player.vimeo.com/video/1'))).doc);
+    expect(vimeo.manifest.video_url).toBe('https://player.vimeo.com/video/1');
+    expect(() => toManifest(loadTomlFile(stageFile(promo('http://hello.example.com/demo', 'https://www.youtube.com/watch?v=x'))).doc)).toThrow(
+      'The demo_url must be an https URL.',
+    );
+    expect(() => toManifest(loadTomlFile(stageFile(promo('https://hello.example.com/demo', 'https://evil.example.com/v.mp4'))).doc)).toThrow(
+      'The video_url must be a YouTube or Vimeo URL.',
+    );
+  });
+
+  it('caps listing promo URLs at 2048, refuses http video, accepts uppercase hosts', () => {
+    const promo = (demo: string, video: string): string => `${BASE}\n[listing]\ndemo_url = "${demo}"\nvideo_url = "${video}"\n`;
+    const long = (rest: string): string => `https://${rest}/${'x'.repeat(2048)}`;
+    expect(() => toManifest(loadTomlFile(stageFile(promo(long('hello.example.com/demo'), 'https://www.youtube.com/watch?v=x'))).doc)).toThrow(
+      'The demo_url must not be longer than 2048 characters.',
+    );
+    expect(() => toManifest(loadTomlFile(stageFile(promo('https://hello.example.com/demo', long('www.youtube.com/watch?v=x')))).doc)).toThrow(
+      'The video_url must not be longer than 2048 characters.',
+    );
+    expect(() => toManifest(loadTomlFile(stageFile(promo('https://hello.example.com/demo', 'http://www.youtube.com/watch?v=x'))).doc)).toThrow(
+      'The video_url must be an https URL.',
+    );
+    const upper = toManifest(loadTomlFile(stageFile(promo('https://HELLO.EXAMPLE.COM/demo', 'https://WWW.YOUTUBE.COM/watch?v=x'))).doc);
+    expect(upper.manifest.demo_url).toBe('https://HELLO.EXAMPLE.COM/demo');
+    expect(upper.manifest.video_url).toBe('https://WWW.YOUTUBE.COM/watch?v=x');
   });
 
   it('checks dashboard enums and the action-scope grant rule', () => {
