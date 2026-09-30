@@ -8,7 +8,7 @@ import { apiBase } from '../../lib/app-auth.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
 import { ensureDevSecrets, envLocalPath, MissingSecretError, readEnvFile, resolveDevSecret, writeEnvLocal } from '../../lib/app-env.js';
-import { startSupervised, waitForHealthy } from '../../lib/app-run.js';
+import { startSupervised, waitForHealthy, type FetchFn } from '../../lib/app-run.js';
 import { manualTunnel, startCloudflared, type Tunnel } from '../../lib/app-tunnel.js';
 import { BaseCommand } from '../../lib/base-command.js';
 
@@ -105,6 +105,98 @@ export async function withDevResources(stops: Array<() => void>, task: () => Pro
   }
 }
 
+/**
+ * Dead-tunnel supervision (the Booking outage: the quick tunnel died and
+ * `dev` kept serving the dead URL). The /health probe runs every 30s; two
+ * misses in a row — or the cloudflared child exiting — restarts with
+ * backoff, giving up after a sane number of failed starts with a clear
+ * message. The restart reuses startCloudflared and the toml-save cycle; the
+ * dead tunnel stops on every path, so no orphan cloudflared is left.
+ */
+export const TUNNEL_PROBE_INTERVAL_MS = 30_000;
+export const TUNNEL_FAILURES_BEFORE_RESTART = 2;
+export const MAX_TUNNEL_RESTARTS = 5;
+
+/** Backoff between tunnel restarts: 5s, 10s, 20s, then 30s (attempt is 1-based). */
+export function tunnelRestartBackoffMs(attempt: number): number {
+  return Math.min(5_000 * 2 ** (attempt - 1), 30_000);
+}
+
+/** The one restart line: old → new tunnel with the new Preview URL. */
+export function tunnelRestartLine(oldUrl: string, newUrl: string, preview: string | null): string {
+  return `Tunnel restarted: ${oldUrl} → ${newUrl} — Preview URL: ${preview ?? newUrl}`;
+}
+
+/** Consecutive probe misses: restart on N in a row, reset on success. */
+export function countTunnelMiss(ok: boolean, misses: number): { misses: number; restart: boolean } {
+  if (ok) return { misses: 0, restart: false };
+  const next = misses + 1;
+  return next >= TUNNEL_FAILURES_BEFORE_RESTART ? { misses: 0, restart: true } : { misses: next, restart: false };
+}
+
+/** One /health probe of the tunnel URL: down, refused and non-2xx all read as false. */
+export async function tunnelProbe(url: string, fetchFn?: FetchFn): Promise<boolean> {
+  const get = fetchFn ?? (async (target: string) => fetch(target));
+  try {
+    return (await get(`${url}/health`)).ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * One tunnel restart: start the next tunnel, stop the dead one, re-register
+ * (the toml-save cycle) with the new URL, print the one restart line.
+ * Failed starts back off and give up after MAX_TUNNEL_RESTARTS with a clear
+ * message; the dead tunnel stops on every path. A failed re-register keeps
+ * the new tunnel and logs — the tunnel is up, the next save retries it.
+ */
+export async function restartDevTunnel(options: {
+  oldTunnel: Tunnel;
+  start: () => Promise<Tunnel>;
+  reregister: (url: string) => Promise<{ preview: string | null }>;
+  log: (line: string) => void;
+  logError: (line: string) => void;
+  sleep?: (ms: number) => Promise<void>;
+  maxRestarts?: number;
+  backoffMs?: (attempt: number) => number;
+}): Promise<Tunnel> {
+  const max = options.maxRestarts ?? MAX_TUNNEL_RESTARTS;
+  const backoff = options.backoffMs ?? tunnelRestartBackoffMs;
+  const sleep = options.sleep ?? ((ms: number) => new Promise((done) => setTimeout(done, ms)));
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= max; attempt++) {
+    if (attempt > 1) await sleep(backoff(attempt - 1));
+    let next: Tunnel;
+    try {
+      next = await options.start();
+    } catch (error) {
+      lastError = error;
+      continue;
+    }
+    try {
+      options.oldTunnel.stop();
+    } catch {
+      /* already dead — the new tunnel is what matters */
+    }
+    let preview: string | null = null;
+    try {
+      preview = (await options.reregister(next.url)).preview;
+    } catch (error) {
+      options.logError(`Re-register after tunnel restart failed: ${(error as Error).message}`);
+    }
+    options.log(handoffLine('queek', tunnelRestartLine(options.oldTunnel.url, next.url, preview)));
+    return next;
+  }
+  try {
+    options.oldTunnel.stop();
+  } catch {
+    /* already dead */
+  }
+  const reason = lastError instanceof Error ? `: ${lastError.message}` : '';
+  throw new Error(`Tunnel restart failed ${max} times${reason} — check your network or pass --url, then run \`queek app dev\` again.`);
+}
+
 export default class AppDev extends BaseCommand {
   // A long-running watcher has no result to print.
   static override enableJsonFlag = false;
@@ -165,7 +257,9 @@ export default class AppDev extends BaseCommand {
     );
 
     const tomlPath = resolveTomlPath(flags.path, flags.config);
-    const tunnel = await this.tunnel(flags.path, flags.url, port);
+    // let: a dead cloudflared tunnel restarts in place (superviseTunnel
+    // below); the stopper always reads the current one, so no orphan.
+    let tunnel = await this.tunnel(flags.path, flags.url, port);
     // B2: the tunnel (and the app, once started) stop on EVERY exit path —
     // error exits throw through the task into the finally.
     const stops: Array<() => void> = [() => tunnel.stop()];
@@ -181,9 +275,12 @@ export default class AppDev extends BaseCommand {
       process.once('SIGINT', stop);
       process.once('SIGTERM', stop);
 
-      const cycle = async (): Promise<{ store: DevStore; preview: string | null; appPid: string }> => {
+      // The tunnel URL is a parameter (not the closure): the toml watcher
+      // re-registers the current tunnel, the restart path the new one —
+      // both run this same cycle.
+      const cycle = async (tunnelUrl: string): Promise<{ store: DevStore; preview: string | null; appPid: string }> => {
         const { manifest } = loadApp(flags.path, flags.config);
-        const devManifest = withDevUrls(manifest, tunnel.url);
+        const devManifest = withDevUrls(manifest, tunnelUrl);
         const result = await api.deploy(devManifest).catch((error: Error) => this.error(error.message, { exit: 1 }));
         // Development builds release even with the explicit-submit switch on —
         // but if the backend ever gates one, dev cannot install what was never
@@ -219,15 +316,15 @@ export default class AppDev extends BaseCommand {
             }
             const retryable = failure?.status === 502 || failure?.errorType === 'app_handoff_failed';
             if (retryable && attempt < 4) {
-              this.log(handoffLine('queek', `Install handoff could not reach ${tunnel.url} yet — retrying (${attempt}/3)…`));
+              this.log(handoffLine('queek', `Install handoff could not reach ${tunnelUrl} yet — retrying (${attempt}/3)…`));
               await new Promise((done) => setTimeout(done, 5_000));
               continue;
             }
             const reason = failure ? `${failure.message}${failure.errorType ? ` (${failure.errorType})` : ''}` : (error as Error).message;
-            this.error(`Dev install on '${store.name}' failed: ${reason}. Queek calls your app at ${tunnel.url} — check the [app] log above and that ${tunnel.url}/health answers.`, { exit: 1 });
+            this.error(`Dev install on '${store.name}' failed: ${reason}. Queek calls your app at ${tunnelUrl} — check the [app] log above and that ${tunnelUrl}/health answers.`, { exit: 1 });
           }
         }
-        this.log(handoffLine('queek', `Dev install: ${result.slug} ${result.version} on dev store '${store.name}' ← ${tunnel.url} (install ${installed.status})`));
+        this.log(handoffLine('queek', `Dev install: ${result.slug} ${result.version} on dev store '${store.name}' ← ${tunnelUrl} (install ${installed.status})`));
         // The served preview wins; admin_url+slug rebuilds only as fallback.
         const preview = resolvePreview(installed.preview_url, store.admin_url, result.slug);
         return { store, preview, appPid: result.p_id };
@@ -244,18 +341,38 @@ export default class AppDev extends BaseCommand {
       if (!reachable) {
         this.logToStderr(`The tunnel ${tunnel.url} did not answer /health within 60s — installing anyway; the install retries if Queek cannot reach it yet.`);
       }
-      let current = await cycle();
+      let current = await cycle(tunnel.url);
       this.readyBlock(tunnel.url, current.preview, current.store, current.appPid);
       this.log(`Watching ${tomlPath} — save it to re-register ([dev] changes need a restart). Ctrl+C to stop.`);
       watch(tomlPath, { persistent: true }, async () => {
         try {
-          current = await cycle();
+          current = await cycle(tunnel.url);
           this.readyBlock(tunnel.url, current.preview, current.store, current.appPid);
         } catch (error) {
           this.logToStderr(`Re-register failed: ${(error as Error).message}`);
         }
       });
-      await new Promise(() => {});
+      // A give-up rejects the wait below, so the run throws through
+      // withDevResources (stoppers kill the app and the latest tunnel).
+      let failRun: (error: Error) => void = () => {};
+      const running = new Promise<never>((_, reject) => {
+        failRun = reject;
+      });
+      if (tunnel.how === 'cloudflared') {
+        this.superviseTunnel({
+          get: () => tunnel,
+          set: (next) => {
+            tunnel = next;
+          },
+          restart: () => startCloudflared(port, join(queekDir(flags.path), 'cloudflared.log')),
+          reregister: async (url) => {
+            current = await cycle(url);
+            return { preview: current.preview };
+          },
+          fail: (error) => failRun(error),
+        });
+      }
+      await running;
     });
   }
 
@@ -332,6 +449,61 @@ export default class AppDev extends BaseCommand {
     const queek = queekDir(dir);
     mkdirSync(queek, { recursive: true });
     return startCloudflared(port, join(queek, 'cloudflared.log')).catch((error: Error) => this.error(error.message, { exit: 2 }));
+  }
+
+  /**
+   * Watch a cloudflared tunnel: probe /health every 30s and restart on
+   * consecutive misses, at once on process exit. An exit that lands
+   * mid-restart queues one more pass instead of being swallowed. Give-up
+   * fails the run (the wait in run() rejects into the stoppers).
+   */
+  private superviseTunnel(state: {
+    get: () => Tunnel;
+    set: (next: Tunnel) => void;
+    restart: () => Promise<Tunnel>;
+    reregister: (url: string) => Promise<{ preview: string | null }>;
+    fail: (error: Error) => void;
+  }): void {
+    let misses = 0;
+    let restarting = false;
+    let queued = false;
+    const down = async (): Promise<void> => {
+      if (restarting) {
+        queued = true;
+        return;
+      }
+      do {
+        queued = false;
+        restarting = true;
+        try {
+          const next = await restartDevTunnel({
+            oldTunnel: state.get(),
+            start: state.restart,
+            reregister: state.reregister,
+            log: (line) => this.log(line),
+            logError: (line) => this.logToStderr(line),
+          });
+          state.set(next);
+          next.onExit?.(() => void down());
+          misses = 0;
+        } catch (error) {
+          state.fail(error as Error);
+          return;
+        } finally {
+          restarting = false;
+        }
+      } while (queued);
+    };
+    state.get().onExit?.(() => void down());
+    const timer = setInterval(() => {
+      void (async () => {
+        if (restarting) return;
+        const stepped = countTunnelMiss(await tunnelProbe(state.get().url), misses);
+        misses = stepped.misses;
+        if (stepped.restart) await down();
+      })().catch((error: Error) => state.fail(error));
+    }, TUNNEL_PROBE_INTERVAL_MS);
+    timer.unref?.();
   }
 
   /**

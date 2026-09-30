@@ -12,6 +12,8 @@ export interface Tunnel {
   how: 'flag' | 'cloudflared';
   /** Kill the tunnel (cloudflared only; a `--url` tunnel is yours). */
   stop: () => void;
+  /** Fires when the cloudflared child exits (absent for `--url` tunnels, which the CLI does not own). */
+  onExit?: (listener: () => void) => void;
 }
 
 const noop = (): void => {};
@@ -59,6 +61,18 @@ export async function startCloudflared(port: number, logFile: string): Promise<T
   child.once('error', (error: Error) => {
     spawnError = error;
   });
+  // `queek app dev` restarts a dead tunnel: subscribers learn the child
+  // exited (a dead tunnel never fails the run by itself).
+  const exitListeners = new Set<() => void>();
+  child.once('exit', () => {
+    for (const listener of exitListeners) {
+      try {
+        listener();
+      } catch {
+        /* a dead tunnel never fails the run */
+      }
+    }
+  });
   child.unref();
   const stop = (): void => {
     try {
@@ -68,11 +82,14 @@ export async function startCloudflared(port: number, logFile: string): Promise<T
     }
   };
 
+  const onExit = (listener: () => void): void => {
+    exitListeners.add(listener);
+  };
   const deadline = Date.now() + 25_000;
   for (;;) {
     if (existsSync(logFile)) {
       const url = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/i.exec(readFileSync(logFile, 'utf8'))?.[0];
-      if (url) return { url, how: 'cloudflared', stop };
+      if (url) return { url, how: 'cloudflared', stop, onExit };
     }
     if (spawnError) {
       stop();
