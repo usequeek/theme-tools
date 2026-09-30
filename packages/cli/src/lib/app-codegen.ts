@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import openapiTS, { astToString, type OpenAPI3 } from 'openapi-typescript';
 import { queekDir, resolveTomlPath } from './app-manifest.js';
@@ -13,7 +13,15 @@ import { queekDir, resolveTomlPath } from './app-manifest.js';
  * openapi-typescript at the same pinned version). A direct import is not
  * possible: the script lives in another repo (`@usequeek/app-sdk`, never a
  * CLI dependency) and the CLI ships the compiled output — so the checks
- * below mirror it constant-for-constant instead of forking it.
+ * below mirror it constant-for-constant instead of forking it. Coupling
+ * note: the SDK pins its `openapi-typescript` independently, so when the
+ * SDK bumps its pin, bump the CLI's `dependencies` entry in lockstep —
+ * otherwise app-owned output and SDK output can diverge in shape.
+ *
+ * The recorded pin is the `Spec sha256:` line of the committed
+ * `types/merchant.ts` provenance header (review-visible per G3);
+ * `.queek/codegen.json` is a local debug aid (`.queek/` is gitignored in
+ * apps) that the unchanged check prefers, falling back to the header.
  */
 
 export const MERCHANT_SPEC_URL = 'https://api.usequeek.com/docs/merchant.json';
@@ -42,9 +50,14 @@ export class CodegenError extends Error {
 
 export interface CodegenOk {
   offline: false;
-  /** The written types file, relative to the app dir. */
+  /**
+   * True when the recorded hash already matched: nothing was rewritten, so
+   * reruns leave the tree clean.
+   */
+  unchanged: boolean;
+  /** The types file, relative to the app dir (written unless unchanged). */
   file: string;
-  /** The written record file, relative to the app dir. */
+  /** The record file, relative to the app dir (written unless unchanged). */
   recordFile: string;
   source: string;
   /** sha256 of the exact fetched/read bytes (what B1's `x-queek-spec-sha` hashes). */
@@ -78,7 +91,7 @@ export type SpecGenerate = (spec: Record<string, unknown>) => Promise<string>;
  * as a confusing SyntaxError before it.
  */
 export function looksLikeHtml(text: string): boolean {
-  return text.trimStart().startsWith('<');
+  return text.replace(/^\uFEFF/, '').trimStart().startsWith('<');
 }
 
 export function isHtmlContentType(contentType: string | null): boolean {
@@ -149,6 +162,53 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+/**
+ * Crash-safe write: the temp file lives in the same directory, so the
+ * rename is one atomic step — a crash can never leave a half-written
+ * `types/merchant.ts` beside a stale record (or vice versa).
+ */
+export function atomicWriteFile(path: string, content: string): void {
+  const tmp = `${path}.${process.pid}.tmp`;
+  writeFileSync(tmp, content);
+  renameSync(tmp, path);
+}
+
+const SPEC_SHA_RE = /^ \* Spec sha256: ([0-9a-f]{64})$/m;
+
+/**
+ * The recorded pin: `.queek/codegen.json` first (the local debug aid),
+ * falling back to the committed `types/merchant.ts` provenance header —
+ * the header is what survives a fresh clone (`.queek/` is gitignored in
+ * apps) and what reviewers see in diffs. Null when neither exists.
+ */
+export function recordedSpecHash(appDir: string): string | null {
+  const dir = resolve(appDir);
+  try {
+    const record = JSON.parse(readFileSync(join(queekDir(dir), CODEGEN_RECORD_FILE), 'utf8')) as { specSha256?: unknown };
+    if (typeof record.specSha256 === 'string' && /^[0-9a-f]{64}$/.test(record.specSha256)) return record.specSha256;
+  } catch {
+    // Absent or corrupt — fall through to the committed header below.
+  }
+  let types: string;
+  try {
+    types = readFileSync(join(dir, CODEGEN_TYPES_FILE), 'utf8');
+  } catch {
+    return null;
+  }
+  return SPEC_SHA_RE.exec(types)?.[1] ?? null;
+}
+
+/** The exact stderr line for an offline run (kept here so tests pin the command's mapping). */
+export function offlineStderr(result: CodegenSkipped): string {
+  return warnLine(result.reason);
+}
+
+/** A refusal's exit: `CodegenError`/`TomlError` carry their own, anything else is 1. */
+export function errorExitCode(error: unknown): number {
+  const code = (error as { exitCode?: unknown } | null)?.exitCode;
+  return typeof code === 'number' ? code : 1;
+}
+
 export function provenanceHeader(source: string, hash: string): string {
   return (
     `/**\n` +
@@ -175,7 +235,11 @@ export interface RunCodegenOptions {
  * existing types kept (MUST-4, mirroring `check-merchant-snapshot.mjs`).
  * Any other failure on the default live URL does the same (a transient
  * edge/backend problem must never red CI); on an explicit source it throws,
- * so a named file/URL is refused loudly, never silently kept.
+ * so a named file/URL is refused loudly, never silently kept. When the
+ * recorded hash already matches and the types file exists, nothing is
+ * rewritten (`unchanged`, so reruns leave the tree clean) — delete
+ * `types/merchant.ts` to force a regeneration (e.g. after a generator
+ * upgrade with an unchanged spec).
  */
 export async function runCodegen(options: RunCodegenOptions): Promise<CodegenResult> {
   const { appDir, variant, source, fetchFn, generateFn, now } = options;
@@ -232,6 +296,11 @@ export async function runCodegen(options: RunCodegenOptions): Promise<CodegenRes
   const normalized = normalizeSpec(spec);
   const hash = specSha256(specText);
   const pathCount = Object.keys(spec.paths).length;
+  const file = CODEGEN_TYPES_FILE;
+  const recordFile = join('.queek', CODEGEN_RECORD_FILE);
+  if (recordedSpecHash(dir) === hash && existsSync(join(dir, file))) {
+    return { offline: false, unchanged: true, file, recordFile, source: from, specSha256: hash, paths: pathCount };
+  }
   const info = isRecord(spec.info) ? spec.info : null;
   const specVersion = typeof info?.version === 'string' ? info.version : null;
   const serverHash = typeof info?.['x-queek-spec-sha'] === 'string' ? (info['x-queek-spec-sha'] as string) : undefined;
@@ -239,9 +308,8 @@ export async function runCodegen(options: RunCodegenOptions): Promise<CodegenRes
   const body = await generate(normalized).catch((error: Error) => {
     throw new CodegenError(`openapi-typescript failed: ${error.message}`);
   });
-  const file = CODEGEN_TYPES_FILE;
   mkdirSync(join(dir, 'types'), { recursive: true });
-  writeFileSync(join(dir, file), `${provenanceHeader(from, hash)}${body}`);
+  atomicWriteFile(join(dir, file), `${provenanceHeader(from, hash)}${body}`);
   mkdirSync(queekDir(dir), { recursive: true });
   const record: CodegenRecord = {
     source: from,
@@ -251,6 +319,6 @@ export async function runCodegen(options: RunCodegenOptions): Promise<CodegenRes
     generatedAt: (now ?? (() => new Date()))().toISOString(),
     paths: pathCount,
   };
-  writeFileSync(join(queekDir(dir), CODEGEN_RECORD_FILE), `${JSON.stringify(record, null, 2)}\n`);
-  return { offline: false, file, recordFile: join('.queek', CODEGEN_RECORD_FILE), source: from, specSha256: hash, paths: pathCount };
+  atomicWriteFile(join(queekDir(dir), CODEGEN_RECORD_FILE), `${JSON.stringify(record, null, 2)}\n`);
+  return { offline: false, unchanged: false, file, recordFile, source: from, specSha256: hash, paths: pathCount };
 }

@@ -1,24 +1,30 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  atomicWriteFile,
   CodegenError,
+  errorExitCode,
   generateMerchantTypes,
   isHtmlContentType,
   looksLikeHtml,
   MERCHANT_API_BASE,
   MERCHANT_SPEC_URL,
   normalizeSpec,
+  offlineStderr,
   parseSpecText,
   provenanceHeader,
+  recordedSpecHash,
   runCodegen,
   sanityCheckSpec,
   specSha256,
   warnLine,
   type SpecResponse,
 } from '../src/lib/app-codegen.js';
+import { TomlError } from '../src/lib/app-manifest.js';
 
 const TOML = `
 slug = "hello"
@@ -96,6 +102,11 @@ describe('HTML refusal (Cloudflare error page)', () => {
     expect(() => parseSpecText('<html>nope</html>', 'live')).toThrow('Refused HTML');
     expect(() => parseSpecText('not json {', 'live')).toThrow('did not parse as JSON');
     expect(parseSpecText('{"openapi":"3.1.0"}', 'live')).toEqual({ openapi: '3.1.0' });
+  });
+
+  it('catches BOM-prefixed HTML too (an edge may prepend U+FEFF)', () => {
+    expect(looksLikeHtml('﻿<html>502</html>')).toBe(true);
+    expect(() => parseSpecText('﻿<html>502</html>', 'live')).toThrow('Refused HTML');
   });
 });
 
@@ -230,6 +241,121 @@ describe('runCodegen with fakes', () => {
       runCodegen({ appDir: dir, fetchFn: fakeFetch(JSON.stringify(specObject())), generateFn: async () => { throw new Error('boom'); } }),
     ).rejects.toThrow('openapi-typescript failed: boom');
     expect(existsSync(join(dir, 'types', 'merchant.ts'))).toBe(false);
+  });
+});
+
+describe('recordedSpecHash (MUST-1: the header is the pin, the JSON a debug aid)', () => {
+  it('is null with neither record nor types, and reads the record first', async () => {
+    const dir = stageApp();
+    expect(recordedSpecHash(dir)).toBeNull();
+    const text = JSON.stringify(specObject());
+    await runCodegen({ appDir: dir, fetchFn: fakeFetch(text), generateFn: fakeGenerate, now: FIXED_NOW });
+    expect(recordedSpecHash(dir)).toBe(specSha256(text));
+  });
+
+  it('falls back to the committed header once .queek/ is gone (fresh clone)', async () => {
+    const dir = stageApp();
+    const text = JSON.stringify(specObject());
+    await runCodegen({ appDir: dir, fetchFn: fakeFetch(text), generateFn: fakeGenerate, now: FIXED_NOW });
+    rmSync(join(dir, '.queek'), { recursive: true, force: true });
+    expect(recordedSpecHash(dir)).toBe(specSha256(text));
+  });
+
+  it('ignores a corrupt record and a malformed hash, using the header instead', async () => {
+    const dir = stageApp();
+    const text = JSON.stringify(specObject());
+    await runCodegen({ appDir: dir, fetchFn: fakeFetch(text), generateFn: fakeGenerate, now: FIXED_NOW });
+    writeFileSync(join(dir, '.queek', 'codegen.json'), 'not json {');
+    expect(recordedSpecHash(dir)).toBe(specSha256(text));
+    writeFileSync(join(dir, '.queek', 'codegen.json'), JSON.stringify({ specSha256: 'bogus' }));
+    expect(recordedSpecHash(dir)).toBe(specSha256(text));
+  });
+});
+
+describe('skip-when-unchanged (reruns leave the tree clean)', () => {
+  it('rewrites nothing on a rerun: same bytes, stale generatedAt, generator idle', async () => {
+    const dir = stageApp();
+    const text = JSON.stringify(specObject());
+    let calls = 0;
+    const counting = async (): Promise<string> => {
+      calls += 1;
+      return CANNED_TS;
+    };
+    const first = await runCodegen({ appDir: dir, fetchFn: fakeFetch(text), generateFn: counting, now: FIXED_NOW });
+    expect(first.offline).toBe(false);
+    if (first.offline) return;
+    expect(first.unchanged).toBe(false);
+    const typesBefore = readFileSync(join(dir, 'types', 'merchant.ts'), 'utf8');
+
+    const second = await runCodegen({
+      appDir: dir,
+      fetchFn: fakeFetch(text),
+      generateFn: counting,
+      now: () => new Date('2027-01-01T00:00:00.000Z'),
+    });
+    expect(second.offline).toBe(false);
+    if (second.offline) return;
+    expect(second.unchanged).toBe(true);
+    expect(calls).toBe(1);
+    expect(readFileSync(join(dir, 'types', 'merchant.ts'), 'utf8')).toBe(typesBefore);
+    expect(JSON.parse(readFileSync(join(dir, '.queek', 'codegen.json'), 'utf8')).generatedAt).toBe('2026-09-30T00:00:00.000Z');
+  });
+
+  it('regenerates when the types file is gone even though the record matches', async () => {
+    const dir = stageApp();
+    const text = JSON.stringify(specObject());
+    await runCodegen({ appDir: dir, fetchFn: fakeFetch(text), generateFn: fakeGenerate, now: FIXED_NOW });
+    rmSync(join(dir, 'types', 'merchant.ts'));
+    const rerun = await runCodegen({ appDir: dir, fetchFn: fakeFetch(text), generateFn: fakeGenerate, now: FIXED_NOW });
+    expect(rerun.offline).toBe(false);
+    if (rerun.offline) return;
+    expect(rerun.unchanged).toBe(false);
+    expect(existsSync(join(dir, 'types', 'merchant.ts'))).toBe(true);
+  });
+});
+
+describe('atomicWriteFile (crash-safe pair of writes)', () => {
+  it('writes the content and leaves no temp file behind', () => {
+    const dir = stageApp();
+    mkdirSync(join(dir, 'types'), { recursive: true });
+    atomicWriteFile(join(dir, 'types', 'merchant.ts'), 'one');
+    atomicWriteFile(join(dir, 'types', 'merchant.ts'), 'two');
+    expect(readFileSync(join(dir, 'types', 'merchant.ts'), 'utf8')).toBe('two');
+    const leftovers = (names: string[]): string[] => names.filter((name) => name.endsWith('.tmp'));
+    expect(leftovers(readdirSync(join(dir, 'types')))).toEqual([]);
+    expect(leftovers(readdirSync(dir))).toEqual([]);
+  });
+
+  it('a full run leaves no temp files in types/ or .queek/', async () => {
+    const dir = stageApp();
+    await runCodegen({ appDir: dir, fetchFn: fakeFetch(JSON.stringify(specObject())), generateFn: fakeGenerate, now: FIXED_NOW });
+    const leftovers = (names: string[]): string[] => names.filter((name) => name.endsWith('.tmp'));
+    expect(leftovers(readdirSync(join(dir, 'types')))).toEqual([]);
+    expect(leftovers(readdirSync(join(dir, '.queek')))).toEqual([]);
+  });
+});
+
+describe('command mapping (offline→stderr, refusal→exit)', () => {
+  it('offlineStderr pins the exact stderr line', () => {
+    expect(offlineStderr({ offline: true, reason: 'kept' })).toBe('Warning: kept');
+  });
+
+  it('errorExitCode carries CodegenError/TomlError exits, defaulting to 1', () => {
+    expect(errorExitCode(new CodegenError('refused', 2))).toBe(2);
+    expect(errorExitCode(new CodegenError('nope'))).toBe(1);
+    expect(errorExitCode(new TomlError('no toml here'))).toBe(2);
+    expect(errorExitCode(new Error('boom'))).toBe(1);
+    expect(errorExitCode('a string')).toBe(1);
+  });
+});
+
+describe('generator pin coupling (SDK bumps must propagate here)', () => {
+  it('runs the exact openapi-typescript declared in package.json', () => {
+    const require = createRequire(import.meta.url);
+    const cli = require('../package.json') as { dependencies: Record<string, string> };
+    const installed = require('openapi-typescript/package.json') as { version: string };
+    expect(cli.dependencies['openapi-typescript']).toBe('7.13.0');
+    expect(installed.version).toBe(cli.dependencies['openapi-typescript']);
   });
 });
 
