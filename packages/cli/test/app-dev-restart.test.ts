@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   buildDevAppEnv,
   countTunnelMiss,
+  createDeployQueue,
   DevTunnelSupervisor,
   isTunnelRateLimited,
   MAX_TUNNEL_RESTARTS,
@@ -372,6 +373,8 @@ function fakeWatchedTunnel(calls: string[], url: string): { tunnel: Tunnel; fire
 
 function supervisorHarness(hooks: {
   probeHealthy?: boolean;
+  probe?: (url: string) => Promise<boolean>;
+  appHealthy?: boolean;
   startTunnel?: () => Promise<Tunnel>;
   reregister?: (url: string) => Promise<{ preview: string | null }>;
   isFatalStartError?: (error: unknown) => boolean;
@@ -380,12 +383,14 @@ function supervisorHarness(hooks: {
   calls: string[];
   tunnels: Tunnel[];
   stopped: string[];
+  errors: Error[];
   advance: (ms: number) => void;
 } {
   let now = 0;
   const calls: string[] = [];
   const tunnels: Tunnel[] = [];
   const stopped: string[] = [];
+  const errors: Error[] = [];
   let n = 0;
   const sup = new DevTunnelSupervisor({
     startTunnel: hooks.startTunnel ??
@@ -408,22 +413,26 @@ function supervisorHarness(hooks: {
         },
       };
     },
-    waitForApp: async () => true,
+    waitForApp: async () => hooks.appHealthy ?? true,
     reregister: hooks.reregister ??
       (async (url) => {
         calls.push(`reregister:${url}`);
         return { preview: PREVIEW };
       }),
-    probe: async (url) => {
-      calls.push(`probe:${url}`);
-      return hooks.probeHealthy ?? true;
-    },
+    probe: hooks.probe ??
+      (async (url) => {
+        calls.push(`probe:${url}`);
+        return hooks.probeHealthy ?? true;
+      }),
     isFatalStartError: hooks.isFatalStartError ?? isTunnelRateLimited,
     onTunnel: (next) => {
       calls.push(`onTunnel:${next.url}`);
     },
     onStopped: (message) => {
       stopped.push(message);
+    },
+    onError: (error) => {
+      errors.push(error);
     },
     log: (line) => {
       calls.push(`log:${line}`);
@@ -437,7 +446,7 @@ function supervisorHarness(hooks: {
     },
     now: () => now,
   });
-  return { sup, calls, tunnels, stopped, advance: (ms) => { now += ms; } };
+  return { sup, calls, tunnels, stopped, errors, advance: (ms) => { now += ms; } };
 }
 
 const startsOf = (calls: string[]): string[] => calls.filter((call) => call.startsWith('start:'));
@@ -535,7 +544,7 @@ describe('DevTunnelSupervisor (the 30/9/26 restart-storm regression)', () => {
     await sup.notifyExit(tunnels[2] as Tunnel);
     expect(startsOf(calls)).toHaveLength(MAX_TUNNEL_RESTARTS_PER_WINDOW);
     expect(stopped).toHaveLength(1);
-    expect(stopped[0]).toContain(`${MAX_TUNNEL_RESTARTS_PER_WINDOW} restarts`);
+    expect(stopped[0]).toContain(`${MAX_TUNNEL_RESTARTS_PER_WINDOW} tunnel starts`);
     // Re-register ran exactly once per successful restart — never a loop.
     expect(calls.filter((call) => call.startsWith('reregister:'))).toHaveLength(MAX_TUNNEL_RESTARTS_PER_WINDOW);
     // Stopped means stopped: further exits and ticks do nothing.
@@ -611,5 +620,146 @@ describe('DevTunnelSupervisor (the 30/9/26 restart-storm regression)', () => {
     expect(error).toBeInstanceOf(TunnelRateLimitedError);
     expect(starts).toBe(1);
     expect(error?.message).toContain('rate-limiting');
+  });
+
+  it('an exit-triggered terminal failure routes to onError: no hang, no unhandled rejection', async () => {
+    const reregister = vi.fn(async (_url: string) => ({ preview: PREVIEW }));
+    const { sup, calls, stopped, errors } = supervisorHarness({ probeHealthy: true, appHealthy: false, reregister });
+    const watched = fakeWatchedTunnel(calls, OLD_URL);
+    sup.watch(watched.tunnel);
+    // Resolves normally (nothing thrown, nothing unhandled) …
+    await sup.notifyExit(watched.tunnel);
+    // … but the run would fail through onError instead of hanging.
+    expect(errors).toHaveLength(1);
+    expect(errors[0]?.message).toContain('did not answer /health after the tunnel restart');
+    expect(reregister).not.toHaveBeenCalled();
+    expect(stopped).toHaveLength(0);
+    // Terminal means terminal: later ticks start nothing.
+    await sup.tick();
+    expect(startsOf(calls)).toHaveLength(1);
+    expect(errors).toHaveLength(1);
+  });
+
+  it('attempts count toward the window: persistent failures stop, never give up into a loop', async () => {
+    const reregister = vi.fn(async (_url: string) => ({ preview: PREVIEW }));
+    const { sup, calls, stopped, errors } = supervisorHarness({
+      probeHealthy: true,
+      startTunnel: async () => {
+        calls.push('start');
+        throw new Error('boom');
+      },
+      reregister,
+    });
+    const watched = fakeWatchedTunnel(calls, OLD_URL);
+    sup.watch(watched.tunnel);
+    await sup.notifyExit(watched.tunnel);
+    // Three start attempts consumed the window; the fourth tripped the cap
+    // instead of running the inner retries out (5) into a give-up loop.
+    expect(calls.filter((call) => call === 'start')).toHaveLength(MAX_TUNNEL_RESTARTS_PER_WINDOW);
+    expect(reregister).not.toHaveBeenCalled();
+    expect(errors).toHaveLength(0);
+    expect(stopped).toHaveLength(1);
+    expect(stopped[0]).toContain('tunnel starts');
+    // Stopped means stopped.
+    await sup.tick();
+    expect(calls.filter((call) => call === 'start')).toHaveLength(MAX_TUNNEL_RESTARTS_PER_WINDOW);
+  });
+
+  it('teardown mid-restart kills unpublished children and publishes nothing', async () => {
+    let release!: (tunnel: Tunnel) => void;
+    const gate = new Promise<Tunnel>((resolve) => {
+      release = resolve;
+    });
+    const { sup, calls } = supervisorHarness({
+      probeHealthy: true,
+      startTunnel: () => {
+        calls.push('start');
+        return gate;
+      },
+    });
+    const replacement = fakeWatchedTunnel(calls, NEW_URL);
+    const old = fakeWatchedTunnel(calls, OLD_URL);
+    sup.watch(old.tunnel);
+    const pending = sup.notifyExit(old.tunnel);
+    for (let flush = 0; flush < 20 && !calls.includes('start'); flush++) await Promise.resolve();
+    sup.abort();
+    release(replacement.tunnel);
+    await pending;
+    // Nothing published: the new handles were killed instead.
+    expect(calls.filter((call) => call.startsWith('onTunnel:'))).toHaveLength(0);
+    expect(calls).toContain(`stop:${NEW_URL}`);
+    expect(calls).toContain('stopNewApp');
+    // The old handles were stopped by the restart itself, before the abort.
+    expect(calls).toContain(`stop:${OLD_URL}`);
+    expect(calls).toContain('stopOldApp');
+  });
+
+  it('overlapping slow probes skip instead of double-counting a miss', async () => {
+    const resolvers: Array<(healthy: boolean) => void> = [];
+    const probes: string[] = [];
+    const { sup, calls, advance } = supervisorHarness({
+      probe: (url) => {
+        probes.push(url);
+        return new Promise<boolean>((resolve) => {
+          resolvers.push(resolve);
+        });
+      },
+    });
+    sup.watch(fakeWatchedTunnel(calls, OLD_URL).tunnel);
+    advance(61_000);
+    const first = sup.tick();
+    const second = sup.tick();
+    await Promise.resolve();
+    // The second tick saw the probe in flight and stood down.
+    expect(probes).toHaveLength(1);
+    resolvers[0]?.(false);
+    await first;
+    await second;
+    // One miss recorded — no restart yet.
+    expect(startsOf(calls)).toHaveLength(0);
+    const third = sup.tick();
+    for (let flush = 0; flush < 20 && resolvers.length < 2; flush++) await Promise.resolve();
+    resolvers[1]?.(false);
+    await third;
+    expect(startsOf(calls)).toHaveLength(1);
+  });
+});
+
+describe('createDeployQueue (toml saves queue behind re-registers)', () => {
+  it('runs units in order and survives a rejection', async () => {
+    const queue = createDeployQueue();
+    const order: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const first = queue(async () => {
+      order.push('first-start');
+      await gate;
+      order.push('first-end');
+      return 'first';
+    });
+    const second = queue(async () => {
+      order.push('second');
+      return 'second';
+    });
+    for (let flush = 0; flush < 20 && !order.includes('first-start'); flush++) await Promise.resolve();
+    expect(order).toEqual(['first-start']);
+    release();
+    await expect(first).resolves.toBe('first');
+    await expect(second).resolves.toBe('second');
+    expect(order).toEqual(['first-start', 'first-end', 'second']);
+
+    const failing = queue(async () => {
+      throw new Error('deploy refused');
+    });
+    await expect(failing).rejects.toThrow('deploy refused');
+    await expect(
+      queue(async () => {
+        order.push('third');
+        return 'third';
+      }),
+    ).resolves.toBe('third');
+    expect(order).toContain('third');
   });
 });

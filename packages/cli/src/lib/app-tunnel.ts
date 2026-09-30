@@ -97,10 +97,18 @@ export async function startCloudflared(port: number, logFile: string): Promise<T
     }
     if (child.exitCode !== null) {
       stop();
+      // A refused start says so in the error, not the log tail the caller
+      // would read after the next truncate: carry it in the throw.
+      if (matchTunnelRateLimited(readLogTail(logFile))) {
+        throw new Error(`cloudflared refused a new tunnel (rate limited — see ${logFile}). Wait a few minutes and run again, or pass --url instead.`);
+      }
       throw new Error(`cloudflared exited before printing a tunnel URL (see ${logFile}). Pass --url instead.`);
     }
     if (Date.now() > deadline) {
       stop();
+      if (matchTunnelRateLimited(readLogTail(logFile))) {
+        throw new Error(`cloudflared did not print a tunnel URL within 25s (rate limited — see ${logFile}). Wait a few minutes and run again, or pass --url instead.`);
+      }
       throw new Error(`Timed out waiting for a cloudflared URL (see ${logFile}). Pass --url instead.`);
     }
     await new Promise((done) => setTimeout(done, 500));
@@ -114,16 +122,23 @@ export function manualTunnel(url: string): Tunnel {
 }
 
 /**
- * True when cloudflared's log shows creation refused (error 1015 / HTTP
- * 429): making more tunnels only extends the ban, so the supervisor stops
- * instead of retrying. Best effort — a missing log reads as not limited.
+ * The one matcher for refused quick-tunnel creation (HTTP 429, error 1015,
+ * "Too Many Attempts"): used on start errors and log tails alike, so a bare
+ * `429` in either place stops supervision instead of extending the ban.
  */
-export function cloudflaredRateLimited(logFile: string): boolean {
-  let tail = '';
+export function matchTunnelRateLimited(text: string): boolean {
+  return /\b(1015|429)\b|rate.?limit|too many/i.test(text);
+}
+
+/**
+ * The log tail a failure throw carries: read synchronously with the failure,
+ * never after a later start truncates the file — a late-flushed 1015/429
+ * must not be missed.
+ */
+function readLogTail(logFile: string): string {
   try {
-    tail = readFileSync(logFile, 'utf8').slice(-4000);
+    return readFileSync(logFile, 'utf8').slice(-4000);
   } catch {
-    return false;
+    return '';
   }
-  return /\b1015\b|HTTP.?429|status.?429|rate.?limit/i.test(tail);
 }

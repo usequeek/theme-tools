@@ -1,8 +1,5 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cloudflaredRateLimited, hasCloudflared, startCloudflared } from '../src/lib/app-tunnel.js';
+import { hasCloudflared, matchTunnelRateLimited, startCloudflared } from '../src/lib/app-tunnel.js';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -20,15 +17,15 @@ describe('tunnel without the binary (spawn never throws sync)', () => {
   });
 });
 
-describe('cloudflaredRateLimited (refused creation stops supervision)', () => {
-  it('matches error 1015 / HTTP 429 in the log, nothing else', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'queek-tunnel-log-'));
-    const banned = join(dir, 'banned.log');
-    const healthy = join(dir, 'healthy.log');
-    writeFileSync(banned, '2026-09-30 ERR failed to create quick tunnel: error 1015, HTTP 429\n');
-    writeFileSync(healthy, '2026-09-30 INF +--------------------------------------------------+\n2026-09-30 INF |  Your quick Tunnel has been created! Visit it at: |\n');
-    expect(cloudflaredRateLimited(banned)).toBe(true);
-    expect(cloudflaredRateLimited(healthy)).toBe(false);
-    expect(cloudflaredRateLimited(join(dir, 'missing.log'))).toBe(false);
+describe('matchTunnelRateLimited (the one matcher for refused creation)', () => {
+  it('matches 1015, bare 429 and Too Many Attempts in errors and log tails alike', () => {
+    expect(matchTunnelRateLimited('ERROR 1015: temporarily banned')).toBe(true);
+    expect(matchTunnelRateLimited('failed to create quick tunnel: HTTP 429')).toBe(true);
+    expect(matchTunnelRateLimited('2026-09-30 ERR edge error 429 Too Many Attempts')).toBe(true);
+    expect(matchTunnelRateLimited('You are being rate limited, please wait 60s')).toBe(true);
+    // The refusal the start throws carries the same wording the matcher checks.
+    expect(matchTunnelRateLimited('cloudflared refused a new tunnel (rate limited — see cloudflared.log).')).toBe(true);
+    expect(matchTunnelRateLimited('cloudflared exited before printing a tunnel URL (see cloudflared.log).')).toBe(false);
+    expect(matchTunnelRateLimited('Your quick Tunnel has been created! Visit it at: https://abc.trycloudflare.com')).toBe(false);
   });
 });
