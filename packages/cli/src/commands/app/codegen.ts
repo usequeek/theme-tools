@@ -1,12 +1,25 @@
 import { Args } from '@oclif/core';
 import { appFlags } from '../../lib/app-command.js';
-import { errorExitCode, MERCHANT_SPEC_URL, offlineStderr, runCodegen, type CodegenResult } from '../../lib/app-codegen.js';
+import {
+  errorExitCode,
+  MERCHANT_SPEC_URL,
+  offlineStderr,
+  runCodegen,
+  type CodegenOk,
+  type CodegenResult,
+} from '../../lib/app-codegen.js';
 import { BaseCommand } from '../../lib/base-command.js';
+
+/** The exact stdout line for a non-offline run (kept here so tests pin the command's mapping). */
+export function codegenOkLine(result: CodegenOk): string {
+  if (result.unchanged) return `types/merchant.ts is already current (spec ${result.specSha256.slice(0, 12)}…) — nothing to do.`;
+  return `Wrote ${result.file} (${result.paths} paths, spec ${result.specSha256.slice(0, 12)}…) — hash recorded in ${result.recordFile}.`;
+}
 
 export default class AppCodegen extends BaseCommand {
   static override summary = 'Generate the app-owned Merchant API types from the live spec (manual, like graphql-codegen).';
 
-  static override description = `Fetches the live Merchant spec (${MERCHANT_SPEC_URL}, or a URL/file you pass), sanity-checks it the way the SDK's gen:merchant does (OpenAPI 3.1.0 with an /orders/import path — HTML error pages refused), runs openapi-typescript, and writes types/merchant.ts plus the spec hash in .queek/codegen.json. No login needed: the spec is world-readable. Offline or unreachable spec: warns and exits 0, keeping existing types. A rerun with an unchanged spec writes nothing.`;
+  static override description = `Fetches the live Merchant spec (${MERCHANT_SPEC_URL}, or a URL/file you pass), sanity-checks it the way the SDK's gen:merchant does (OpenAPI 3.1.0 with an /orders/import path — HTML error pages refused), runs openapi-typescript, and writes types/merchant.ts plus the spec hash in .queek/codegen.json. The recorded pin is the committed types/merchant.ts \`Spec sha256:\` provenance header (.queek/codegen.json is a local debug aid). No login needed: the spec is world-readable. Offline or unreachable spec: warns and exits 0, keeping existing types. A rerun with an unchanged spec writes nothing.`;
 
   static override examples = [
     '<%= config.bin %> <%= command.id %>',
@@ -33,11 +46,7 @@ export default class AppCodegen extends BaseCommand {
       this.logToStderr(offlineStderr(result));
       return result;
     }
-    if (result.unchanged) {
-      this.log(`types/merchant.ts is already current (spec ${result.specSha256.slice(0, 12)}…) — nothing to do.`);
-      return result;
-    }
-    this.log(`Wrote ${result.file} (${result.paths} paths, spec ${result.specSha256.slice(0, 12)}…) — hash recorded in ${result.recordFile}.`);
+    this.log(codegenOkLine(result));
     return result;
   }
 }

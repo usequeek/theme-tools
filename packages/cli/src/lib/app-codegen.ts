@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
 import openapiTS, { astToString, type OpenAPI3 } from 'openapi-typescript';
 import { queekDir, resolveTomlPath } from './app-manifest.js';
 
@@ -60,7 +60,12 @@ export interface CodegenOk {
   /** The record file, relative to the app dir (written unless unchanged). */
   recordFile: string;
   source: string;
-  /** sha256 of the exact fetched/read bytes (what B1's `x-queek-spec-sha` hashes). */
+  /**
+   * Content-address of the exact fetched/read bytes (drives
+   * skip-when-unchanged). Distinct from the backend's own
+   * `x-queek-spec-sha` (`CodegenRecord.serverSpecSha256`): the served
+   * bytes embed that hash field, so the two hashes are never equal.
+   */
   specSha256: string;
   paths: number;
 }
@@ -119,7 +124,12 @@ export function normalizeSpec(spec: Record<string, unknown>): Record<string, unk
   return { ...spec, servers: [{ url: MERCHANT_API_BASE, description: 'Current' }] };
 }
 
-/** sha256 of the exact served bytes — the same input B1 hashes for `x-queek-spec-sha`. */
+/**
+ * Content-address of the exact served bytes (drives skip-when-unchanged).
+ * Not comparable to the backend's `x-queek-spec-sha`: the served bytes
+ * embed that hash field, so hashing them can never reproduce it — compare
+ * `CodegenRecord.serverSpecSha256` to the header/info instead.
+ */
 export function specSha256(specText: string): string {
   return createHash('sha256').update(specText, 'utf8').digest('hex');
 }
@@ -152,7 +162,12 @@ export interface CodegenRecord {
   source: string;
   specSha256: string;
   specVersion: string | null;
-  /** The backend's own hash once B1 ships (`x-queek-spec-sha` info field); absent until then. */
+  /**
+   * The backend's own hash (the spec's `info['x-queek-spec-sha']` field,
+   * mirrored in the `x-queek-spec-sha` response header). Absent when the
+   * spec carries none. This — never `specSha256` — is the field comparable
+   * to the header/info.
+   */
   serverSpecSha256?: string;
   generatedAt: string;
   paths: number;
@@ -163,14 +178,41 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Crash-safe write: the temp file lives in the same directory, so the
- * rename is one atomic step — a crash can never leave a half-written
- * `types/merchant.ts` beside a stale record (or vice versa).
+ * Crash-safe write: the temp file lives in the same directory, so each
+ * file's rename is one atomic step — a crash can never leave a
+ * half-written file. The two writes (`types/merchant.ts` + the record)
+ * are not pair-atomic: a crash between them leaves types-new/record-old,
+ * which self-heals on the next run via one redundant regen (the record
+ * hash won't match the header). Stale `<file>.<pid>.tmp` leftovers from
+ * a crashed run are swept before writing.
  */
 export function atomicWriteFile(path: string, content: string): void {
+  sweepStaleTmpFiles(path);
   const tmp = `${path}.${process.pid}.tmp`;
   writeFileSync(tmp, content);
   renameSync(tmp, path);
+}
+
+/** Remove `<file>.<pid>.tmp` leftovers from crashed runs (never our own in-flight tmp). */
+function sweepStaleTmpFiles(path: string): void {
+  const dir = dirname(path);
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return;
+  }
+  const prefix = `${basename(path)}.`;
+  const own = `${prefix}${process.pid}.tmp`;
+  for (const name of names) {
+    if (name.startsWith(prefix) && name.endsWith('.tmp') && name !== own) {
+      try {
+        rmSync(join(dir, name), { force: true });
+      } catch {
+        // Best-effort: a leftover tmp is harmless (nothing reads it).
+      }
+    }
+  }
 }
 
 const SPEC_SHA_RE = /^ \* Spec sha256: ([0-9a-f]{64})$/m;

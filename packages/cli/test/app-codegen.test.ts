@@ -24,6 +24,7 @@ import {
   warnLine,
   type SpecResponse,
 } from '../src/lib/app-codegen.js';
+import AppCodegen, { codegenOkLine } from '../src/commands/app/codegen.js';
 import { TomlError } from '../src/lib/app-manifest.js';
 
 const TOML = `
@@ -80,9 +81,10 @@ describe('sanityCheckSpec (SDK gen-merchant-types.mjs:46-51)', () => {
     expect(() => sanityCheckSpec(specObject())).not.toThrow();
   });
 
-  it('refuses a wrong OpenAPI version, missing paths, and a missing import op', () => {
+  it('refuses a wrong OpenAPI version, missing paths, an explicit null paths, and a missing import op', () => {
     expect(() => sanityCheckSpec(specObject({ openapi: '3.0.0' }))).toThrow('Spec sanity check failed');
     expect(() => sanityCheckSpec({ openapi: '3.1.0' })).toThrow('Spec sanity check failed');
+    expect(() => sanityCheckSpec(specObject({ paths: null }))).toThrow('Spec sanity check failed');
     expect(() => sanityCheckSpec(specObject({ paths: { '/orders': {} } }))).toThrow('/orders/import');
   });
 });
@@ -165,7 +167,7 @@ describe('runCodegen with fakes', () => {
     expect(readFileSync(join(dir, '.queek', 'codegen.json'), 'utf8')).toContain(specSha256(text));
   });
 
-  it('records the backend hash once B1 ships it, and omits it until then', async () => {
+  it('records the backend x-queek-spec-sha hash when the spec carries it', async () => {
     const withHash = JSON.stringify(specObject({ info: { title: 'Merchant', version: 'v1', 'x-queek-spec-sha': 'abc123' } }));
     const dir = stageApp();
     await runCodegen({ appDir: dir, fetchFn: fakeFetch(withHash), generateFn: fakeGenerate, now: FIXED_NOW });
@@ -241,6 +243,40 @@ describe('runCodegen with fakes', () => {
       runCodegen({ appDir: dir, fetchFn: fakeFetch(JSON.stringify(specObject())), generateFn: async () => { throw new Error('boom'); } }),
     ).rejects.toThrow('openapi-typescript failed: boom');
     expect(existsSync(join(dir, 'types', 'merchant.ts'))).toBe(false);
+  });
+});
+
+describe('specSha256 vs serverSpecSha256 (live-proven distinct)', () => {
+  it('the content hash drives the pin while the backend hash rides along; the two never match', async () => {
+    // The served bytes embed x-queek-spec-sha, so hashing them can never
+    // reproduce the backend hash — the record keeps both, the header pins
+    // the content hash, and the rerun skips on it.
+    const serverHash = '4'.repeat(64);
+    const text = JSON.stringify(specObject({ info: { title: 'Merchant', version: 'v1', 'x-queek-spec-sha': serverHash } }));
+    const dir = stageApp();
+    let calls = 0;
+    const counting = async (): Promise<string> => {
+      calls += 1;
+      return CANNED_TS;
+    };
+    const first = await runCodegen({ appDir: dir, fetchFn: fakeFetch(text), generateFn: counting, now: FIXED_NOW });
+    expect(first.offline).toBe(false);
+    if (first.offline) return;
+    expect(first.unchanged).toBe(false);
+    const record = JSON.parse(readFileSync(join(dir, '.queek', 'codegen.json'), 'utf8'));
+    expect(record.specSha256).toBe(specSha256(text));
+    expect(record.serverSpecSha256).toBe(serverHash);
+    expect(record.specSha256).not.toBe(record.serverSpecSha256);
+    const header = readFileSync(join(dir, 'types', 'merchant.ts'), 'utf8');
+    expect(header).toContain(`Spec sha256: ${record.specSha256}`);
+    expect(header).not.toContain(serverHash);
+    expect(recordedSpecHash(dir)).toBe(record.specSha256);
+
+    const second = await runCodegen({ appDir: dir, fetchFn: fakeFetch(text), generateFn: counting, now: FIXED_NOW });
+    expect(second.offline).toBe(false);
+    if (second.offline) return;
+    expect(second.unchanged).toBe(true);
+    expect(calls).toBe(1);
   });
 });
 
@@ -333,6 +369,20 @@ describe('atomicWriteFile (crash-safe pair of writes)', () => {
     expect(leftovers(readdirSync(join(dir, 'types')))).toEqual([]);
     expect(leftovers(readdirSync(join(dir, '.queek')))).toEqual([]);
   });
+
+  it('sweeps a stale <file>.<pid>.tmp leftover from a crashed run, keeping anything else', () => {
+    const dir = stageApp();
+    mkdirSync(join(dir, 'types'), { recursive: true });
+    const target = join(dir, 'types', 'merchant.ts');
+    writeFileSync(`${target}.987654321.tmp`, 'crash leftover');
+    writeFileSync(join(dir, 'types', 'other.ts.987654321.tmp'), 'another file’s tmp — not ours to sweep');
+    writeFileSync(join(dir, 'types', 'notes.txt'), 'unrelated');
+    atomicWriteFile(target, 'fresh');
+    expect(readFileSync(target, 'utf8')).toBe('fresh');
+    expect(existsSync(`${target}.987654321.tmp`)).toBe(false);
+    expect(readFileSync(join(dir, 'types', 'other.ts.987654321.tmp'), 'utf8')).toBe('another file’s tmp — not ours to sweep');
+    expect(readFileSync(join(dir, 'types', 'notes.txt'), 'utf8')).toBe('unrelated');
+  });
 });
 
 describe('command mapping (offline→stderr, refusal→exit)', () => {
@@ -346,6 +396,23 @@ describe('command mapping (offline→stderr, refusal→exit)', () => {
     expect(errorExitCode(new TomlError('no toml here'))).toBe(2);
     expect(errorExitCode(new Error('boom'))).toBe(1);
     expect(errorExitCode('a string')).toBe(1);
+  });
+
+  it('codegenOkLine pins the exact stdout line for unchanged and fresh runs', () => {
+    const hash = '1'.repeat(64);
+    const file = join('types', 'merchant.ts');
+    const recordFile = join('.queek', 'codegen.json');
+    expect(
+      codegenOkLine({ offline: false, unchanged: true, file, recordFile, source: MERCHANT_SPEC_URL, specSha256: hash, paths: 41 }),
+    ).toBe(`types/merchant.ts is already current (spec ${'1'.repeat(12)}…) — nothing to do.`);
+    expect(
+      codegenOkLine({ offline: false, unchanged: false, file, recordFile, source: MERCHANT_SPEC_URL, specSha256: hash, paths: 41 }),
+    ).toBe(`Wrote ${file} (41 paths, spec ${'1'.repeat(12)}…) — hash recorded in ${recordFile}.`);
+  });
+
+  it('the command description names the committed header as the pin', () => {
+    expect(AppCodegen.description).toContain('Spec sha256:');
+    expect(AppCodegen.description).toContain('.queek/codegen.json');
   });
 });
 
