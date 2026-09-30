@@ -1,0 +1,253 @@
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  CodegenError,
+  generateMerchantTypes,
+  isHtmlContentType,
+  looksLikeHtml,
+  MERCHANT_API_BASE,
+  MERCHANT_SPEC_URL,
+  normalizeSpec,
+  parseSpecText,
+  provenanceHeader,
+  runCodegen,
+  sanityCheckSpec,
+  specSha256,
+  warnLine,
+  type SpecResponse,
+} from '../src/lib/app-codegen.js';
+
+const TOML = `
+slug = "hello"
+name = "Hello World"
+
+[access]
+scopes = ["merchant-business_profile-read"]
+
+[app]
+install_url = "https://hello.example.com/install"
+uninstall_url = "https://hello.example.com/uninstall"
+`;
+
+const specObject = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+  openapi: '3.1.0',
+  info: { title: 'Merchant', version: 'v1' },
+  servers: [{ url: 'http://localhost:8000', description: 'Local' }],
+  paths: {
+    '/orders/import': { post: { operationId: 'importOrder', responses: { 200: { description: 'ok' } } } },
+    '/orders': { get: { operationId: 'listOrders', responses: { 200: { description: 'ok' } } } },
+  },
+  ...overrides,
+});
+
+const dirs: string[] = [];
+afterEach(() => {
+  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
+
+function stageApp(extra: Record<string, string> = {}): string {
+  const dir = mkdtempSync(join(tmpdir(), 'app-codegen-'));
+  dirs.push(dir);
+  writeFileSync(join(dir, 'queek.app.toml'), TOML);
+  for (const [name, content] of Object.entries(extra)) writeFileSync(join(dir, name), content);
+  return dir;
+}
+
+function fakeFetch(text: string, init: { ok?: boolean; status?: number; contentType?: string } = {}): () => Promise<SpecResponse> {
+  return async () => ({
+    ok: init.ok ?? true,
+    status: init.status ?? 200,
+    headers: { get: (name: string) => (name.toLowerCase() === 'content-type' ? (init.contentType ?? 'application/json') : null) },
+    text: async () => text,
+  });
+}
+
+const CANNED_TS = 'export interface paths { "/orders/import": unknown }\n';
+const fakeGenerate = async () => CANNED_TS;
+const FIXED_NOW = () => new Date('2026-09-30T00:00:00.000Z');
+
+describe('sanityCheckSpec (SDK gen-merchant-types.mjs:46-51)', () => {
+  it('accepts OpenAPI 3.1.0 with /orders/import', () => {
+    expect(() => sanityCheckSpec(specObject())).not.toThrow();
+  });
+
+  it('refuses a wrong OpenAPI version, missing paths, and a missing import op', () => {
+    expect(() => sanityCheckSpec(specObject({ openapi: '3.0.0' }))).toThrow('Spec sanity check failed');
+    expect(() => sanityCheckSpec({ openapi: '3.1.0' })).toThrow('Spec sanity check failed');
+    expect(() => sanityCheckSpec(specObject({ paths: { '/orders': {} } }))).toThrow('/orders/import');
+  });
+});
+
+describe('HTML refusal (Cloudflare error page)', () => {
+  it('sniffs bodies and content types', () => {
+    expect(looksLikeHtml('<html><body>502</body></html>')).toBe(true);
+    expect(looksLikeHtml('  <!DOCTYPE html>')).toBe(true);
+    expect(looksLikeHtml('{"openapi": "3.1.0"}')).toBe(false);
+    expect(looksLikeHtml('')).toBe(false);
+    expect(isHtmlContentType('text/html; charset=utf-8')).toBe(true);
+    expect(isHtmlContentType('application/json')).toBe(false);
+    expect(isHtmlContentType(null)).toBe(false);
+  });
+
+  it('parseSpecText refuses HTML loudly instead of a bare SyntaxError', () => {
+    expect(() => parseSpecText('<html>nope</html>', 'live')).toThrow('Refused HTML');
+    expect(() => parseSpecText('not json {', 'live')).toThrow('did not parse as JSON');
+    expect(parseSpecText('{"openapi":"3.1.0"}', 'live')).toEqual({ openapi: '3.1.0' });
+  });
+});
+
+describe('hash + normalize (SDK gen-merchant-types.mjs:55)', () => {
+  it('hashes the exact bytes and normalizes only servers', () => {
+    const text = JSON.stringify(specObject());
+    expect(specSha256(text)).toBe(createHash('sha256').update(text, 'utf8').digest('hex'));
+    const normalized = normalizeSpec(specObject());
+    expect(normalized.servers).toEqual([{ url: MERCHANT_API_BASE, description: 'Current' }]);
+    expect(normalized.paths).toEqual(specObject().paths);
+  });
+});
+
+describe('runCodegen with fakes', () => {
+  it('fetches the live spec by default and writes types + the hash record', async () => {
+    const dir = stageApp();
+    const text = JSON.stringify(specObject());
+    const result = await runCodegen({ appDir: dir, fetchFn: fakeFetch(text), generateFn: fakeGenerate, now: FIXED_NOW });
+    expect(result.offline).toBe(false);
+    if (result.offline) return;
+    expect(result.source).toBe(MERCHANT_SPEC_URL);
+    expect(result.specSha256).toBe(specSha256(text));
+    expect(result.paths).toBe(2);
+    const written = readFileSync(join(dir, 'types', 'merchant.ts'), 'utf8');
+    expect(written).toContain('GENERATED by `queek app codegen`');
+    expect(written).toContain(result.specSha256);
+    expect(written).toContain(CANNED_TS);
+    const record = JSON.parse(readFileSync(join(dir, '.queek', 'codegen.json'), 'utf8'));
+    expect(record).toEqual({
+      source: MERCHANT_SPEC_URL,
+      specSha256: specSha256(text),
+      specVersion: 'v1',
+      generatedAt: '2026-09-30T00:00:00.000Z',
+      paths: 2,
+    });
+  });
+
+  it('reads an explicit file offline (no fetch), hashing the file bytes', async () => {
+    const text = JSON.stringify(specObject());
+    const dir = stageApp({ 'merchant.json': text });
+    let fetched = false;
+    const result = await runCodegen({
+      appDir: dir,
+      source: 'merchant.json',
+      fetchFn: async () => {
+        fetched = true;
+        throw new Error('must not fetch');
+      },
+      generateFn: fakeGenerate,
+      now: FIXED_NOW,
+    });
+    expect(fetched).toBe(false);
+    expect(result.offline).toBe(false);
+    if (result.offline) return;
+    expect(result.source).toBe('merchant.json');
+    expect(readFileSync(join(dir, '.queek', 'codegen.json'), 'utf8')).toContain(specSha256(text));
+  });
+
+  it('records the backend hash once B1 ships it, and omits it until then', async () => {
+    const withHash = JSON.stringify(specObject({ info: { title: 'Merchant', version: 'v1', 'x-queek-spec-sha': 'abc123' } }));
+    const dir = stageApp();
+    await runCodegen({ appDir: dir, fetchFn: fakeFetch(withHash), generateFn: fakeGenerate, now: FIXED_NOW });
+    expect(JSON.parse(readFileSync(join(dir, '.queek', 'codegen.json'), 'utf8')).serverSpecSha256).toBe('abc123');
+  });
+
+  it('network failure on the live URL keeps existing types and reports offline (exit 0 downstream)', async () => {
+    const dir = stageApp();
+    mkdirSync(join(dir, 'types'), { recursive: true });
+    writeFileSync(join(dir, 'types', 'merchant.ts'), '// old\n');
+    const result = await runCodegen({
+      appDir: dir,
+      fetchFn: async () => {
+        throw new Error('fetch failed');
+      },
+      generateFn: fakeGenerate,
+    });
+    expect(result.offline).toBe(true);
+    if (!result.offline) return;
+    expect(result.reason).toContain('could not fetch');
+    expect(readFileSync(join(dir, 'types', 'merchant.ts'), 'utf8')).toBe('// old\n');
+    expect(existsSync(join(dir, '.queek', 'codegen.json'))).toBe(false);
+  });
+
+  it('an HTML error page on the live URL keeps types (warn path), but an explicit source is refused', async () => {
+    const dir = stageApp();
+    const kept = await runCodegen({ appDir: dir, fetchFn: fakeFetch('<html>502</html>'), generateFn: fakeGenerate });
+    expect(kept.offline).toBe(true);
+
+    await expect(runCodegen({ appDir: dir, source: MERCHANT_SPEC_URL, fetchFn: fakeFetch('<html>502</html>'), generateFn: fakeGenerate })).rejects.toThrow(
+      'Refused HTML',
+    );
+    await expect(
+      runCodegen({ appDir: dir, source: MERCHANT_SPEC_URL, fetchFn: fakeFetch('<html>502</html>', { contentType: 'text/html' }), generateFn: fakeGenerate }),
+    ).rejects.toThrow('Refused HTML');
+  });
+
+  it('a contract-broken live spec keeps types (warn path), but an explicit file is refused', async () => {
+    const dir = stageApp();
+    const broken = JSON.stringify(specObject({ paths: { '/orders': {} } }));
+    const kept = await runCodegen({ appDir: dir, fetchFn: fakeFetch(broken), generateFn: fakeGenerate });
+    expect(kept.offline).toBe(true);
+    if (!kept.offline) return;
+    expect(kept.reason).toContain('Spec sanity check failed');
+
+    const fileDir = stageApp({ 'broken.json': broken });
+    await expect(runCodegen({ appDir: fileDir, source: 'broken.json', generateFn: fakeGenerate })).rejects.toThrow('Spec sanity check failed');
+  });
+
+  it('HTTP 500 on the live URL keeps types, but on an explicit URL it throws', async () => {
+    const dir = stageApp();
+    const kept = await runCodegen({ appDir: dir, fetchFn: fakeFetch('err', { ok: false, status: 500 }), generateFn: fakeGenerate });
+    expect(kept.offline).toBe(true);
+    await expect(
+      runCodegen({ appDir: dir, source: 'https://example.com/spec.json', fetchFn: fakeFetch('err', { ok: false, status: 500 }), generateFn: fakeGenerate }),
+    ).rejects.toThrow('Could not fetch Merchant API spec: 500');
+  });
+
+  it('a missing explicit file is a usage error (exit 2), and a non-app dir is refused', async () => {
+    const dir = stageApp();
+    const missing = await runCodegen({ appDir: dir, source: 'no-such.json', generateFn: fakeGenerate }).catch((error: Error) => error);
+    expect(missing).toBeInstanceOf(CodegenError);
+    expect((missing as CodegenError).exitCode).toBe(2);
+
+    const bare = mkdtempSync(join(tmpdir(), 'app-codegen-bare-'));
+    dirs.push(bare);
+    await expect(runCodegen({ appDir: bare, fetchFn: fakeFetch('{}'), generateFn: fakeGenerate })).rejects.toThrow('queek.app.toml');
+  });
+
+  it('a failing generator is reported, writing nothing', async () => {
+    const dir = stageApp();
+    await expect(
+      runCodegen({ appDir: dir, fetchFn: fakeFetch(JSON.stringify(specObject())), generateFn: async () => { throw new Error('boom'); } }),
+    ).rejects.toThrow('openapi-typescript failed: boom');
+    expect(existsSync(join(dir, 'types', 'merchant.ts'))).toBe(false);
+  });
+});
+
+describe('warnLine (check-merchant-snapshot.mjs annotation shape)', () => {
+  it('emits a CI annotation under GITHUB_ACTIONS, plain text locally', () => {
+    const previous = process.env.GITHUB_ACTIONS;
+    process.env.GITHUB_ACTIONS = 'true';
+    expect(warnLine('kept')).toBe('::warning::kept');
+    if (previous === undefined) delete process.env.GITHUB_ACTIONS;
+    else process.env.GITHUB_ACTIONS = previous;
+    expect(warnLine('kept')).toBe('Warning: kept');
+  });
+});
+
+describe('generateMerchantTypes (real openapi-typescript, no fake)', () => {
+  it('turns the normalized spec into a paths-typed module', async () => {
+    const ts = await generateMerchantTypes(normalizeSpec(specObject()));
+    expect(ts).toContain('"/orders/import"');
+    expect(provenanceHeader('src', 'hash')).toContain('GENERATED by `queek app codegen`');
+  });
+});

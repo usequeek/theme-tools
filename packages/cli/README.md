@@ -151,6 +151,7 @@ queek theme init my-theme --templates laundry,foods --primary laundry --tags min
 
 ```bash
 queek app init my-app       # from usequeek/queek-app-starter (== npm create @usequeek/app)
+queek app codegen           # live Merchant spec → types/merchant.ts + spec hash (.queek/codegen.json)
 queek app dev               # tunnel + owned dev-store install, re-registers on save
 queek app info              # config file, app, app ID, scopes, dev store, user
 queek app deploy            # queek.app.toml → version N+1, released (secret shown once)

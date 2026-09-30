@@ -10,6 +10,7 @@ import Screenshot from './screenshot.js';
 import AuthLogin from './auth/login.js';
 import AuthLogout from './auth/logout.js';
 import AppInit from './app/init.js';
+import AppCodegen from './app/codegen.js';
 import AppDev from './app/dev.js';
 import AppInfo from './app/info.js';
 import AppDeploy from './app/deploy.js';
@@ -40,6 +41,7 @@ export const COMMANDS = {
   'auth:login': AuthLogin,
   'auth:logout': AuthLogout,
   'app:init': AppInit,
+  'app:codegen': AppCodegen,
   'app:dev': AppDev,
   'app:info': AppInfo,
   'app:deploy': AppDeploy,
