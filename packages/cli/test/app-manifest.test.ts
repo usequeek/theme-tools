@@ -146,6 +146,23 @@ describe('queek.app.toml', () => {
     );
   });
 
+  it('caps listing promo URLs at 2048, refuses http video, accepts uppercase hosts', () => {
+    const promo = (demo: string, video: string): string => `${BASE}\n[listing]\ndemo_url = "${demo}"\nvideo_url = "${video}"\n`;
+    const long = (rest: string): string => `https://${rest}/${'x'.repeat(2048)}`;
+    expect(() => toManifest(loadTomlFile(stageFile(promo(long('hello.example.com/demo'), 'https://www.youtube.com/watch?v=x'))).doc)).toThrow(
+      'The demo_url must not be longer than 2048 characters.',
+    );
+    expect(() => toManifest(loadTomlFile(stageFile(promo('https://hello.example.com/demo', long('www.youtube.com/watch?v=x')))).doc)).toThrow(
+      'The video_url must not be longer than 2048 characters.',
+    );
+    expect(() => toManifest(loadTomlFile(stageFile(promo('https://hello.example.com/demo', 'http://www.youtube.com/watch?v=x'))).doc)).toThrow(
+      'The video_url must be an https URL.',
+    );
+    const upper = toManifest(loadTomlFile(stageFile(promo('https://HELLO.EXAMPLE.COM/demo', 'https://WWW.YOUTUBE.COM/watch?v=x'))).doc);
+    expect(upper.manifest.demo_url).toBe('https://HELLO.EXAMPLE.COM/demo');
+    expect(upper.manifest.video_url).toBe('https://WWW.YOUTUBE.COM/watch?v=x');
+  });
+
   it('checks dashboard enums and the action-scope grant rule', () => {
     const action = (scope: string): string => `
 ${BASE}
