@@ -326,3 +326,53 @@ describe('backend parity (validator origin/master 29/9)', () => {
     ).toContain('The settings[0].options[0] must be a string (max 120).');
   });
 });
+
+describe('[[extensions.nav]] — the app menu in the dashboard sidebar', () => {
+  const withNav = (nav: string) =>
+    `${BASE}
+[extensions]
+merchant_page_url = "https://hello.example.com/admin"
+
+${nav}`;
+
+  it('maps label + path onto manifest.extensions.nav', () => {
+    const dir = stage({
+      [APP_TOML]: withNav(`[[extensions.nav]]
+label = "Bookings"
+path = "/admin"
+
+[[extensions.nav]]
+label = "Services"
+path = "/admin/services"
+`),
+    });
+    const { manifest } = loadApp(dir);
+    expect((manifest.extensions as { nav: unknown }).nav).toEqual([
+      { label: 'Bookings', path: '/admin' },
+      { label: 'Services', path: '/admin/services' },
+    ]);
+  });
+
+  it.each([
+    ['//evil.com/x'],
+    ['https://evil.com'],
+    ['/admin/../secrets'],
+    ['/admin/%2e%2e/secrets'],
+    ['/admin\\\\x'],
+    ['/other'],
+    ['/adminx'],
+    ['services'],
+  ])('refuses the path %s', (path) => {
+    const dir = stage({ [APP_TOML]: withNav(`[[extensions.nav]]\nlabel = "X"\npath = "${path}"\n`) });
+    expect(() => loadApp(dir)).toThrow(/extensions\.nav\[0\]\.path/);
+  });
+
+  it('refuses a long label, more than 10 items, and nav without a merchant page', () => {
+    const long = stage({ [APP_TOML]: withNav(`[[extensions.nav]]\nlabel = "${'x'.repeat(41)}"\npath = "/admin"\n`) });
+    expect(() => loadApp(long)).toThrow(/label/);
+    const many = Array.from({ length: 11 }, (_, i) => `[[extensions.nav]]\nlabel = "N${i}"\npath = "/admin/n${i}"\n`).join('\n');
+    expect(() => loadApp(stage({ [APP_TOML]: withNav(many) }))).toThrow(/more than 10/);
+    const noPage = stage({ [APP_TOML]: `${BASE}\n[[extensions.nav]]\nlabel = "X"\npath = "/x"\n` });
+    expect(() => loadApp(noPage)).toThrow(/merchant_page_url/);
+  });
+});

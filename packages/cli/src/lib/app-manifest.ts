@@ -392,7 +392,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
   if (!isRecord(extensions)) throw fail('The extensions section must be a table.');
   const problems: string[] = [];
   for (const key of Object.keys(extensions)) {
-    if (!['proxy', 'blocks', 'merchant_page_url'].includes(key)) problems.push(unknownField(key, 'manifest.extensions'));
+    if (!['proxy', 'blocks', 'merchant_page_url', 'nav'].includes(key)) problems.push(unknownField(key, 'manifest.extensions'));
   }
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
   const out: Record<string, unknown> = {};
@@ -413,6 +413,9 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
   if (extensions.merchant_page_url !== undefined) {
     checkCappedUrl(extensions.merchant_page_url, 'extensions.merchant_page_url', fail);
     out.merchant_page_url = extensions.merchant_page_url;
+  }
+  if (extensions.nav !== undefined) {
+    out.nav = checkNav(extensions.nav, extensions.merchant_page_url, fail);
   }
   const blocks = (extensions.blocks ?? []) as unknown;
   if (!Array.isArray(blocks)) throw fail('The extensions.blocks section must be a list of [[extensions.blocks]] tables.');
@@ -618,4 +621,67 @@ export function tomlFileName(variant?: string): string {
 /** Where `app dev`/`deploy` keep local-only state (never committed). */
 export function queekDir(dir: string): string {
   return join(resolve(dir), '.queek');
+}
+
+/**
+ * `[[extensions.nav]]` — the app's own menu, shown under the app in the
+ * dashboard sidebar (Shopify's s-app-nav). Same rules the backend validator
+ * applies, checked here so a mistake fails on the developer's machine: at
+ * most 10 items, label 1–40 characters, path a relative "/…" inside the
+ * merchant page's path (no "//", "\\", "..", scheme or encoded variants).
+ */
+function checkNav(nav: unknown, pageUrl: unknown, fail: (message: string) => never): Array<{ label: string; path: string }> {
+  if (!Array.isArray(nav)) throw fail('The extensions.nav section must be a list of [[extensions.nav]] tables.');
+  if (nav.length > 10) throw fail('The extensions.nav list must not have more than 10 items.');
+  if (typeof pageUrl !== 'string') throw fail('extensions.nav needs extensions.merchant_page_url (the menu lives inside the merchant page).');
+  let prefix = '';
+  try {
+    prefix = new URL(pageUrl).pathname.replace(/\/+$/, '');
+  } catch {
+    throw fail('extensions.merchant_page_url must be a valid https URL.');
+  }
+  return (nav as unknown[]).map((item, index) => {
+    const where = `extensions.nav[${index}]`;
+    if (!isRecord(item)) throw fail(`The ${where} entry must be a table with label and path.`);
+    for (const key of Object.keys(item)) {
+      if (!['label', 'path'].includes(key)) throw fail(`The ${where}.${key} field is not allowed (label, path).`);
+    }
+    const label = item.label;
+    if (typeof label !== 'string' || label.trim() === '' || label.length > 40 || hasControlCharacter(label)) {
+      throw fail(`The ${where}.label must be 1-40 characters.`);
+    }
+    const path = item.path;
+    let decoded = typeof path === 'string' ? path : '';
+    for (let round = 0; round < 5; round += 1) {
+      try {
+        const next = decodeURIComponent(decoded);
+        if (next === decoded) break;
+        decoded = next;
+      } catch {
+        break;
+      }
+    }
+    const bad =
+      typeof path !== 'string' ||
+      !decoded.startsWith('/') ||
+      decoded.startsWith('//') ||
+      decoded.includes('\\') ||
+      hasControlCharacter(decoded) ||
+      /(^|\/)\.\.(\/|$)/.test(decoded) ||
+      /^[a-z][a-z0-9+.-]*:/i.test(decoded);
+    if (bad) throw fail(`The ${where}.path must be a relative path starting with "/" (no "//", "\\", "..", scheme or encoded variants).`);
+    const pathOnly = decoded.split(/[?#]/)[0] ?? '';
+    if (prefix !== '' && pathOnly !== prefix && !pathOnly.startsWith(`${prefix}/`)) {
+      throw fail(`The ${where}.path must stay inside the merchant page (${prefix}).`);
+    }
+    return { label: label.trim(), path };
+  });
+}
+
+function hasControlCharacter(value: string): boolean {
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    if (code < 0x20 || code === 0x7f) return true;
+  }
+  return false;
 }
