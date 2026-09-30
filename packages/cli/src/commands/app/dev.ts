@@ -145,25 +145,68 @@ export async function tunnelProbe(url: string, fetchFn?: FetchFn): Promise<boole
 }
 
 /**
- * One tunnel restart: start the next tunnel, stop the dead one, re-register
+ * The dev env for the supervised app child, pure for tests: CLI-owned keys
+ * always win, and APP_BASE_URL tracks the current tunnel origin — a tunnel
+ * restart relaunches the app through this same builder, so nothing the app
+ * builds from its own base URL keeps pointing at the dead tunnel.
+ */
+export function buildDevAppEnv(options: {
+  appDir: string;
+  tunnelUrl: string;
+  port: number;
+  apiBase: string;
+  secrets: Record<string, string>;
+  projectEnv: Record<string, string>;
+}): NodeJS.ProcessEnv {
+  return {
+    // The dashboard that frames the app's embedded pages (CSP frame-ancestors,
+    // postMessage peer) — injected like Shopify injects its host values;
+    // a value in the shell or the project .env still wins.
+    QUEEK_DASHBOARD_ORIGINS: new URL(DASHBOARD_URL).origin,
+    ...process.env,
+    ...options.projectEnv,
+    APP_BASE_URL: new URL(options.tunnelUrl).origin,
+    PORT: String(options.port),
+    NODE_ENV: 'development',
+    QUEEK_API_BASE: options.apiBase,
+    ...options.secrets,
+    PATH: `${join(options.appDir, 'node_modules', '.bin')}${delimiter}${process.env.PATH ?? ''}`,
+  };
+}
+
+/**
+ * One tunnel restart: start the next tunnel, stop the dead one, relaunch the
+ * app child with the new APP_BASE_URL, wait for its /health, re-register
  * (the toml-save cycle) with the new URL, print the one restart line.
  * Failed starts back off and give up after MAX_TUNNEL_RESTARTS with a clear
- * message; the dead tunnel stops on every path. A failed re-register keeps
+ * message; the dead tunnel stops on every path. A relaunched app that never
+ * answers /health stops its child and tunnel and fails the run — installs
+ * must never target an app that is not listening. A failed re-register keeps
  * the new tunnel and logs — the tunnel is up, the next save retries it.
  */
 export async function restartDevTunnel(options: {
   oldTunnel: Tunnel;
   start: () => Promise<Tunnel>;
+  stopApp: () => void;
+  startApp: (tunnelUrl: string) => Promise<{ stop: () => void }>;
+  waitForApp: () => Promise<boolean>;
   reregister: (url: string) => Promise<{ preview: string | null }>;
   log: (line: string) => void;
   logError: (line: string) => void;
   sleep?: (ms: number) => Promise<void>;
   maxRestarts?: number;
   backoffMs?: (attempt: number) => number;
-}): Promise<Tunnel> {
+}): Promise<{ tunnel: Tunnel; stopApp: () => void }> {
   const max = options.maxRestarts ?? MAX_TUNNEL_RESTARTS;
   const backoff = options.backoffMs ?? tunnelRestartBackoffMs;
   const sleep = options.sleep ?? ((ms: number) => new Promise((done) => setTimeout(done, ms)));
+  const stopQuietly = (stop: () => void): void => {
+    try {
+      stop();
+    } catch {
+      /* already dead — stopping never fails the run */
+    }
+  };
   let lastError: unknown;
   for (let attempt = 1; attempt <= max; attempt++) {
     if (attempt > 1) await sleep(backoff(attempt - 1));
@@ -174,10 +217,23 @@ export async function restartDevTunnel(options: {
       lastError = error;
       continue;
     }
+    stopQuietly(() => options.oldTunnel.stop());
+    // The app builds proxy/link/webhook URLs from its own base URL: relaunch
+    // it with the new tunnel origin and wait for /health before anything
+    // installs against it.
+    stopQuietly(options.stopApp);
+    let relaunched: { stop: () => void };
     try {
-      options.oldTunnel.stop();
-    } catch {
-      /* already dead — the new tunnel is what matters */
+      relaunched = await options.startApp(next.url);
+    } catch (error) {
+      stopQuietly(() => next.stop());
+      throw new Error(`Relaunching the app on the new tunnel failed: ${(error as Error).message}`);
+    }
+    if (!(await options.waitForApp())) {
+      const stopRelaunched = relaunched.stop;
+      stopQuietly(stopRelaunched);
+      stopQuietly(() => next.stop());
+      throw new Error('The app did not answer /health after the tunnel restart — its [app] log above says why. Fix it and run `queek app dev` again.');
     }
     let preview: string | null = null;
     try {
@@ -186,13 +242,9 @@ export async function restartDevTunnel(options: {
       options.logError(`Re-register after tunnel restart failed: ${(error as Error).message}`);
     }
     options.log(handoffLine('queek', tunnelRestartLine(options.oldTunnel.url, next.url, preview)));
-    return next;
+    return { tunnel: next, stopApp: relaunched.stop };
   }
-  try {
-    options.oldTunnel.stop();
-  } catch {
-    /* already dead */
-  }
+  stopQuietly(() => options.oldTunnel.stop());
   const reason = lastError instanceof Error ? `: ${lastError.message}` : '';
   throw new Error(`Tunnel restart failed ${max} times${reason} — check your network or pass --url, then run \`queek app dev\` again.`);
 }
@@ -264,7 +316,9 @@ export default class AppDev extends BaseCommand {
     // error exits throw through the task into the finally.
     const stops: Array<() => void> = [() => tunnel.stop()];
     await withDevResources(stops, async () => {
-      const app = await this.startApp(api, flags.path, first.manifest.slug, tunnel.url, port, dev.command);
+      // let: a tunnel restart relaunches the app with the new APP_BASE_URL;
+      // the stopper always reads the current child, so no orphan.
+      let app = await this.startApp(api, flags.path, first.manifest.slug, tunnel.url, port, dev.command);
       stops.unshift(() => app.stop());
 
       const stop = (): void => {
@@ -361,10 +415,17 @@ export default class AppDev extends BaseCommand {
       if (tunnel.how === 'cloudflared') {
         this.superviseTunnel({
           get: () => tunnel,
-          set: (next) => {
+          set: (next, stopNewApp) => {
             tunnel = next;
+            app = { stop: stopNewApp };
           },
           restart: () => startCloudflared(port, join(queekDir(flags.path), 'cloudflared.log')),
+          stopApp: () => app.stop(),
+          startApp: (url) => this.startApp(api, flags.path, first.manifest.slug, url, port, dev.command),
+          // The relaunched app must answer locally before anything installs
+          // against the new tunnel — the same 90s /health wait as the start
+          // path.
+          waitForApp: () => waitForHealthy(`http://127.0.0.1:${port}/health`, 90_000),
           reregister: async (url) => {
             current = await cycle(url);
             return { preview: current.preview };
@@ -408,20 +469,7 @@ export default class AppDev extends BaseCommand {
       this.log(`Dev credentials written to ${file} (gitignored, 0600 — values are never printed).`);
     }
     const projectEnv = readEnvFile(join(appDir, '.env'));
-    const env: NodeJS.ProcessEnv = {
-      // The dashboard that frames the app's embedded pages (CSP frame-ancestors,
-      // postMessage peer) — injected like Shopify injects its host values;
-      // a value in the shell or the project .env still wins.
-      QUEEK_DASHBOARD_ORIGINS: new URL(DASHBOARD_URL).origin,
-      ...process.env,
-      ...projectEnv,
-      APP_BASE_URL: new URL(tunnelUrl).origin,
-      PORT: String(port),
-      NODE_ENV: 'development',
-      QUEEK_API_BASE: apiBase(),
-      ...secrets.values,
-      PATH: `${join(appDir, 'node_modules', '.bin')}${delimiter}${process.env.PATH ?? ''}`,
-    };
+    const env = buildDevAppEnv({ appDir, tunnelUrl, port, apiBase: apiBase(), secrets: secrets.values, projectEnv });
     this.log(`Starting the app: ${command} (port ${port})`);
     return startSupervised({
       command,
@@ -453,14 +501,19 @@ export default class AppDev extends BaseCommand {
 
   /**
    * Watch a cloudflared tunnel: probe /health every 30s and restart on
-   * consecutive misses, at once on process exit. An exit that lands
-   * mid-restart queues one more pass instead of being swallowed. Give-up
-   * fails the run (the wait in run() rejects into the stoppers).
+   * consecutive misses, at once on process exit. A restart relaunches the
+   * app with the new APP_BASE_URL and waits for /health before the
+   * re-register. An exit that lands mid-restart queues one more pass
+   * instead of being swallowed. Give-up fails the run (the wait in run()
+   * rejects into the stoppers).
    */
   private superviseTunnel(state: {
     get: () => Tunnel;
-    set: (next: Tunnel) => void;
+    set: (next: Tunnel, stopApp: () => void) => void;
     restart: () => Promise<Tunnel>;
+    stopApp: () => void;
+    startApp: (tunnelUrl: string) => Promise<{ stop: () => void }>;
+    waitForApp: () => Promise<boolean>;
     reregister: (url: string) => Promise<{ preview: string | null }>;
     fail: (error: Error) => void;
   }): void {
@@ -476,15 +529,18 @@ export default class AppDev extends BaseCommand {
         queued = false;
         restarting = true;
         try {
-          const next = await restartDevTunnel({
+          const restarted = await restartDevTunnel({
             oldTunnel: state.get(),
             start: state.restart,
+            stopApp: state.stopApp,
+            startApp: state.startApp,
+            waitForApp: state.waitForApp,
             reregister: state.reregister,
             log: (line) => this.log(line),
             logError: (line) => this.logToStderr(line),
           });
-          state.set(next);
-          next.onExit?.(() => void down());
+          state.set(restarted.tunnel, restarted.stopApp);
+          restarted.tunnel.onExit?.(() => void down());
           misses = 0;
         } catch (error) {
           state.fail(error as Error);
