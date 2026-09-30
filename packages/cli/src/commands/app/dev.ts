@@ -7,7 +7,7 @@ import { apiFailureOf, DASHBOARD_URL, LoginNeededError, type ApiFailure, type De
 import { apiBase } from '../../lib/app-auth.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
-import { ensureDevSecrets, envLocalPath, MissingSecretError, readEnvFile, resolveDevSecret, writeEnvLocal } from '../../lib/app-env.js';
+import { ensureDevSecrets, ensureQueekIgnored, envLocalPath, MissingSecretError, readEnvFile, resolveDevSecret, writeEnvLocal } from '../../lib/app-env.js';
 import { startSupervised, waitForHealthy, type FetchFn } from '../../lib/app-run.js';
 import { manualTunnel, matchTunnelRateLimited, startCloudflared, type Tunnel } from '../../lib/app-tunnel.js';
 import { BaseCommand } from '../../lib/base-command.js';
@@ -131,6 +131,13 @@ export async function withDevResources(stops: Array<() => void>, task: () => Pro
  */
 export const TUNNEL_PROBE_INTERVAL_MS = 30_000;
 export const TUNNEL_FAILURES_BEFORE_RESTART = 2;
+/**
+ * The per-restart attempt ceiling for one `restartDevTunnel` call. Under
+ * supervision this is unreachable by design: the supervisor counts every
+ * start toward `MAX_TUNNEL_RESTARTS_PER_WINDOW` via `onStartAttempt` and
+ * trips the 3-per-10-minutes cap first — 5 survives only as the ceiling for
+ * unsupervised (direct) `restartDevTunnel` use.
+ */
 export const MAX_TUNNEL_RESTARTS = 5;
 /** At most 3 restarts in any 10 minutes — then supervision stops, never hammering tunnel creation. */
 export const MAX_TUNNEL_RESTARTS_PER_WINDOW = 3;
@@ -322,15 +329,25 @@ export async function restartDevTunnel(options: {
 }
 
 /**
+ * One editor save fans out into several `watch` change events: without
+ * coalescing, every event queues its own deploy cycle (several identical
+ * re-registers, installs and ready blocks per save).
+ */
+export const DEPLOY_QUEUE_DEBOUNCE_MS = 200;
+
+/**
  * Serialize async work across callers: each unit starts only after the
  * previous settles, so a toml save landing mid-restart queues its deploy
  * behind the re-register instead of racing it (two concurrent cycles could
  * install mixed old/new URLs). A rejection settles the chain without
- * breaking it.
+ * breaking it. With `debounceMs`, a burst of requests inside one quiet
+ * window coalesces — only the latest work runs, and every caller waiting
+ * on the burst shares its result (the toml did not change between them,
+ * so the latest cycle covers them all).
  */
-export function createDeployQueue(): <T>(work: () => Promise<T>) => Promise<T> {
+export function createDeployQueue(options: { debounceMs?: number } = {}): <T>(work: () => Promise<T>) => Promise<T> {
   let tail: Promise<void> = Promise.resolve();
-  return <T>(work: () => Promise<T>): Promise<T> => {
+  const enqueue = <T>(work: () => Promise<T>): Promise<T> => {
     const next = tail.then(work);
     tail = next.then(
       () => undefined,
@@ -338,6 +355,30 @@ export function createDeployQueue(): <T>(work: () => Promise<T>) => Promise<T> {
     );
     return next;
   };
+  const debounceMs = options.debounceMs ?? 0;
+  if (debounceMs <= 0) return enqueue;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let burst: Array<{ work: () => Promise<unknown>; resolve: (value: unknown) => void; reject: (reason: unknown) => void }> = [];
+  return <T>(work: () => Promise<T>): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      burst.push({ work: work as () => Promise<unknown>, resolve: resolve as (value: unknown) => void, reject });
+      if (timer !== null) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        const waiting = burst;
+        burst = [];
+        const latest = waiting[waiting.length - 1];
+        if (latest === undefined) return;
+        enqueue(latest.work).then(
+          (value) => {
+            for (const caller of waiting) caller.resolve(value);
+          },
+          (error: unknown) => {
+            for (const caller of waiting) caller.reject(error);
+          },
+        );
+      }, debounceMs);
+    });
 }
 
 export interface DevTunnelSupervisorDeps {
@@ -575,6 +616,7 @@ export default class AppDev extends BaseCommand {
     // run before starting anything (tunnel included).
     const queek = queekDir(flags.path);
     mkdirSync(queek, { recursive: true });
+    ensureQueekIgnored(flags.path);
     const recorded = readEnvFile(envLocalPath(queek));
     await resolveDevSecret(api, first.manifest.slug, queek, recorded, process.env.QUEEK_APP_SECRET, (line) => this.log(line)).catch(
       (error: Error) => this.error(error.message, { exit: error instanceof MissingSecretError ? 2 : 1 }),
@@ -675,8 +717,10 @@ export default class AppDev extends BaseCommand {
       this.readyBlock(tunnel.url, current.preview, current.store, current.appPid);
       this.log(`Watching ${tomlPath} — save it to re-register ([dev] changes need a restart). Ctrl+C to stop.`);
       // Deploys serialize across toml saves and restart re-registers: a
-      // save landing mid-restart queues behind instead of racing it.
-      const deployQueue = createDeployQueue();
+      // save landing mid-restart queues behind instead of racing it. One
+      // editor save fans out into several change events, so the burst
+      // coalesces into a single cycle.
+      const deployQueue = createDeployQueue({ debounceMs: DEPLOY_QUEUE_DEBOUNCE_MS });
       watch(tomlPath, { persistent: true }, async () => {
         try {
           current = await deployQueue(() => cycle(tunnel.url));

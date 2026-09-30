@@ -1,8 +1,9 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Flags } from '@oclif/core';
 import { DASHBOARD_URL, LoginNeededError } from '../../lib/app-api.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
+import { ensureQueekIgnored } from '../../lib/app-env.js';
 import { assertSemver, loadApp, queekDir } from '../../lib/app-manifest.js';
 import { BaseCommand } from '../../lib/base-command.js';
 
@@ -99,12 +100,18 @@ export default class AppDeploy extends BaseCommand {
     if (typeof result.signing_secret === 'string' && result.signing_secret !== '') {
       const dir = queekDir(flags.path);
       mkdirSync(dir, { recursive: true });
+      ensureQueekIgnored(flags.path);
       const envFile = join(dir, '.env.local');
       const line = `QUEEK_APP_SECRET=${result.signing_secret}\n`;
       if (existsSync(envFile) && readFileSync(envFile, 'utf8').includes('QUEEK_APP_SECRET=')) {
         this.logToStderr(`${envFile} already holds a QUEEK_APP_SECRET — the new secret is NOT written there.`);
       } else {
         appendFileSync(envFile, line, { mode: 0o600 });
+        try {
+          chmodSync(envFile, 0o600);
+        } catch {
+          // Best effort (Windows has no Unix modes); the content is what matters.
+        }
         this.log(`Secret written to ${envFile} (gitignored — back it up; it is shown once).`);
       }
       if (printSecretToStdout()) {

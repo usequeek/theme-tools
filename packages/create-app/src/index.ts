@@ -33,7 +33,7 @@ and with no folder the folder is named after the slug (my-app with --yes or no t
   --force                allow a folder that is not empty
   --template <source>    another starter: a giget source or a local folder`;
 
-export async function runCreate(flags: Flags, prompter: Prompter | null, log?: (line: string) => void): Promise<void> {
+export async function runCreate(flags: Flags, prompter: Prompter | null, log?: (line: string) => void): Promise<string> {
   const dir = flags.dir ?? 'my-app';
   // Before anything is asked or written: a file is never a target, and a
   // busy folder needs --force.
@@ -58,7 +58,9 @@ export async function runCreate(flags: Flags, prompter: Prompter | null, log?: (
   const problem = slugProblem(slug);
   if (problem) throw new UsageError(`${problem} (pass --slug).`);
 
-  await createApp(flags.dir ?? slug, { slug, name }, {
+  const target = flags.dir ?? slug;
+  await createApp(target, { slug, name }, {
     install: flags.install, git: flags.git, pm, dryRun: flags.dryRun, force: flags.force, template: flags.template, log,
   });
+  return resolve(target);
 }

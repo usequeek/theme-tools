@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { ApiError, AutomationTokenError, type DeveloperApi } from './app-api.js';
 
 /**
@@ -69,6 +70,28 @@ export function toOneLineBase64(text: string): string {
 /** Absolute path of the local-only env file (handy for messages). */
 export function envLocalPath(queekDirPath: string): string {
   return `${queekDirPath}/${LOCAL_FILE}`;
+}
+
+/**
+ * `.queek/` holds local-only state (`.env.local`, `codegen.json`,
+ * `cloudflared.log`) that must never be committed — but init/dev/deploy
+ * only *said* "gitignored" without ensuring it. Every command that creates
+ * `.queek/` calls this: a `.gitignore` lacking a `.queek/` line gets one
+ * appended; with no `.gitignore` at all one is created (inside or outside
+ * a git repo — harmless either way). Never duplicates the line.
+ */
+export function ensureQueekIgnored(projectDir: string): void {
+  const file = join(projectDir, '.gitignore');
+  let existing: string | null = null;
+  try {
+    existing = readFileSync(file, 'utf8');
+  } catch {
+    writeFileSync(file, '.queek/\n');
+    return;
+  }
+  if (existing.split('\n').some((line) => line.trim() === '.queek/')) return;
+  const prefix = existing === '' || existing.endsWith('\n') ? '' : '\n';
+  writeFileSync(file, `${existing}${prefix}.queek/\n`);
 }
 
 /** Keys the CLI owns in the spawned app's env: project `.env` values for these never win. */

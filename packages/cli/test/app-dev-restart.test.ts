@@ -3,6 +3,7 @@ import {
   buildDevAppEnv,
   countTunnelMiss,
   createDeployQueue,
+  DEPLOY_QUEUE_DEBOUNCE_MS,
   DevTunnelSupervisor,
   isTunnelRateLimited,
   MAX_TUNNEL_RESTARTS,
@@ -761,5 +762,73 @@ describe('createDeployQueue (toml saves queue behind re-registers)', () => {
       }),
     ).resolves.toBe('third');
     expect(order).toContain('third');
+  });
+
+  it('coalesces one save fanning out into several change events (fake timers)', async () => {
+    vi.useFakeTimers();
+    try {
+      const queue = createDeployQueue({ debounceMs: DEPLOY_QUEUE_DEBOUNCE_MS });
+      let runs = 0;
+      const burst = [
+        queue(async () => {
+          runs += 1;
+          return 'first';
+        }),
+        queue(async () => {
+          runs += 1;
+          return 'second';
+        }),
+        queue(async () => {
+          runs += 1;
+          return 'third';
+        }),
+      ];
+      // Attach waiters before advancing: a rejection settling with no
+      // handler yet reads as an unhandled rejection.
+      const assertions = [expect(burst[0]).resolves.toBe('third'), expect(burst[1]).resolves.toBe('third'), expect(burst[2]).resolves.toBe('third')];
+      // Still inside the quiet window: nothing has run yet.
+      await vi.advanceTimersByTimeAsync(DEPLOY_QUEUE_DEBOUNCE_MS - 1);
+      expect(runs).toBe(0);
+      await vi.advanceTimersByTimeAsync(1);
+      // One coalesced cycle (the latest), shared with every waiter.
+      expect(runs).toBe(1);
+      await assertions[0];
+      await assertions[1];
+      await assertions[2];
+      // A later save runs its own cycle.
+      const later = queue(async () => {
+        runs += 1;
+        return 'fourth';
+      });
+      const laterAssertion = expect(later).resolves.toBe('fourth');
+      await vi.advanceTimersByTimeAsync(DEPLOY_QUEUE_DEBOUNCE_MS);
+      expect(runs).toBe(2);
+      await laterAssertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shares a rejection with every waiter on the burst (fake timers)', async () => {
+    vi.useFakeTimers();
+    try {
+      const queue = createDeployQueue({ debounceMs: DEPLOY_QUEUE_DEBOUNCE_MS });
+      const burst = [queue(async () => 'ok'), queue(async () => {
+        throw new Error('deploy refused');
+      })];
+      // Attach waiters before advancing: a rejection settling with no
+      // handler yet reads as an unhandled rejection.
+      const assertions = [expect(burst[0]).rejects.toThrow('deploy refused'), expect(burst[1]).rejects.toThrow('deploy refused')];
+      await vi.advanceTimersByTimeAsync(DEPLOY_QUEUE_DEBOUNCE_MS);
+      await assertions[0];
+      await assertions[1];
+      // The chain survives: the next cycle still runs.
+      const next = queue(async () => 'recovered');
+      const nextAssertion = expect(next).resolves.toBe('recovered');
+      await vi.advanceTimersByTimeAsync(DEPLOY_QUEUE_DEBOUNCE_MS);
+      await nextAssertion;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -1,10 +1,11 @@
-import { chmodSync, mkdtempSync, rmSync, statSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, AutomationTokenError, type DeveloperApi } from '../src/lib/app-api.js';
 import {
   ensureDevSecrets,
+  ensureQueekIgnored,
   envLocalPath,
   MISSING_SECRET_MESSAGE,
   MissingSecretError,
@@ -210,5 +211,38 @@ describe('resolveDevSecret (local, env, then the owner re-view — never a rotat
       await resolveDevSecret(secretApi(), 'hello', queek, {}, undefined, () => {});
       expect(statSync(envLocalPath(queek)).mode & 0o777).toBe(0o600);
     });
+  });
+});
+
+describe('ensureQueekIgnored (one shared helper; init/dev/deploy all call it)', () => {
+  it('creates a .gitignore with .queek/ when there is none (inside or outside a git repo)', () => {
+    const dir = stage();
+    ensureQueekIgnored(dir);
+    expect(readFileSync(join(dir, '.gitignore'), 'utf8')).toBe('.queek/\n');
+  });
+
+  it('appends .queek/ to an existing .gitignore, with or without a trailing newline', () => {
+    const noNewline = stage();
+    writeFileSync(join(noNewline, '.gitignore'), 'node_modules/');
+    ensureQueekIgnored(noNewline);
+    expect(readFileSync(join(noNewline, '.gitignore'), 'utf8')).toBe('node_modules/\n.queek/\n');
+
+    const withNewline = stage();
+    writeFileSync(join(withNewline, '.gitignore'), 'node_modules/\n');
+    ensureQueekIgnored(withNewline);
+    expect(readFileSync(join(withNewline, '.gitignore'), 'utf8')).toBe('node_modules/\n.queek/\n');
+  });
+
+  it('never duplicates the line (already present, or called twice)', () => {
+    const dir = stage();
+    writeFileSync(join(dir, '.gitignore'), 'node_modules/\n.queek/\n');
+    ensureQueekIgnored(dir);
+    ensureQueekIgnored(dir);
+    expect(readFileSync(join(dir, '.gitignore'), 'utf8')).toBe('node_modules/\n.queek/\n');
+
+    const fresh = stage();
+    ensureQueekIgnored(fresh);
+    ensureQueekIgnored(fresh);
+    expect(readFileSync(join(fresh, '.gitignore'), 'utf8')).toBe('.queek/\n');
   });
 });

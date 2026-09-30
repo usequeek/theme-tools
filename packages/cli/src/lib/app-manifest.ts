@@ -4,7 +4,7 @@ import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 
 /**
  * `queek.app.toml` — the local source of truth for an app's manifest, mapped
- * EXACTLY to the backend's `AppManifestValidator::topLevelKeys()` (27 keys).
+ * EXACTLY to the backend's `AppManifestValidator::topLevelKeys()` (28 keys).
  * The server never fetches a live manifest URL; `deploy` pushes this file.
  *
  * Secrets NEVER live here: the registration secret (`whsec_…`) goes to
@@ -15,17 +15,23 @@ import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 export const APP_TOML = 'queek.app.toml';
 export const APP_TOML_VARIANT = (name: string): string => `queek.app.${name}.toml`;
 
-/** The 27 manifest keys the backend accepts — nothing else is sent. */
+/** The 28 manifest keys the backend accepts — nothing else is sent. */
 export const MANIFEST_KEYS = [
   'slug', 'name', 'description', 'icon', 'developer', 'version', 'distribution',
   'category', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing',
-  'developer_url', 'privacy_url', 'support_url', 'demo_url', 'video_url', 'scopes', 'webhook_topics',
+  'developer_url', 'privacy_url', 'support_url', 'demo_url', 'video_url', 'scopes', 'optional_scopes', 'webhook_topics',
   'settings', 'install_url', 'uninstall_url', 'settings_url', 'webhook_url',
   'extensions', 'dashboard',
 ] as const;
 
+/**
+ * The `extensions` sub-keys the backend accepts (`validateExtensions` +
+ * `validateNav`): nothing else is sent under `extensions`.
+ */
+export const EXTENSION_KEYS = ['proxy', 'blocks', 'merchant_page_url', 'nav'] as const;
+
 export type ManifestKey = (typeof MANIFEST_KEYS)[number];
-export type AppManifest = Partial<Record<ManifestKey, unknown>> & { slug: string; name: string; scopes: string[]; install_url: string; uninstall_url: string };
+export type AppManifest = Partial<Record<ManifestKey, unknown>> & { slug: string; name: string; scopes: string[]; optional_scopes?: string[]; install_url: string; uninstall_url: string };
 
 export class TomlError extends Error {
   readonly exitCode = 2;
@@ -95,6 +101,20 @@ function httpsProblem(field: string, value: unknown): string | null {
   return null;
 }
 
+/**
+ * One grantable scope entry, mirroring the backend's `ManifestScopeRule`
+ * (a Laratrust `merchant-*` permission a key may actually hold; the
+ * `merchant-apps-*` family and friends can never be granted). Shared by
+ * `scopes` and `optional_scopes` — the backend applies the same rule to
+ * both tiers.
+ */
+function checkScope(scope: unknown, fail: (message: string) => never): void {
+  if (typeof scope !== 'string' || scope === '') throw fail('Each scope must be a Laratrust permission name.');
+  if (NON_DELEGABLE_PREFIXES.some((prefix) => scope.startsWith(prefix))) {
+    throw fail(`The '${scope}' scope can never be granted to an app: an installation key must never install apps, manage keys or read the team directory.`);
+  }
+}
+
 function checkSchemaFields(list: unknown, where: string, primitives: string[], problems: string[]): void {
   if (!Array.isArray(list)) {
     problems.push(`The ${where} schema must be a list.`);
@@ -159,7 +179,7 @@ export function loadTomlFile(path: string): LoadedToml {
 }
 
 /**
- * Map the grouped toml onto the flat 27-key manifest the API takes.
+ * Map the grouped toml onto the flat 28-key manifest the API takes.
  * Throws `TomlError` (exit 2) on anything the backend would refuse —
  * the same names, the same limits, the same error text where it matters.
  */
@@ -264,7 +284,7 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   const app = (doc.app ?? {}) as Record<string, unknown>;
   for (const [group, allowed, where] of [
     [listing, ['description', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing', 'developer_url', 'privacy_url', 'support_url', 'demo_url', 'video_url'], 'manifest.listing'],
-    [access, ['scopes'], 'manifest.access'],
+    [access, ['scopes', 'optional_scopes'], 'manifest.access'],
     [webhooks, ['topics', 'url'], 'manifest.webhooks'],
     [app, ['install_url', 'uninstall_url', 'settings_url'], 'manifest.app'],
   ] as const) {
@@ -275,13 +295,23 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   }
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
 
+  // `scopes` is present-but-empty-able (backend `present,array`: Shopify
+  // parity, `scopes = ""` with the field still present) — `required` would
+  // refuse `[]`. Each entry follows the backend's ManifestScopeRule, same as
+  // `optional_scopes` below.
   const scopes = access.scopes as unknown;
-  if (!Array.isArray(scopes) || scopes.length < 1) throw fail('The scopes field is required (at least one).');
-  for (const scope of scopes as unknown[]) {
-    if (typeof scope !== 'string' || scope === '') throw fail('Each scope must be a Laratrust permission name.');
-    if (scope.startsWith('merchant-apps-')) throw fail(`The '${scope}' scope can never be granted to an app: an installation key must never install apps, manage keys or read the team directory.`);
-    if (NON_DELEGABLE_PREFIXES.some((prefix) => (scope as string).startsWith(prefix))) {
-      throw fail(`The '${scope}' scope can never be granted to an app: an installation key must never install apps, manage keys or read the team directory.`);
+  if (!Array.isArray(scopes)) throw fail('The scopes field is required (a list, possibly empty).');
+  for (const scope of scopes as unknown[]) checkScope(scope, fail);
+  // Optional scopes (backend `sometimes,array`): requested post-install,
+  // never granted at install. Same grantable-scope rule; disjointness from
+  // `scopes` is checked below (backend: one tier only).
+  const optionalScopes = access.optional_scopes as unknown;
+  if (optionalScopes !== undefined) {
+    if (!Array.isArray(optionalScopes)) throw fail('The optional_scopes field must be a list.');
+    for (const scope of optionalScopes as unknown[]) checkScope(scope, fail);
+    const overlap = (optionalScopes as unknown[]).filter((scope) => (scopes as unknown[]).includes(scope));
+    if (overlap.length > 0) {
+      throw fail(`Optional scopes must not repeat required scopes: ${(overlap as string[]).join(', ')}.`);
     }
   }
 
@@ -326,6 +356,10 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   });
 
   const manifest: AppManifest = { slug: resolvedSlug, name, scopes: scopes as string[], install_url: app.install_url as string, uninstall_url: app.uninstall_url as string };
+  // Absent-when-undeclared parity (backend `sometimes`): an app without
+  // `optional_scopes` re-registers byte-identical to its pre-optional
+  // versions, or the registry mints a phantom version.
+  if (optionalScopes !== undefined) manifest.optional_scopes = optionalScopes as string[];
   if (distribution !== 'public') manifest.distribution = distribution;
   for (const key of ['icon', 'developer', 'category'] as const) {
     if (doc[key] !== undefined) manifest[key] = doc[key];
@@ -351,11 +385,13 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   if ((settings as unknown[]).length > 0) manifest.settings = settings as AppManifest['settings'];
 
   checkExtensions(doc.extensions, manifest, fail);
-  checkDashboard(doc.dashboard, manifest, fail, manifest.scopes);
+  // Declared means either tier (backend): an optional-scope action
+  // registers, and the grant-based submit check passes it once approved.
+  checkDashboard(doc.dashboard, manifest, fail, [...manifest.scopes, ...(manifest.optional_scopes ?? [])]);
 
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
 
-  // Closed-world guard: the mapped object carries only the 27 keys, so a
+  // Closed-world guard: the mapped object carries only the 28 keys, so a
   // typo can never smuggle an unknown field past this point.
   for (const key of Object.keys(manifest)) {
     if (!(MANIFEST_KEYS as readonly string[]).includes(key)) throw new TomlError(unknownField(key));
@@ -416,7 +452,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
   if (!isRecord(extensions)) throw fail('The extensions section must be a table.');
   const problems: string[] = [];
   for (const key of Object.keys(extensions)) {
-    if (!['proxy', 'blocks', 'merchant_page_url', 'nav'].includes(key)) problems.push(unknownField(key, 'manifest.extensions'));
+    if (!(EXTENSION_KEYS as readonly string[]).includes(key)) problems.push(unknownField(key, 'manifest.extensions'));
   }
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
   const out: Record<string, unknown> = {};
@@ -597,7 +633,10 @@ export function fromManifest(manifest: Record<string, unknown>): string {
     if (manifest[key] !== undefined) listing[key] = manifest[key];
   }
   if (Object.keys(listing).length > 0) doc.listing = listing;
-  doc.access = { scopes: manifest.scopes ?? [] };
+  doc.access = {
+    scopes: manifest.scopes ?? [],
+    ...(manifest.optional_scopes !== undefined ? { optional_scopes: manifest.optional_scopes } : {}),
+  };
   const webhooks: Record<string, unknown> = {};
   if (manifest.webhook_topics !== undefined) webhooks.topics = manifest.webhook_topics;
   if (manifest.webhook_url !== undefined) webhooks.url = manifest.webhook_url;

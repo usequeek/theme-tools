@@ -4,9 +4,11 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   APP_TOML,
+  EXTENSION_KEYS,
   fromManifest,
   loadApp,
   loadTomlFile,
+  MANIFEST_KEYS,
   preserveDevTable,
   resolveTomlPath,
   toManifest,
@@ -409,5 +411,71 @@ path = "/admin/services"
     expect(() => loadApp(stage({ [APP_TOML]: withNav(many) }))).toThrow(/more than 10/);
     const noPage = stage({ [APP_TOML]: `${BASE}\n[[extensions.nav]]\nlabel = "X"\npath = "/x"\n` });
     expect(() => loadApp(noPage)).toThrow(/merchant_page_url/);
+  });
+});
+
+describe('manifest mirror snapshot (backend drift tripwire)', () => {
+  it('pins the sorted MANIFEST_KEYS + extensions sub-keys against the backend validator', () => {
+    const drift =
+      'backend AppManifestValidator::topLevelKeys() changed — update the mirror + this snapshot consciously';
+    expect([...MANIFEST_KEYS].sort(), drift).toEqual([
+      'category', 'dashboard', 'demo_url', 'description', 'description_long', 'developer',
+      'developer_url', 'distribution', 'extensions', 'highlights', 'icon',
+      'install_url', 'logo_url', 'name', 'optional_scopes', 'pricing',
+      'privacy_url', 'scopes', 'settings', 'settings_url', 'slug', 'support_url',
+      'tagline', 'uninstall_url', 'version', 'video_url', 'webhook_topics', 'webhook_url',
+    ]);
+    expect([...EXTENSION_KEYS].sort(), drift).toEqual(['blocks', 'merchant_page_url', 'nav', 'proxy']);
+  });
+});
+
+describe('[access] optional_scopes (backend optional-scopes branch)', () => {
+  const withAccess = (access: string): string => BASE.replace(
+    'scopes = ["merchant-business_profile-read"]',
+    `scopes = ["merchant-business_profile-read"]\n${access}`,
+  );
+
+  it('round-trips toml → manifest → toml, absent when undeclared', () => {
+    const { manifest } = toManifest(loadTomlFile(stageFile(withAccess('optional_scopes = ["merchant-orders-read"]\n'))).doc);
+    expect(manifest.optional_scopes).toEqual(['merchant-orders-read']);
+    const back = toManifest(loadTomlFile(stageFile(fromManifest(manifest as Record<string, unknown>))).doc);
+    expect(back.manifest.optional_scopes).toEqual(['merchant-orders-read']);
+    const plain = toManifest(loadTomlFile(stageFile(BASE)).doc);
+    expect(plain.manifest.optional_scopes).toBeUndefined();
+    expect(fromManifest(plain.manifest as Record<string, unknown>)).not.toContain('optional_scopes');
+  });
+
+  it('allows an empty required list (backend present,array)', () => {
+    const empty = BASE.replace('scopes = ["merchant-business_profile-read"]', 'scopes = []');
+    const { manifest } = toManifest(loadTomlFile(stageFile(empty)).doc);
+    expect(manifest.scopes).toEqual([]);
+  });
+
+  it('refuses overlap with required scopes and non-grantable entries, like scopes', () => {
+    const overlap = withAccess('optional_scopes = ["merchant-business_profile-read"]\n');
+    expect(() => toManifest(loadTomlFile(stageFile(overlap)).doc)).toThrow(
+      'Optional scopes must not repeat required scopes: merchant-business_profile-read.',
+    );
+    const nonDelegable = withAccess('optional_scopes = ["merchant-apps-install"]\n');
+    expect(() => toManifest(loadTomlFile(stageFile(nonDelegable)).doc)).toThrow('can never be granted');
+    const stray = BASE.replace('[access]', '[access]\nextra = 1');
+    expect(() => toManifest(loadTomlFile(stageFile(stray)).doc)).toThrow("Unknown field 'extra' in manifest.access.");
+  });
+
+  it('grants a dashboard action scope from either tier', () => {
+    const action = (scope: string): string => `
+${withAccess('optional_scopes = ["merchant-orders-read"]\n')}
+[dashboard]
+[[dashboard.actions]]
+key = "book"
+title = "Book"
+target = "order-details"
+scope = "${scope}"
+effect = "order_appointment"
+notify_url = "https://hello.example.com/notify"
+`;
+    const { manifest } = toManifest(loadTomlFile(stageFile(action('merchant-orders-read'))).doc);
+    expect((manifest.dashboard as { actions: unknown[] }).actions).toHaveLength(1);
+    expect(() => toManifest(loadTomlFile(stageFile(action('merchant-orders-write'))).doc)).toThrow('never grants');
   });
 });

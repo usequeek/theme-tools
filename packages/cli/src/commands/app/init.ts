@@ -1,5 +1,6 @@
 import { Args, Flags } from '@oclif/core';
 import { clackPrompter, runCreate } from '@usequeek/create-app';
+import { ensureQueekIgnored } from '../../lib/app-env.js';
 import { BaseCommand } from '../../lib/base-command.js';
 
 export default class AppInit extends BaseCommand {
@@ -32,7 +33,7 @@ export default class AppInit extends BaseCommand {
     const { args, flags } = await this.parse(AppInit);
     const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY) && !flags.yes;
     try {
-      await runCreate(
+      const dir = await runCreate(
         {
           dir: args.dir, slug: flags.slug, name: flags.name, pm: flags.pm, install: flags.install,
           git: flags.git, yes: flags.yes, dryRun: flags['dry-run'], force: flags.force, template: flags.template,
@@ -40,6 +41,10 @@ export default class AppInit extends BaseCommand {
         interactive ? clackPrompter() : null,
         (line) => this.log(line),
       );
+      // The scaffold ships no `.queek/` yet — but the first dev/deploy run
+      // creates one, so the ignore lands now (never on `--dry-run`, which
+      // writes nothing).
+      if (!flags['dry-run']) ensureQueekIgnored(dir);
     } catch (error) {
       const { message, exitCode } = error as Error & { exitCode?: number };
       this.error(message, { exit: exitCode ?? 1 });

@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   atomicWriteFile,
   CodegenError,
@@ -386,6 +386,18 @@ describe('atomicWriteFile (crash-safe pair of writes)', () => {
 });
 
 describe('command mapping (offline→stderr, refusal→exit)', () => {
+  // warnLine() reads GITHUB_ACTIONS at call time: pin it unset here so the
+  // suite passes identically locally and under `GITHUB_ACTIONS=true CI=true`.
+  let savedGithubActions: string | undefined;
+  beforeEach(() => {
+    savedGithubActions = process.env.GITHUB_ACTIONS;
+    delete process.env.GITHUB_ACTIONS;
+  });
+  afterEach(() => {
+    if (savedGithubActions === undefined) delete process.env.GITHUB_ACTIONS;
+    else process.env.GITHUB_ACTIONS = savedGithubActions;
+  });
+
   it('offlineStderr pins the exact stderr line', () => {
     expect(offlineStderr({ offline: true, reason: 'kept' })).toBe('Warning: kept');
   });
@@ -427,12 +439,25 @@ describe('generator pin coupling (SDK bumps must propagate here)', () => {
 });
 
 describe('warnLine (check-merchant-snapshot.mjs annotation shape)', () => {
-  it('emits a CI annotation under GITHUB_ACTIONS, plain text locally', () => {
-    const previous = process.env.GITHUB_ACTIONS;
+  // Hermetic both ways: each case sets the variable it needs and the hooks
+  // restore the ambient value, so the suite passes identically locally and
+  // under `GITHUB_ACTIONS=true CI=true`.
+  let savedGithubActions: string | undefined;
+  beforeEach(() => {
+    savedGithubActions = process.env.GITHUB_ACTIONS;
+  });
+  afterEach(() => {
+    if (savedGithubActions === undefined) delete process.env.GITHUB_ACTIONS;
+    else process.env.GITHUB_ACTIONS = savedGithubActions;
+  });
+
+  it('emits a CI annotation under GITHUB_ACTIONS', () => {
     process.env.GITHUB_ACTIONS = 'true';
     expect(warnLine('kept')).toBe('::warning::kept');
-    if (previous === undefined) delete process.env.GITHUB_ACTIONS;
-    else process.env.GITHUB_ACTIONS = previous;
+  });
+
+  it('emits plain text locally', () => {
+    delete process.env.GITHUB_ACTIONS;
     expect(warnLine('kept')).toBe('Warning: kept');
   });
 });
