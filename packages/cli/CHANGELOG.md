@@ -2,6 +2,42 @@
 
 Formerly `@usequeek/theme-cli` (bin `queek-theme`); from 0.7.0 the CLI is `@usequeek/cli`, bin `queek`, with the theme commands under `queek theme`.
 
+## 0.14.0
+
+### Minor Changes
+
+- [#9](https://github.com/usequeek/theme-tools/pull/9) [`62995ea`](https://github.com/usequeek/theme-tools/commit/62995ea292b8dc835d151e6b5de84339b13fcabe) Thanks [@ichie-benjamin](https://github.com/ichie-benjamin)! - Add the `queek app` developer flow (Shopify-shaped, self-serve), verified against the S1 backend build: `queek auth login` (browser-open OAuth against the reused connector `cli` client, device-code fallback for headless shells) and `queek auth logout`, plus `app init` (from the public starter), `app dev` (tunnel + owned test-store install, auto dev URLs, watch), `app deploy [--version X.Y.Z] [--message ..] [--no-release]` (toml → version, released by default; the toml carries no `version`, the backend auto-assigns; identical manifests no-op; signing secret shown once into `.queek/.env.local`), `app config link` (server → toml; no config push — deploy carries config), `app versions list`, `app release [<version>|--version]` (released vs in_review wording, plus 409 review_required tolerance behind the explicit-submit switch) and `app submit [--sequence]` (readiness checklist, explicit warning acknowledgement, server-provided attestation, Idempotency-Key) with `app withdraw` (in_review back to development). App commands sign in automatically when there is no valid session (`--no-browser` forces the device code); the 60-minute access token refreshes transparently. In CI, `QUEEK_APP_AUTOMATION_TOKEN` authenticates with no login; a refusal (401) names the app and the actions the token allows. `queek.app.toml` (+ `-c/--config` variants) maps exactly to the backend `AppManifestValidator` keys; `handle` is CLI-only sugar for `slug`, secrets in toml are refused. New `@usequeek/create-app` package behind `npm create @usequeek/app`.
+  
+  S-B (Shopify dev-loop parity, coded exactly to the S-A contract, mocked in tests): `queek app dev --store` accepts only dev stores (GET dev-stores; non-dev `--store` refused with Shopify's wrong-kind copy); with none, one TTY question (or `--create-dev-store` in CI) creates one named after the app with test data (POST dev-stores {name, test_data} + Idempotency-Key, D1). Ready block prints `✅ Ready, watching for changes`, the tunnel URL and the Preview URL (admin_url + `&app={slug}`, D4); every install/app line logs with time + source. B1: deviceLogin backs off +5s (capped 30s) on `slow_down`/429 and polls until expiry, never throwing on them. B2: every `dev` error path stops the tunnel via try/finally (tested). B4 kept. New `queek app info` (config file, app, app ID, scopes, dev store, user); `queek app deploy` prints `New version released — <slug>-N · <message> · <link>` with the one-version URL (`?app={p_id}&section=versions&version={sequence}`, D5) and server validation errors verbatim (`--message/--version/--no-release` unchanged). dev-installs keeps its body field (D6); dev-store deletion stays dashboard-side (D7, no CLI delete).
+  
+  S-C (AI-ready starter): scaffolded output ships `AGENTS.md` (SDK, queek.app.toml, dev loop, https://docs.usequeek.com, MCP status, "do not add tooling to this repo"), `CLAUDE.md` (`@AGENTS.md` exactly), `.mcp.json` + `.cursor/mcp.json` (empty `mcpServers` — no developer MCP endpoint/package exists in the repos yet: backend MCP mounts are customer/merchant, so docs are wired instead), and the success banner names the AI setup.
+  
+  R27/R1+R2: `DevStore` carries the owner-visible `storefront_password` (threaded through create, never dropped); `dev` prints it once after creation and in the ready block (`Storefront password: …`, stdout only — never debug/logs), and `info --store` shows it. First-run creates default to "<app name> dev" with `--dev-store-name` / `--dev-store-address` overrides (slug omitted → backend default; taken → 422 suggestion verbatim).
+
+### Patch Changes
+
+- [#9](https://github.com/usequeek/theme-tools/pull/9) [`c0d8007`](https://github.com/usequeek/theme-tools/commit/c0d8007d4403e6635871a0dbea104f9d94408831) Thanks [@ichie-benjamin](https://github.com/ichie-benjamin)! - Review fixes (REVISE → address): hermetic `GITHUB_ACTIONS` handling in the
+  codegen tests (both CI-shaped and local cases pin the variable they need, so
+  the suite passes identically with and without `GITHUB_ACTIONS=true CI=true`);
+  `[access] optional_scopes` round-trip support in the toml mirror/mapping
+  (requested post-install, never granted at install, disjoint from `scopes`;
+  `scopes` may now be empty per the backend `present,array` rule; dashboard
+  action scopes resolve against either tier); a sorted-keys snapshot of the
+  28-key manifest mirror plus the `extensions` sub-keys that fails loudly on
+  backend `AppManifestValidator::topLevelKeys()` drift; one shared
+  `ensureQueekIgnored()` helper (init/dev/deploy) so `.queek/` is actually
+  gitignored, not just called that; 0600 on the deploy-written `.env.local`;
+  toml-watcher burst coalescing in the deploy queue; and a comment aligning the
+  unreachable-per-supervision `MAX_TUNNEL_RESTARTS=5` with the 3-per-10-minutes
+  window cap.
+  
+  Ordering: this CLI release must ship AFTER the backend optional-scopes push
+  (`scopes` present-but-empty + `optional_scopes` in `AppManifestValidator`) —
+  against the older backend, `optional_scopes` deploys 422 and empty `scopes`
+  is refused server-side.
+- Updated dependencies [[`62995ea`](https://github.com/usequeek/theme-tools/commit/62995ea292b8dc835d151e6b5de84339b13fcabe)]:
+  - @usequeek/create-app@0.14.0
+
 ## 0.13.0
 
 ### Patch Changes
