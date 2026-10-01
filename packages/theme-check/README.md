@@ -27,6 +27,13 @@ project, so the project must have `@usequeek/theme-kit` installed.
 
 New rule: `theme/markdown-html` (reject) — `renderMarkdown` returns React elements, not an
 HTML string, so passing it to `dangerouslySetInnerHTML` renders "[object Object]".
+New rules (warn one release, then reject): `theme/locale-key-naming` — every key in
+`locales/*.json` is dotted lowercase `scope.thing.state` (≤40 chars so `<slug>.<key>` fits
+varchar(64), no hyphens), values are strings or plural maps (≤1000 chars, no raw HTML, no
+empties), at most 3400 keys per file; `theme/locale-file-parity` — every `locales/{lang}.json`
+key exists in `en.default.json` (English is the fallback authority) and its `{variables}` stay
+a subset of the English ones. Brand tokens that may stay untranslated live in
+`src/allowlist/brand-names.json`.
 
 ## Project config
 

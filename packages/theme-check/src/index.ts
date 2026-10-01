@@ -74,3 +74,29 @@ export {
   STARTER_PLACEHOLDER_IMAGES,
 } from './rules/static.js';
 export { ANALYSIS_RULES, variantParityRule, fieldParityRule, designTokensRule } from './rules/analysis.js';
+// Theme string files (G0-naming): naming/shape and file-parity rules, plus
+// the shared helpers (locale budgets, brand allowlist) G0-enforce reuses.
+export { localeKeyNamingRule, localeFileParityRule, localeInterpolationVars } from './rules/locale-strings.js';
+export {
+  LOCALE_KEY_PATTERN,
+  LOCALE_KEY_MAX_LENGTH,
+  LOCALE_VALUE_MAX_LENGTH,
+  LOCALE_FILE_MAX_KEYS,
+  LOCALE_LIMITS_DOC_URL,
+  THEME_SLUG_MAX_LENGTH,
+  THEME_SLUG_PATTERN,
+  PLURAL_FORMS,
+  LOCALE_CODE_PATTERN,
+  LOCALE_CODE_MAX_LENGTH,
+  DEFAULT_LOCALE_FILE,
+  flattenLocaleEntries,
+  hasRawHtml,
+  extractInterpolationVars,
+  leafInterpolationVars,
+  isPluralMapShape,
+  localeCodeOfFile,
+  type LocaleLeaf,
+  type LocaleConflict,
+  type PluralForm,
+} from './utils/locale-files.js';
+export { BRAND_NAMES, isBrandNameToken } from './allowlist/brand-names.js';

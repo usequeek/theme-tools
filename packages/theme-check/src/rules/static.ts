@@ -7,6 +7,7 @@ import { SCREENSHOT_LOCK, TEMPLATE_DESCRIPTION_MAX, TEMPLATE_DESCRIPTION_PLACEHO
 import { copyViolations, isTestimonialSection, manifestViolations } from '../utils/template-copy.js';
 import { bundledVocabularyView, type VocabularyView } from '../utils/business-vocabulary.js';
 import { themeSourceFiles } from '../context.js';
+import { localeFileParityRule, localeKeyNamingRule } from './locale-strings.js';
 import { finding, type DemoStore, type Finding, type Rule, type ThemeContext } from '../types.js';
 
 /** A theme file as a finding names it: relative to the theme, with `/` on every OS (Windows gave `styles\type.css`). */
@@ -1655,4 +1656,5 @@ export const STATIC_RULES: Rule[] = [moduleContractRule, structureRule, demoStor
   templateDescriptionRule, templateScreenshotRule, templateChromeRule, templateStyleRule,
   templateBusinessRule, templateVersionsRule, templateDesignsRule, templatePagesRule, templateCopyRule, vendorFactsRule, placeholderContentRule,
   markdownHtmlRule,
+  localeKeyNamingRule, localeFileParityRule,
 ];

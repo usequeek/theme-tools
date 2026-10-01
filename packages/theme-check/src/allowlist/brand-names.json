@@ -1,0 +1,7 @@
+{
+  "doc": "Brand, product and unit tokens that may legitimately stay untranslated in theme UI strings (product/brand names, currency codes, units). Shared by the theme-check locale rules; the G0-enforce slice (no hard-coded strings in JSX) reuses this list to avoid flagging these tokens. Keep it tiny: only tokens that are identical in every locale.",
+  "brands": ["Queek", "WhatsApp"],
+  "payments": ["Verve", "Mastercard", "Visa"],
+  "currencies": ["NGN", "USD", "EUR", "GBP", "GHS", "KES"],
+  "units": ["kg", "g", "ml", "cm"]
+}

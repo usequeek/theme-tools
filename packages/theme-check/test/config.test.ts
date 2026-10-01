@@ -154,6 +154,8 @@ describe('warningRuleIds and renderInitConfig', () => {
       'theme/demo-completeness',
       'theme/template-business',
       'theme/template-pages',
+      'theme/locale-key-naming',
+      'theme/locale-file-parity',
     ]);
   });
 

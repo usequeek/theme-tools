@@ -1,0 +1,15 @@
+{
+  "cart": {
+    "title": "Votre panier",
+    "add": "Ajouter au panier",
+    "count": {
+      "one": "{count} article",
+      "other": "{count} articles"
+    }
+  },
+  "cart.empty": "Votre panier est vide",
+  "checkout": {
+    "title": "Commande",
+    "submit": "Payer {total}"
+  }
+}

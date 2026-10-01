@@ -23,7 +23,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node -e \"require('node:fs').copyFileSync('src/utils/business-vocabulary.json','dist/utils/business-vocabulary.json')\"",
+    "build": "tsc -p tsconfig.build.json && node -e \"require('node:fs').copyFileSync('src/utils/business-vocabulary.json','dist/utils/business-vocabulary.json')\" && node -e \"require('node:fs').mkdirSync('dist/allowlist',{recursive:true});require('node:fs').copyFileSync('src/allowlist/brand-names.json','dist/allowlist/brand-names.json')\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
