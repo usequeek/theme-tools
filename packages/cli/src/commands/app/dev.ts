@@ -1,0 +1,935 @@
+import { randomUUID } from 'node:crypto';
+import { mkdirSync, watch } from 'node:fs';
+import { delimiter, join, resolve } from 'node:path';
+import * as p from '@clack/prompts';
+import { Flags } from '@oclif/core';
+import { apiFailureOf, DASHBOARD_URL, LoginNeededError, type ApiFailure, type DeveloperApi, type DevStore } from '../../lib/app-api.js';
+import { apiBase } from '../../lib/app-auth.js';
+import { appFlags, appSession } from '../../lib/app-command.js';
+import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
+import { ensureDevSecrets, ensureQueekIgnored, envLocalPath, MissingSecretError, readEnvFile, resolveDevSecret, writeEnvLocal } from '../../lib/app-env.js';
+import { startSupervised, waitForHealthy, type FetchFn } from '../../lib/app-run.js';
+import { manualTunnel, matchTunnelRateLimited, startCloudflared, type Tunnel } from '../../lib/app-tunnel.js';
+import { BaseCommand } from '../../lib/base-command.js';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Point the manifest at the tunnel: every https URL leaf anywhere in the
+ * manifest (dashboard notify_url/link_url/image.url, extension block
+ * link_url/image.url, proxy, …) whose origin is the app's production origin
+ * moves to the tunnel origin, paths kept. Off-origin URLs (a CDN logo, the
+ * docs site) are left alone — rewriting those would break them, not dev.
+ */
+export function withDevUrls(manifest: AppManifest, tunnelUrl: string): AppManifest {
+  const tunnel = new URL(tunnelUrl);
+  const production = new URL(manifest.install_url).origin;
+  const swapLeaf = (value: unknown): unknown => {
+    if (typeof value !== 'string') return value;
+    try {
+      const url = new URL(value);
+      if (url.protocol !== 'https:' || url.origin !== production) return value;
+      url.protocol = tunnel.protocol;
+      url.host = tunnel.host;
+      return url.toString();
+    } catch {
+      return value;
+    }
+  };
+  const deep = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(deep);
+    if (isRecord(node)) {
+      const out: Record<string, unknown> = {};
+      for (const [key, entry] of Object.entries(node)) out[key] = deep(entry);
+      return out;
+    }
+    return swapLeaf(node);
+  };
+  return { ...(deep(manifest) as AppManifest), distribution: 'development' };
+}
+
+/**
+ * One terminal handoff line, Shopify's shape (`HH:MM:SS │ <process> │ …`):
+ * every install and every app stdout/stderr line carries its time + source.
+ * app-run already prefixes `[app] ` — that folds into the source column
+ * instead of printing twice.
+ */
+export function handoffLine(source: string, line: string, at: Date = new Date()): string {
+  const clock = [at.getHours(), at.getMinutes(), at.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
+  const text = source === 'app' ? line.replace(/^\[app\] /, '') : line;
+  return `${clock} │ ${source} │ ${text}`;
+}
+
+/**
+ * The Preview URL (D4): the served `admin_url` (`/open-store?store={p_id}`,
+ * which switches into the dev store) plus `&app={slug}`, which routes to the
+ * embedded app. Null when the backend sent no admin_url (the caller falls
+ * back to the dashboard links) — never constructed from anything else.
+ */
+export function previewUrl(adminUrl: string | null, appSlug: string): string | null {
+  if (!adminUrl) return null;
+  return `${adminUrl}&app=${appSlug}`;
+}
+
+export function formatDevStores(stores: DevStore[]): string {
+  return stores.map((store) => `${store.p_id} (${store.name})`).join(', ');
+}
+
+/**
+ * Shopify's refusal shape (item 18: "Could not find store … Ensure … the
+ * store is a dev store"): a --store that names no dev store never reads as
+ * "not found", it reads as "wrong kind of store".
+ */
+export function devStoreRefusal(wanted: string, stores: DevStore[]): string {
+  return `Could not find dev store '${wanted}'. Yours: ${formatDevStores(stores)}. Ensure the store is a dev store (dashboard → Developers → Dev stores) — merchant and test stores cannot run \`queek app dev\`.`;
+}
+
+/**
+ * Install-handoff retry gate: the backend answers 424 Failed Dependency when
+ * the app handoff fails (Cloudflare replaces an origin 502 with its own
+ * error page, so our JSON never reaches the CLI on 502). 502 stays
+ * retryable for backward compatibility until every backend has rolled out;
+ * the errorType alone also retries (shape-proof when the status is masked).
+ */
+export function isRetryableHandoffFailure(failure: ApiFailure | null | undefined): boolean {
+  if (!failure) return false;
+  return failure.status === 502 || failure.status === 424 || failure.errorType === 'app_handoff_failed';
+}
+
+/**
+ * B2: everything started after the tunnel stops on EVERY exit path —
+ * `this.error` throws through the task, so the finally owns the cleanup and
+ * cloudflared is never left running. Stoppers never fail the run.
+ */
+export async function withDevResources(stops: Array<() => void>, task: () => Promise<void>): Promise<void> {
+  try {
+    await task();
+  } finally {
+    for (const stop of stops) {
+      try {
+        stop();
+      } catch {
+        /* stopping never fails the run */
+      }
+    }
+  }
+}
+
+/**
+ * Dead-tunnel supervision (the Booking outage: the quick tunnel died and
+ * `dev` kept serving the dead URL). The /health probe runs every 30s; two
+ * misses in a row — or the cloudflared child exiting — restarts with
+ * backoff, giving up after a sane number of failed starts with a clear
+ * message. The restart reuses startCloudflared and the toml-save cycle; the
+ * dead tunnel stops on every path, so no orphan cloudflared is left.
+ * Storm guards (30/9/26: exits self-fed ~30 restarts into a 429 ban):
+ * exits restart only the watched tunnel, every restart waits first, fresh
+ * tunnels get a grace period, restarts are capped per 10 minutes, and a
+ * refused start stops supervision.
+ */
+export const TUNNEL_PROBE_INTERVAL_MS = 30_000;
+export const TUNNEL_FAILURES_BEFORE_RESTART = 2;
+/**
+ * The per-restart attempt ceiling for one `restartDevTunnel` call. Under
+ * supervision this is unreachable by design: the supervisor counts every
+ * start toward `MAX_TUNNEL_RESTARTS_PER_WINDOW` via `onStartAttempt` and
+ * trips the 3-per-10-minutes cap first — 5 survives only as the ceiling for
+ * unsupervised (direct) `restartDevTunnel` use.
+ */
+export const MAX_TUNNEL_RESTARTS = 5;
+/** At most 3 restarts in any 10 minutes — then supervision stops, never hammering tunnel creation. */
+export const MAX_TUNNEL_RESTARTS_PER_WINDOW = 3;
+export const TUNNEL_RESTART_WINDOW_MS = 10 * 60_000;
+/** A fresh tunnel's DNS may not resolve yet: misses don't count until it answers once or this passes. */
+export const TUNNEL_RESTART_GRACE_MS = 60_000;
+
+/**
+ * Cloudflare refused quick-tunnel creation: making more tunnels only
+ * extends the ban, so supervision stops and the developer waits instead of
+ * retrying into it. One shared matcher (see matchTunnelRateLimited) over the
+ * start error plus an optional log tail, so a bare `429` in either place is
+ * caught.
+ */
+export function isTunnelRateLimited(error: unknown, logTail = ''): boolean {
+  const text = `${error instanceof Error ? error.message : String(error)}\n${logTail}`;
+  return matchTunnelRateLimited(text);
+}
+
+/**
+ * Stop supervision without failing the run; carries the onStopped message.
+ * The window cap and refused starts both end here — no more tunnels made.
+ */
+export class StopSupervision extends Error {}
+
+/** A refused tunnel start that must stop supervision (rate limit): no more tunnels are created. */
+export class TunnelRateLimitedError extends StopSupervision {}
+
+/** The cap message, shared by the window check and the per-attempt trip. */
+function restartCapMessage(): string {
+  return `Tunnel restarts paused after ${MAX_TUNNEL_RESTARTS_PER_WINDOW} tunnel starts in the last 10 minutes — keeping this dev session; run \`queek app dev\` again when the network settles.`;
+}
+
+/** Best-effort stop: already-dead handles never fail the run or teardown. */
+function stopQuietly(stop: () => void): void {
+  try {
+    stop();
+  } catch {
+    /* already dead */
+  }
+}
+
+/** Backoff between tunnel restarts: 5s, 10s, 20s, then 30s (attempt is 1-based). */
+export function tunnelRestartBackoffMs(attempt: number): number {
+  return Math.min(5_000 * 2 ** (attempt - 1), 30_000);
+}
+
+/** The one restart line: old → new tunnel with the new Preview URL. */
+export function tunnelRestartLine(oldUrl: string, newUrl: string, preview: string | null): string {
+  return `Tunnel restarted: ${oldUrl} → ${newUrl} — Preview URL: ${preview ?? newUrl}`;
+}
+
+/** Consecutive probe misses: restart on N in a row, reset on success. */
+export function countTunnelMiss(ok: boolean, misses: number): { misses: number; restart: boolean } {
+  if (ok) return { misses: 0, restart: false };
+  const next = misses + 1;
+  return next >= TUNNEL_FAILURES_BEFORE_RESTART ? { misses: 0, restart: true } : { misses: next, restart: false };
+}
+
+/** One /health probe of the tunnel URL: down, refused and non-2xx all read as false. */
+export async function tunnelProbe(url: string, fetchFn?: FetchFn): Promise<boolean> {
+  const get = fetchFn ?? (async (target: string) => fetch(target));
+  try {
+    return (await get(`${url}/health`)).ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The dev env for the supervised app child, pure for tests: CLI-owned keys
+ * always win, and APP_BASE_URL tracks the current tunnel origin — a tunnel
+ * restart relaunches the app through this same builder, so nothing the app
+ * builds from its own base URL keeps pointing at the dead tunnel.
+ */
+export function buildDevAppEnv(options: {
+  appDir: string;
+  tunnelUrl: string;
+  port: number;
+  apiBase: string;
+  secrets: Record<string, string>;
+  projectEnv: Record<string, string>;
+}): NodeJS.ProcessEnv {
+  return {
+    // The dashboard that frames the app's embedded pages (CSP frame-ancestors,
+    // postMessage peer) — injected like Shopify injects its host values;
+    // a value in the shell or the project .env still wins.
+    QUEEK_DASHBOARD_ORIGINS: new URL(DASHBOARD_URL).origin,
+    ...process.env,
+    ...options.projectEnv,
+    APP_BASE_URL: new URL(options.tunnelUrl).origin,
+    PORT: String(options.port),
+    NODE_ENV: 'development',
+    QUEEK_API_BASE: options.apiBase,
+    ...options.secrets,
+    PATH: `${join(options.appDir, 'node_modules', '.bin')}${delimiter}${process.env.PATH ?? ''}`,
+  };
+}
+
+/**
+ * One tunnel restart: start the next tunnel, stop the dead one, relaunch the
+ * app child with the new APP_BASE_URL, wait for its /health, re-register
+ * (the toml-save cycle) with the new URL, print the one restart line.
+ * Failed starts back off and give up after MAX_TUNNEL_RESTARTS with a clear
+ * message; the dead tunnel stops on every path. A rate-limited start
+ * short-circuits the retries and throws TunnelRateLimitedError instead. A
+ * relaunched app that never answers /health stops its child and tunnel and
+ * fails the run — installs must never target an app that is not listening.
+ * A failed re-register keeps the new tunnel and logs — the tunnel is up,
+ * the next save retries it. onStartAttempt counts every start toward the
+ * caller's window cap (attempts, not just successes); onHandle publishes
+ * each new child the moment it exists, so teardown during a restart still
+ * reaches it.
+ */
+export async function restartDevTunnel(options: {
+  oldTunnel: Tunnel;
+  start: () => Promise<Tunnel>;
+  stopApp: () => void;
+  startApp: (tunnelUrl: string) => Promise<{ stop: () => void }>;
+  waitForApp: () => Promise<boolean>;
+  reregister: (url: string) => Promise<{ preview: string | null }>;
+  log: (line: string) => void;
+  logError: (line: string) => void;
+  sleep?: (ms: number) => Promise<void>;
+  maxRestarts?: number;
+  backoffMs?: (attempt: number) => number;
+  isFatalStartError?: (error: unknown) => boolean;
+  /** Fires before every start() call (may throw StopSupervision to trip the window cap mid-loop). */
+  onStartAttempt?: () => void;
+  /** Fires with each newly created handle, so teardown can reach what success has not published yet. */
+  onHandle?: (stop: () => void) => void;
+}): Promise<{ tunnel: Tunnel; stopApp: () => void }> {
+  const max = options.maxRestarts ?? MAX_TUNNEL_RESTARTS;
+  const backoff = options.backoffMs ?? tunnelRestartBackoffMs;
+  const sleep = options.sleep ?? ((ms: number) => new Promise((done) => setTimeout(done, ms)));
+  const isFatal = options.isFatalStartError ?? isTunnelRateLimited;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= max; attempt++) {
+    if (attempt > 1) await sleep(backoff(attempt - 1));
+    options.onStartAttempt?.();
+    let next: Tunnel;
+    try {
+      next = await options.start();
+      options.onHandle?.(() => next.stop());
+    } catch (error) {
+      // Rate-limited creation must short-circuit the retry loop: every new
+      // attempt extends the ban.
+      if (isFatal(error)) {
+        stopQuietly(() => options.oldTunnel.stop());
+        const detail = error instanceof Error ? `: ${error.message}` : '';
+        throw new TunnelRateLimitedError(
+          `Tunnel restarts paused: Cloudflare is rate-limiting quick-tunnel creation${detail} — the app keeps running locally; wait a few minutes, then run \`queek app dev\` again.`,
+        );
+      }
+      lastError = error;
+      continue;
+    }
+    stopQuietly(() => options.oldTunnel.stop());
+    // The app builds proxy/link/webhook URLs from its own base URL: relaunch
+    // it with the new tunnel origin and wait for /health before anything
+    // installs against it.
+    stopQuietly(options.stopApp);
+    let relaunched: { stop: () => void };
+    try {
+      relaunched = await options.startApp(next.url);
+      options.onHandle?.(relaunched.stop);
+    } catch (error) {
+      stopQuietly(() => next.stop());
+      throw new Error(`Relaunching the app on the new tunnel failed: ${(error as Error).message}`);
+    }
+    if (!(await options.waitForApp())) {
+      const stopRelaunched = relaunched.stop;
+      stopQuietly(stopRelaunched);
+      stopQuietly(() => next.stop());
+      throw new Error('The app did not answer /health after the tunnel restart — its [app] log above says why. Fix it and run `queek app dev` again.');
+    }
+    let preview: string | null = null;
+    try {
+      preview = (await options.reregister(next.url)).preview;
+    } catch (error) {
+      options.logError(`Re-register after tunnel restart failed: ${(error as Error).message}`);
+    }
+    options.log(handoffLine('queek', tunnelRestartLine(options.oldTunnel.url, next.url, preview)));
+    return { tunnel: next, stopApp: relaunched.stop };
+  }
+  stopQuietly(() => options.oldTunnel.stop());
+  const reason = lastError instanceof Error ? `: ${lastError.message}` : '';
+  throw new Error(`Tunnel restart failed ${max} times${reason} — check your network or pass --url, then run \`queek app dev\` again.`);
+}
+
+/**
+ * One editor save fans out into several `watch` change events: without
+ * coalescing, every event queues its own deploy cycle (several identical
+ * re-registers, installs and ready blocks per save).
+ */
+export const DEPLOY_QUEUE_DEBOUNCE_MS = 200;
+
+/**
+ * Serialize async work across callers: each unit starts only after the
+ * previous settles, so a toml save landing mid-restart queues its deploy
+ * behind the re-register instead of racing it (two concurrent cycles could
+ * install mixed old/new URLs). A rejection settles the chain without
+ * breaking it. With `debounceMs`, a burst of requests inside one quiet
+ * window coalesces — only the latest work runs, and every caller waiting
+ * on the burst shares its result (the toml did not change between them,
+ * so the latest cycle covers them all).
+ */
+export function createDeployQueue(options: { debounceMs?: number } = {}): <T>(work: () => Promise<T>) => Promise<T> {
+  let tail: Promise<void> = Promise.resolve();
+  const enqueue = <T>(work: () => Promise<T>): Promise<T> => {
+    const next = tail.then(work);
+    tail = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  };
+  const debounceMs = options.debounceMs ?? 0;
+  if (debounceMs <= 0) return enqueue;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let burst: Array<{ work: () => Promise<unknown>; resolve: (value: unknown) => void; reject: (reason: unknown) => void }> = [];
+  return <T>(work: () => Promise<T>): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      burst.push({ work: work as () => Promise<unknown>, resolve: resolve as (value: unknown) => void, reject });
+      if (timer !== null) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        const waiting = burst;
+        burst = [];
+        const latest = waiting[waiting.length - 1];
+        if (latest === undefined) return;
+        enqueue(latest.work).then(
+          (value) => {
+            for (const caller of waiting) caller.resolve(value);
+          },
+          (error: unknown) => {
+            for (const caller of waiting) caller.reject(error);
+          },
+        );
+      }, debounceMs);
+    });
+}
+
+export interface DevTunnelSupervisorDeps {
+  startTunnel: () => Promise<Tunnel>;
+  stopApp: () => void;
+  startApp: (tunnelUrl: string) => Promise<{ stop: () => void }>;
+  waitForApp: () => Promise<boolean>;
+  reregister: (url: string) => Promise<{ preview: string | null }>;
+  probe: (url: string) => Promise<boolean>;
+  isFatalStartError: (error: unknown) => boolean;
+  onTunnel: (next: Tunnel, stopApp: () => void) => void;
+  onStopped: (message: string) => void;
+  /** Terminal failure (give-up): the owner fails the run and clears the timer. */
+  onError: (error: Error) => void;
+  log: (line: string) => void;
+  logError: (line: string) => void;
+  sleep: (ms: number) => Promise<void>;
+  now: () => number;
+  backoffMs?: (attempt: number) => number;
+}
+
+/**
+ * The tunnel watchdog, extracted so tests drive it with fakes and a virtual
+ * clock. It fixes the 30/9/26 restart storm (~30 restarts in 4 minutes, one
+ * dev version per restart, then a Cloudflare 429 ban): the old code fanned
+ * every stopped tunnel's exit event into a new restart — including the stop
+ * the restart itself had just issued — and applied no backoff, grace, cap,
+ * or rate-limit handling. Now an exit restarts only the still-watched
+ * tunnel, every restart waits first, at most one runs at a time, a fresh
+ * tunnel gets a grace period, restarts are capped per 10 minutes, and a
+ * refused start stops supervision instead of extending the ban.
+ */
+export class DevTunnelSupervisor {
+  private current: Tunnel | null = null;
+  private misses = 0;
+  private restarting = false;
+  private probing = false;
+  private supervised = true;
+  private graceUntil = 0;
+  /** Every startCloudflared call in the window — attempts, not just successes. */
+  private startsAt: number[] = [];
+  /** Handles a restart created but not yet published (teardown reaches them here). */
+  private inflight = new Set<() => void>();
+
+  constructor(private readonly deps: DevTunnelSupervisorDeps) {}
+
+  /** Watch a fresh tunnel: arm its exit event and start its grace period. */
+  watch(tunnel: Tunnel): void {
+    this.current = tunnel;
+    this.misses = 0;
+    this.graceUntil = this.deps.now() + TUNNEL_RESTART_GRACE_MS;
+    tunnel.onExit?.(() => void this.notifyExit(tunnel));
+  }
+
+  /**
+   * A tunnel child exited: restart only when it is still the watched one. A
+   * stop the supervisor issued itself (or any superseded tunnel) is never
+   * current anymore, so it can never self-feed a new restart. Never rejects:
+   * terminal failures route to onError, so the exit path can neither hang
+   * the run nor surface an unhandled rejection.
+   */
+  async notifyExit(exited: Tunnel): Promise<void> {
+    if (!this.supervised || this.restarting || exited !== this.current) return;
+    try {
+      await this.restart();
+    } catch (error) {
+      this.fail(error);
+    }
+  }
+
+  /**
+   * One probe step; the owner ticks every TUNNEL_PROBE_INTERVAL_MS. Never
+   * rejects (see notifyExit). Overlapping slow probes skip instead of
+   * double-counting a miss.
+   */
+  async tick(): Promise<void> {
+    if (!this.supervised || this.restarting || this.probing) return;
+    const current = this.current;
+    if (!current) return;
+    this.probing = true;
+    try {
+      if (await this.deps.probe(current.url)) {
+        this.misses = 0;
+        this.graceUntil = 0;
+        return;
+      }
+      // A fresh tunnel's DNS may not resolve yet: watch, don't count, until
+      // it answers once or the grace period passes.
+      if (this.deps.now() < this.graceUntil) return;
+      const stepped = countTunnelMiss(false, this.misses);
+      this.misses = stepped.misses;
+      if (stepped.restart) await this.restart();
+    } catch (error) {
+      this.fail(error);
+    } finally {
+      this.probing = false;
+    }
+  }
+
+  /** Stop watching (cap reached, creation refused): no more tunnels are made. */
+  stop(message: string): void {
+    if (!this.supervised) return;
+    this.supervised = false;
+    this.deps.onStopped(message);
+  }
+
+  /**
+   * Tear down handles a restart created but has not published yet, without
+   * messaging: Ctrl+C or a run failure during a restart must not orphan the
+   * new tunnel/app. Published handles stay with the owner.
+   */
+  abort(): void {
+    this.supervised = false;
+    for (const stop of this.inflight) stopQuietly(stop);
+    this.inflight.clear();
+  }
+
+  /** Terminal failure: no more ticks, and the owner fails the run. */
+  private fail(error: unknown): void {
+    this.supervised = false;
+    this.deps.onError(error instanceof Error ? error : new Error(String(error)));
+  }
+
+  /** Count one start attempt toward the window cap (throws StopSupervision past it). */
+  private noteStartAttempt(): void {
+    const at = this.deps.now();
+    this.startsAt = this.startsAt.filter((t) => at - t < TUNNEL_RESTART_WINDOW_MS);
+    this.startsAt.push(at);
+    if (this.startsAt.length > MAX_TUNNEL_RESTARTS_PER_WINDOW) {
+      throw new StopSupervision(restartCapMessage());
+    }
+  }
+
+  private async restart(): Promise<void> {
+    const current = this.current;
+    if (this.restarting || !this.supervised || !current) return;
+    this.startsAt = this.startsAt.filter((at) => this.deps.now() - at < TUNNEL_RESTART_WINDOW_MS);
+    if (this.startsAt.length >= MAX_TUNNEL_RESTARTS_PER_WINDOW) {
+      this.stop(restartCapMessage());
+      return;
+    }
+    this.restarting = true;
+    try {
+      // Backoff before every restart, not only failed starts.
+      await this.deps.sleep((this.deps.backoffMs ?? tunnelRestartBackoffMs)(this.startsAt.length + 1));
+      const restarted = await restartDevTunnel({
+        oldTunnel: current,
+        start: this.deps.startTunnel,
+        stopApp: this.deps.stopApp,
+        startApp: this.deps.startApp,
+        waitForApp: this.deps.waitForApp,
+        reregister: this.deps.reregister,
+        log: this.deps.log,
+        logError: this.deps.logError,
+        sleep: this.deps.sleep,
+        backoffMs: this.deps.backoffMs,
+        isFatalStartError: this.deps.isFatalStartError,
+        onStartAttempt: () => this.noteStartAttempt(),
+        onHandle: (stop) => {
+          this.inflight.add(stop);
+        },
+      });
+      if (!this.supervised) {
+        // Torn down mid-restart: never publish — just kill what was made.
+        stopQuietly(() => restarted.tunnel.stop());
+        stopQuietly(restarted.stopApp);
+        return;
+      }
+      this.inflight.clear();
+      this.deps.onTunnel(restarted.tunnel, restarted.stopApp);
+      this.watch(restarted.tunnel);
+    } catch (error) {
+      if (error instanceof StopSupervision) {
+        this.stop(error.message);
+        return;
+      }
+      this.fail(error);
+    } finally {
+      this.restarting = false;
+    }
+  }
+}
+
+export default class AppDev extends BaseCommand {
+  // A long-running watcher has no result to print.
+  static override enableJsonFlag = false;
+
+  static override summary = 'Develop an app end to end: tunnel + dev install + your app running with injected env.';
+
+  static override description = `Brings up a tunnel, registers the toml as a development build (same-semver unreleased rides the in-place rule — no version spam), installs it on an owned DEV store with scopes auto-granted (no consent screen), then starts the app from the toml's CLI-only \`[dev]\` table (\`command\`, e.g. "tsx watch src/index.ts") with the dev env injected (APP_BASE_URL=<tunnel origin>, PORT, NODE_ENV=development, QUEEK_API_BASE, plus the signing secret / keypair / encryption key from .queek/.env.local, minted on first run). With no dev store, the command asks once to create one named after the app with test data (--create-dev-store in CI). The ready block prints the tunnel URL and the Preview URL (the app open inside the dev store's dashboard); every install and app line logs with time + source. Saves to queek.app.toml re-register; \`[dev]\` changes need a restart. Automation tokens cannot run dev (dev-store reads are outside their grant) — sign in as a developer. Ctrl+C stops the app and the tunnel.`;
+
+  static override examples = [
+    '<%= config.bin %> <%= command.id %>',
+    '<%= config.bin %> <%= command.id %> --store 12',
+    '<%= config.bin %> <%= command.id %> --create-dev-store',
+    '<%= config.bin %> <%= command.id %> --url https://my-tunnel.trycloudflare.com',
+  ];
+
+  static override flags = {
+    ...appFlags,
+    store: Flags.string({ summary: 'The owned dev store (numeric p_id, slug or name). The only store when you own exactly one. Merchant and test stores are refused.', env: 'QUEEK_APP_STORE' }),
+    'create-dev-store': Flags.boolean({ summary: 'With no dev store, create one named after the app with test data instead of asking (CI).', default: false }),
+    'dev-store-name': Flags.string({ summary: 'Name for a first-run created dev store (default: "<app name> dev").', env: 'QUEEK_APP_DEV_STORE_NAME' }),
+    'dev-store-address': Flags.string({ summary: 'Slug (address) for a first-run created dev store (default: backend derives it from the name). Taken slugs 422 with a suggestion.', env: 'QUEEK_APP_DEV_STORE_SLUG' }),
+    port: Flags.integer({ summary: 'Your local app server port the tunnel forwards to (default: [dev].port, else 3000).', min: 1, max: 65535 }),
+    url: Flags.string({ summary: 'Your own tunnel URL (https). Skips starting cloudflared.' }),
+  };
+
+  async run(): Promise<void> {
+    const { flags } = await this.parse(AppDev);
+    this.setVerbose(flags.verbose as boolean | undefined);
+    const { api, kind } = await appSession({
+      noBrowser: flags['no-browser'],
+      log: (line) => this.log(line),
+      logError: (line) => this.logToStderr(line),
+      debug: (line) => this.debug(line),
+    }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
+    if (kind === 'automation') {
+      this.error('`queek app dev` needs a developer session (dev-store reads are outside the automation grant) — run it where `queek auth login` works.', { exit: 2 });
+    }
+
+    const first = loadApp(flags.path, flags.config);
+    for (const warning of first.warnings) this.logToStderr(`Warning: ${warning}`);
+    const dev: DevTable | undefined = first.dev;
+    if (!dev) {
+      this.error('`queek app dev` starts the app from the toml’s [dev] table — add `[dev]` with `command = "tsx watch src/index.ts"` (and optionally `port = 3000`) to queek.app.toml.', { exit: 2 });
+    }
+    const port = flags.port ?? dev.port ?? DEFAULT_DEV_PORT;
+
+    // The signing secret is never minted or rotated here — dev and
+    // production share one app record, so rotating would break every live
+    // install. When it is nowhere to be found, the owner's re-view fetches
+    // it back over this developer session (automation never reaches here:
+    // the kind gate above kept its error); only a failed fetch stops the
+    // run before starting anything (tunnel included).
+    const queek = queekDir(flags.path);
+    mkdirSync(queek, { recursive: true });
+    ensureQueekIgnored(flags.path);
+    const recorded = readEnvFile(envLocalPath(queek));
+    await resolveDevSecret(api, first.manifest.slug, queek, recorded, process.env.QUEEK_APP_SECRET, (line) => this.log(line)).catch(
+      (error: Error) => this.error(error.message, { exit: error instanceof MissingSecretError ? 2 : 1 }),
+    );
+
+    const tomlPath = resolveTomlPath(flags.path, flags.config);
+    // let: a dead cloudflared tunnel restarts in place (superviseTunnel
+    // below); the stopper always reads the current one, so no orphan.
+    let tunnel = await this.tunnel(flags.path, flags.url, port);
+    // B2: the tunnel (and the app, once started) stop on EVERY exit path —
+    // error exits throw through the task into the finally.
+    const stops: Array<() => void> = [() => tunnel.stop()];
+    await withDevResources(stops, async () => {
+      // let: a tunnel restart relaunches the app with the new APP_BASE_URL;
+      // the stopper always reads the current child, so no orphan.
+      let app = await this.startApp(api, flags.path, first.manifest.slug, tunnel.url, port, dev.command);
+      stops.unshift(() => app.stop());
+
+      // Aborts an in-flight restart's unpublished children (see abort()).
+      let abortRestart: () => void = () => {};
+      const stop = (): void => {
+        abortRestart();
+        app.stop();
+        tunnel.stop();
+        process.exit(0);
+      };
+      process.once('SIGINT', stop);
+      process.once('SIGTERM', stop);
+
+      // The tunnel URL is a parameter (not the closure): the toml watcher
+      // re-registers the current tunnel, the restart path the new one —
+      // both run this same cycle.
+      const cycle = async (tunnelUrl: string): Promise<{ store: DevStore; preview: string | null; appPid: string }> => {
+        const { manifest } = loadApp(flags.path, flags.config);
+        const devManifest = withDevUrls(manifest, tunnelUrl);
+        const result = await api.deploy(devManifest).catch((error: Error) => this.error(error.message, { exit: 1 }));
+        // Development builds release even with the explicit-submit switch on —
+        // but if the backend ever gates one, dev cannot install what was never
+        // created: say so instead of crashing on the union.
+        if (result.status === 'review_required') {
+          this.error(
+            `v${result.version} needs review before it can install — run \`queek app submit ${devManifest.slug} --sequence ${result.sequence}\`, then \`queek app dev\` again.`,
+            { exit: 1 },
+          );
+        }
+        const store = await this.pickDevStore(api, flags.store, {
+          appName: first.manifest.name,
+          create: flags['create-dev-store'],
+          storeName: flags['dev-store-name'],
+          storeSlug: flags['dev-store-address'],
+          interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
+        });
+        // The backend delivers the install handoff to the app THROUGH the
+        // tunnel, so a fresh quick-tunnel host that is not resolvable yet
+        // answers 424 app_handoff_failed (502 before the Cloudflare fix):
+        // retry a few times before giving up.
+        const installOnce = () => api.devInstall(result.slug, store.p_id);
+        let installed: Awaited<ReturnType<typeof installOnce>> | undefined;
+        for (let attempt = 1; installed === undefined; attempt++) {
+          try {
+            installed = await installOnce();
+          } catch (error) {
+            const failure = apiFailureOf(error);
+            // The backend requires a dev store (422 dev_store_required): a
+            // store that stopped being one must read as wrong-kind, with the
+            // server's reason verbatim.
+            if (failure?.errorType === 'dev_store_required') {
+              this.error(`Could not install on '${store.name}': ${failure.message} \`queek app dev\` needs a dev store (dashboard → Developers → Dev stores).`, { exit: 1 });
+            }
+            const retryable = isRetryableHandoffFailure(failure);
+            if (retryable && attempt < 4) {
+              this.log(handoffLine('queek', `Install handoff could not reach ${tunnelUrl} yet — retrying (${attempt}/3)…`));
+              await new Promise((done) => setTimeout(done, 5_000));
+              continue;
+            }
+            const reason = failure ? `${failure.message}${failure.errorType ? ` (${failure.errorType})` : ''}` : (error as Error).message;
+            this.error(`Dev install on '${store.name}' failed: ${reason}. Queek calls your app at ${tunnelUrl} — check the [app] log above and that ${tunnelUrl}/health answers.`, { exit: 1 });
+          }
+        }
+        this.log(handoffLine('queek', `Dev install: ${result.slug} ${result.version} on dev store '${store.name}' ← ${tunnelUrl} (install ${installed.status})`));
+        // The served preview wins; admin_url+slug rebuilds only as fallback.
+        const preview = resolvePreview(installed.preview_url, store.admin_url, result.slug);
+        return { store, preview, appPid: result.p_id };
+      };
+
+      // Install only once the app answers locally AND through the tunnel —
+      // the backend's install handoff goes app ← tunnel, so installing first
+      // races a cold app and a not-yet-resolvable tunnel host.
+      const healthy = await waitForHealthy(`http://127.0.0.1:${port}/health`, 90_000);
+      if (!healthy) {
+        this.error(`The app did not answer http://127.0.0.1:${port}/health within 90s — its [app] log above says why. Fix it and run \`queek app dev\` again.`, { exit: 1 });
+      }
+      const reachable = await waitForHealthy(`${tunnel.url}/health`, 60_000);
+      if (!reachable) {
+        this.logToStderr(`The tunnel ${tunnel.url} did not answer /health within 60s — installing anyway; the install retries if Queek cannot reach it yet.`);
+      }
+      let current = await cycle(tunnel.url);
+      this.readyBlock(tunnel.url, current.preview, current.store, current.appPid);
+      this.log(`Watching ${tomlPath} — save it to re-register ([dev] changes need a restart). Ctrl+C to stop.`);
+      // Deploys serialize across toml saves and restart re-registers: a
+      // save landing mid-restart queues behind instead of racing it. One
+      // editor save fans out into several change events, so the burst
+      // coalesces into a single cycle.
+      const deployQueue = createDeployQueue({ debounceMs: DEPLOY_QUEUE_DEBOUNCE_MS });
+      watch(tomlPath, { persistent: true }, async () => {
+        try {
+          current = await deployQueue(() => cycle(tunnel.url));
+          this.readyBlock(tunnel.url, current.preview, current.store, current.appPid);
+        } catch (error) {
+          this.logToStderr(`Re-register failed: ${(error as Error).message}`);
+        }
+      });
+      // A give-up rejects the wait below, so the run throws through
+      // withDevResources (stoppers kill the app, the latest tunnel, and any
+      // restart children that success never published).
+      let failRun: (error: Error) => void = () => {};
+      const running = new Promise<never>((_, reject) => {
+        failRun = reject;
+      });
+      if (tunnel.how === 'cloudflared') {
+        const logFile = join(queekDir(flags.path), 'cloudflared.log');
+        const supervisor = new DevTunnelSupervisor({
+          startTunnel: () => startCloudflared(port, logFile),
+          stopApp: () => app.stop(),
+          startApp: (url) => this.startApp(api, flags.path, first.manifest.slug, url, port, dev.command),
+          // The relaunched app must answer locally before anything installs
+          // against the new tunnel — the same 90s /health wait as the start
+          // path.
+          waitForApp: () => waitForHealthy(`http://127.0.0.1:${port}/health`, 90_000),
+          reregister: async (url) => {
+            current = await deployQueue(() => cycle(url));
+            return { preview: current.preview };
+          },
+          probe: (url) => tunnelProbe(url),
+          // A refused start carries its rate-limit evidence in the throw
+          // (read beside the failure, never after a truncate).
+          isFatalStartError: (error) => isTunnelRateLimited(error),
+          onTunnel: (next, stopNewApp) => {
+            tunnel = next;
+            app = { stop: stopNewApp };
+          },
+          onStopped: (message) => {
+            clearInterval(timer);
+            this.logToStderr(message);
+          },
+          onError: (error) => {
+            clearInterval(timer);
+            failRun(error);
+          },
+          log: (line) => this.log(line),
+          logError: (line) => this.logToStderr(line),
+          sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
+          now: () => Date.now(),
+        });
+        abortRestart = () => supervisor.abort();
+        stops.unshift(() => supervisor.abort());
+        supervisor.watch(tunnel);
+        // tick() never rejects: every failure routes to onError above.
+        const timer = setInterval(() => {
+          void supervisor.tick();
+        }, TUNNEL_PROBE_INTERVAL_MS);
+        timer.unref?.();
+      }
+      await running;
+    });
+  }
+
+  /**
+   * Start the app with the dev env. Credentials come from `.queek/.env.local`
+   * (or the environment for the secret), minted on first run (keys-generate
+   * once / local random) and stored 0600 — the values are never printed. The
+   * signing secret is NEVER rotated here (dev and production share one app
+   * record): the run() gate already fetched a missing one back over the
+   * developer session or stopped. The project's own `.env` fills the
+   * rest, but CLI-owned keys always win.
+   */
+  private async startApp(
+    api: DeveloperApi,
+    dir: string,
+    slug: string,
+    tunnelUrl: string,
+    port: number,
+    command: string,
+  ): Promise<{ stop: () => void }> {
+    const appDir = resolve(dir);
+    const queek = queekDir(dir);
+    mkdirSync(queek, { recursive: true });
+    const local = readEnvFile(envLocalPath(queek));
+    const { kids } = await api.appKeys(slug).catch((error: Error) => this.error(error.message, { exit: 1 }));
+    const secrets = await ensureDevSecrets(api, slug, local, kids, (line) => this.log(line), process.env.QUEEK_APP_SECRET).catch(
+      (error: Error) => this.error(error.message, { exit: error instanceof MissingSecretError ? 2 : 1 }),
+    );
+    if (secrets.generated.length > 0) {
+      const keep: Record<string, string> = {};
+      for (const name of secrets.generated) keep[name] = secrets.values[name] as string;
+      const file = writeEnvLocal(queek, keep);
+      this.log(`Dev credentials written to ${file} (gitignored, 0600 — values are never printed).`);
+    }
+    const projectEnv = readEnvFile(join(appDir, '.env'));
+    const env = buildDevAppEnv({ appDir, tunnelUrl, port, apiBase: apiBase(), secrets: secrets.values, projectEnv });
+    this.log(`Starting the app: ${command} (port ${port})`);
+    return startSupervised({
+      command,
+      cwd: appDir,
+      env,
+      log: (line) => this.log(handoffLine('app', line)),
+      logError: (line) => this.logToStderr(handoffLine('app', line)),
+    });
+  }
+
+  /**
+   * The Shopify-style ready block, once the app answers its health route:
+   * tunnel URL plus the Preview URL (the app open inside the dev store's
+   * dashboard, from the served admin_url). Without an admin_url, the
+   * dashboard links stand in — the storefront comes from the API, never
+   * constructed here.
+   */
+  private readyBlock(tunnelUrl: string, preview: string | null, store: DevStore, appPid: string): void {
+    for (const line of readyLines(tunnelUrl, preview, store, appPid)) this.log(line);
+  }
+
+  private async tunnel(dir: string, url: string | undefined, port: number): Promise<Tunnel> {
+    if (url) return manualTunnel(url);
+    this.logToStderr('Starting a tunnel…');
+    const queek = queekDir(dir);
+    mkdirSync(queek, { recursive: true });
+    return startCloudflared(port, join(queek, 'cloudflared.log')).catch((error: Error) => this.error(error.message, { exit: 2 }));
+  }
+
+  /**
+   * The dev-store selector. `--store` takes a p_id, slug or name and only
+   * ever matches a dev store (anything else reads as wrong-kind, Shopify's
+   * refusal shape). With no dev store at all: --create-dev-store (CI) or one
+   * TTY question creates it with test data — named "<app name> dev" (R2)
+   * unless --dev-store-name says otherwise, slug backend-derived unless
+   * --dev-store-address names one; a non-interactive run without the flag
+   * errors with the dashboard path. The 201's storefront password prints
+   * once on stdout (never logs/debug) — the backend will not resend it.
+   */
+  private async pickDevStore(
+    api: DeveloperApi,
+    wanted: string | undefined,
+    options: { appName: string; create: boolean; storeName?: string; storeSlug?: string; interactive: boolean },
+  ): Promise<DevStore> {
+    const { data: stores } = await api.devStores().catch((error: Error) => this.error(error.message, { exit: 1 }));
+    if (stores.length === 0) {
+      const name = options.storeName ?? defaultDevStoreName(options.appName);
+      const ask = options.create || (options.interactive && this.answer<boolean>(await p.confirm({
+        message: `No dev stores yet — create one named '${name}' with test data?`,
+      })));
+      if (ask) {
+        const created = await api.createDevStore(name, true, randomUUID(), options.storeSlug).catch((error: Error) => this.error(error.message, { exit: 1 }));
+        this.log(`Created dev store '${created.name}' with test data.`);
+        if (typeof created.storefront_password === 'string' && created.storefront_password !== '') {
+          this.log(`Storefront password: ${created.storefront_password}`);
+        }
+        return created;
+      }
+      this.error('No dev stores — create one on the dashboard (Developers → Dev stores), or pass --create-dev-store to make one named after this app with test data.', { exit: 2 });
+    }
+    if (wanted) {
+      const found = stores.find((store) => String(store.p_id) === wanted || store.name === wanted || store.slug === wanted);
+      if (!found) this.error(devStoreRefusal(wanted, stores), { exit: 2 });
+      return found;
+    }
+    const only = stores.length === 1 ? stores[0] : undefined;
+    if (only) return only;
+    this.error(`You own ${stores.length} dev stores — pass --store. Yours: ${formatDevStores(stores)}.`, { exit: 2 });
+  }
+
+  private answer<T>(value: T | symbol): T {
+    if (p.isCancel(value)) this.error('Cancelled.', { exit: 130 });
+    return value as T;
+  }
+}
+
+/** The two dev links, pure (tested in app-dev-urls.test.ts). */
+export function devLinks(store: { name: string; storefront_url: string | null }, appPid: string): string[] {
+  return [
+    `Store admin: ${DASHBOARD_URL}/developers?section=test&app=${appPid}`,
+    `Storefront: ${store.storefront_url ?? `the dashboard → test store '${store.name}'`}`,
+  ];
+}
+
+/**
+ * Served preview wins; admin_url+slug rebuilds only as fallback (the
+ * backend computes the same value server-side — never diverge from it).
+ */
+export function resolvePreview(served: string | undefined, adminUrl: string | null, appSlug: string): string | null {
+  return served ?? previewUrl(adminUrl, appSlug);
+}
+
+/**
+ * First-run default dev-store name (R2): "<app name> dev" — the backend
+ * derives the slug (slugified name + "-dev") unless --dev-store-address
+ * names one explicitly.
+ */
+export function defaultDevStoreName(appName: string): string {
+  return `${appName} dev`;
+}
+
+/**
+ * The Shopify-style ready block lines, pure for tests. The storefront
+ * password (R1) is a shareable dev password, shown like Shopify shows it —
+ * stdout only, one line, omitted when the backend did not serve one. It
+ * never reaches debug output or logs: readyLines callers print, never store.
+ */
+export function readyLines(tunnelUrl: string, preview: string | null, store: DevStore, appPid: string): string[] {
+  const lines = ['✅ Ready, watching for changes', `Tunnel: ${tunnelUrl}`];
+  if (preview) lines.push(`Preview URL: ${preview}`);
+  else lines.push(...devLinks(store, appPid));
+  if (typeof store.storefront_password === 'string' && store.storefront_password !== '') {
+    lines.push(`Storefront password: ${store.storefront_password}`);
+  }
+  return lines;
+}

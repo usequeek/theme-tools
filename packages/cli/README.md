@@ -1,13 +1,15 @@
 # @usequeek/cli
 
 The Queek developer CLI: build, preview, check and package themes for
-[Queek](https://usequeek.com) storefronts.
+[Queek](https://usequeek.com) storefronts — and build installable apps
+(`queek auth login`, `queek app …`).
 
 ```bash
 npm install --save-dev @usequeek/cli
 ```
 
 New theme? Start with `npm create @usequeek/theme my-theme`; it installs this for you.
+New app? Start with `npm create @usequeek/app my-app` (== `queek app init`).
 
 Guides: [docs.usequeek.com/docs/themes](https://docs.usequeek.com/docs/themes).
 
@@ -144,6 +146,90 @@ queek theme init my-theme --templates laundry,foods --primary laundry --tags min
 | `--dry-run` | Print what would be written; write nothing. |
 | `--force` | Allow a folder that is not empty. |
 | `--template <source>` | Another starter: a giget source or a local folder. |
+
+## Apps (`queek auth login`, `queek app …`)
+
+```bash
+queek app init my-app       # from usequeek/queek-app-starter (== npm create @usequeek/app)
+queek app codegen           # live Merchant spec → types/merchant.ts + spec hash (.queek/codegen.json)
+queek app dev               # tunnel + owned dev-store install, re-registers on save
+queek app info              # config file, app, app ID, scopes, dev store, user
+queek app deploy            # queek.app.toml → version N+1, released (secret shown once)
+queek app deploy --version 1.2.0 --message "Greeting"   # name the version + note
+queek app deploy --no-release                           # create without serving
+queek app config link hello # server manifest → queek.app.toml (no config push: deploy carries config)
+queek app versions list hello
+queek app release hello 1.2.0   # semver resolves to its sequence; digits address it directly
+queek app submit hello                # checklist + form + attestation → review (default: latest version)
+queek app submit hello --sequence 3   # submit one sequence explicitly
+queek app withdraw hello              # in_review back to development (--yes in CI)
+queek auth login            # rarely needed: app commands sign in automatically
+queek auth logout
+```
+
+If your Developer Terms are stale, `submit` answers HTTP 409
+`terms_update_required`: accept the current terms in the dashboard
+(Developers → the banner at the top), then run `queek app submit` again.
+
+Behind the backend's explicit-submit switch, `deploy` and `release` can answer
+HTTP 409 `review_required` instead of releasing: the CLI prints
+`v{version} is ready for review. Run: queek app submit …` and exits 0 — a
+successful deploy is not a failure. `submit` runs the readiness checklist
+(errors block before anything is asked), collects the form (flags in CI,
+prompts on a TTY), requires explicit warning acknowledgement and agreement to
+every server-provided attestation clause, and POSTs with an Idempotency-Key.
+Test instructions take test-store credentials only, never production
+credentials. Success prints `Submitted v{version} — review usually within 3
+business days.`
+
+`dev` only installs on a dev store (`--store` takes a p_id, slug or name;
+merchant and test stores are refused with the wrong-kind copy). With no dev
+store it asks once to create one named "<app name> dev" with test data
+(`--create-dev-store` in CI; `--dev-store-name` / `--dev-store-address`
+override the name/slug). The ready block prints the tunnel URL, the Preview
+URL (admin_url + `&app={slug}`) and the storefront password (a shareable dev
+password, stdout only — never logs); every install and app line logs with
+time + source. Device sign-in backs off on `slow_down`/429 (server interval
+when sent, else +5s, capped) and keeps polling until the code expires,
+waiting out transient 5xx. Every `dev` error path stops the tunnel —
+cloudflared is never left running. `info` prints the CURRENT APP
+CONFIGURATION box (config file, app, app ID, scopes, dev store, storefront
+password, user). `deploy` prints `New version released — <slug>-N ·
+<message> · <version page link>`; server validation errors surface verbatim.
+
+`queek.app.toml` is the local source of truth (same names as the server manifest,
+grouped: `[listing]`, `[access]`, `[webhooks]`, `[app]`, `[[settings]]`,
+`[extensions]`, `[dashboard]`); `-c/--config <name>` reads `queek.app.<name>.toml`.
+The toml carries no `version` — the backend auto-assigns the next patch (a leftover
+`version` warns once and is ignored). `handle` is CLI-only sugar for `slug`.
+`[access]` takes `scopes` (required, possibly empty) plus `optional_scopes`
+(requested post-install, never granted at install; disjoint from `scopes`).
+Secrets never live in the toml — deploy writes the registration secret to
+`.queek/.env.local` (gitignored). Apps are addressed by `p_id|slug`, never UUID.
+
+Auth: commands sign in automatically when there is no valid session (browser
+OAuth; device code with `--no-browser` or when headless). The 60-minute access
+token refreshes transparently. In CI, `QUEEK_APP_AUTOMATION_TOKEN` (a per-app
+App Automation Token from the Developer page) authenticates `deploy`, `release`,
+`submit`, `versions list` and `config link` with no login — a 401/403 means the
+token is outside its app's grant (never a dead session, never a login prompt).
+`QUEEK_API_BASE` overrides the backend host (vendor API at `/api/v1/biz/…`,
+OAuth at `/oauth/…`).
+
+### Why these layers are new (necessity gate)
+
+Every `app`/`auth` layer below was added because the theme CLI has no
+primitive it could reuse — each row names the file checked, the Shopify
+counterpart it mirrors, and why the theme code could not serve.
+
+| New layer | Existing primitive checked | Shopify counterpart | Why it differs |
+|---|---|---|---|
+| `src/lib/app-manifest.ts` (grouped `queek.app.toml` → flat 28-key manifest, exit-2 pre-check) | `src/lib/project.ts:11` — a theme project is a folder holding `manifest.ts`; no app declaration exists anywhere in the CLI | [app-configuration](https://shopify.dev/docs/apps/build/cli-for-apps/app-configuration) | maps toml groups onto the server manifest (`handle`→`slug` sugar, `available_if`, secret refusal); themes have no manifest to map |
+| `src/lib/app-api.ts` (`DeveloperApi`: vendor envelope + OAuth routers + per-call auth kinds) | no HTTP client in `src/` — theme commands are local-only (`src/commands/dev.ts:21` serves `127.0.0.1`) | [app-deploy](https://shopify.dev/docs/api/shopify-cli/app/app-deploy) | `{data}` unwrap, `data.status` reads, sequence release, automation-token refusal wording; nothing to reuse |
+| `src/lib/app-auth.ts` (keychain-or-0600 session file + CI automation token) | `src/lib/base-command.ts:8` — `QUEEK_THEME_*` flag env only, no credential storage; `src/lib/keytar.d.ts:1` is an unused type shim | [CLI command reference](https://shopify.dev/docs/api/shopify-cli) (`queek auth login` ≈ `shopify auth login`) | first credential storage in the CLI, with a token kind that must never trigger a login |
+| `src/lib/app-session.ts` (browser PKCE loopback + device-code fallback) | `src/lib/browser.ts:1` — `playwright-core` drives a downloaded browser for screenshots | same CLI reference | login must use the user's own browser (zero downloads, RFC 8252 loopback kept bound) with a headless device fallback (RFC 8628) |
+| `src/lib/app-tunnel.ts` (public URL for `app dev`) | `src/commands/dev.ts:21-23` + `src/lib/port.ts:33` — binds localhost + next free port; nothing public | [networking options](https://shopify.dev/docs/apps/build/cli-for-apps/networking-options) | install/notify/webhook URLs must be public HTTPS: Cloudflare Quick Tunnel or `--url` |
+| `packages/create-app` (scaffolder) | `packages/create-theme/src` — scaffolds storefront theme projects | [app-init](https://shopify.dev/docs/api/shopify-cli/app/app-init) | the app starter is Hono + SDK + `queek.app.toml` + Dockerfile, not a theme |
 
 ## Project config (`.queek-theme.yml`)
 

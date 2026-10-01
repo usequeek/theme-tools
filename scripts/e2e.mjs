@@ -4,7 +4,7 @@
 // run there. Nothing here borrows the monorepo's node_modules — that is the
 // point (in-repo green says nothing about what a consumer installs).
 import { spawn, spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -39,11 +39,36 @@ function sh(cmd, args, cwd, allowFail = false) {
 // The CLI bin, as installed from the tarballs into the throwaway project.
 const queek = () => join(project, 'node_modules/@usequeek/cli/bin/run.js');
 
+/** JSON.parse with the raw stdout attached: a malformed report must diagnose itself, not just point at a position. */
+function parseReport(stdout, what) {
+  try {
+    return JSON.parse(stdout);
+  } catch (error) {
+    throw new Error(`${what}: not JSON (${error.message}). Raw stdout:\n${stdout.slice(0, 4000)}`);
+  }
+}
+
 try {
   mkdirSync(packs);
-  for (const pkg of ['theme-check', 'create-theme', 'cli']) sh('pnpm', ['pack', '--pack-destination', packs], join(ROOT, 'packages', pkg));
+  // Every publishable workspace package — derived from packages/*/package.json
+  // (skipping private ones and dirs without a manifest), never a hardcoded
+  // list: a new package the CLI depends on must be packed too, or npm
+  // resolves it from the registry, where it does not exist yet.
+  const workspacePkgs = readdirSync(join(ROOT, 'packages'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => join(ROOT, 'packages', entry.name))
+    .filter((dir) => {
+      const manifest = join(dir, 'package.json');
+      if (!existsSync(manifest)) return false;
+      try {
+        return JSON.parse(readFileSync(manifest, 'utf8')).private !== true;
+      } catch {
+        return false;
+      }
+    });
+  for (const dir of workspacePkgs) sh('pnpm', ['pack', '--pack-destination', packs], dir);
   const tarballs = readdirSync(packs).map((file) => join(packs, file));
-  console.log(`e2e: packed ${tarballs.length} packages`);
+  console.log(`e2e: packed ${tarballs.length} packages (${workspacePkgs.map((dir) => dir.split('/').pop()).join(', ')})`);
 
   // The journey a developer takes: create, then install, then check.
   const tools = join(work, 'tools');
@@ -83,13 +108,13 @@ try {
   console.log('e2e: help ✓ (queek theme add --help lists design, page and template)');
 
   const check = sh(process.execPath, [queek(), 'theme', 'check', '--format', 'json'], project, true);
-  const report = JSON.parse(check.stdout);
+  const report = parseReport(check.stdout, 'check after create');
   const rejects = [...new Set(report.findings.filter((f) => f.level === 'error').map((f) => f.rule))].sort();
   const todo = ['theme/placeholder-content', 'theme/structure', 'theme/template-description', 'theme/template-screenshot', 'theme/template-versions'];
   if (JSON.stringify(rejects) !== JSON.stringify(todo)) throw new Error(`check after create: expected exactly the to-do list ${todo.join(', ')}, got ${rejects.join(', ')}`);
   console.log(`e2e: check ✓ (exactly the to-do list: ${todo.join(', ')})`);
 
-  const info = JSON.parse(sh(process.execPath, [queek(), 'theme', 'info', '--json'], project).stdout);
+  const info = parseReport(sh(process.execPath, [queek(), 'theme', 'info', '--json'], project).stdout, 'theme info --json');
   if (!info.project || info.project.slug !== 'my-theme') throw new Error(`info: expected the project slug my-theme, got ${JSON.stringify(info.project)}`);
   if (typeof info.port !== 'number') throw new Error(`info: expected a port number, got ${JSON.stringify(info.port)}`);
   console.log(`e2e: info ✓ (queek theme info --json names the project slug ${info.project.slug})`);
@@ -103,7 +128,7 @@ try {
   console.log('e2e: add template ✓ (jewelry)');
   sh(process.execPath, [queek(), 'theme', 'add', 'design', 'jewelry', '--label', 'Second look', '--first-label', 'Main', '--yes', '--offline'], project);
   console.log('e2e: add design ✓ (jewelry-2, design 1 named)');
-  const added = JSON.parse(sh(process.execPath, [queek(), 'theme', 'check', '--format', 'json'], project, true).stdout);
+  const added = parseReport(sh(process.execPath, [queek(), 'theme', 'check', '--format', 'json'], project, true).stdout, 'check after add');
   const addedRejects = [...new Set(added.findings.filter((f) => f.level === 'error').map((f) => f.rule))].sort();
   if (JSON.stringify(addedRejects) !== JSON.stringify(todo)) throw new Error(`check after add: expected exactly the to-do list ${todo.join(', ')}, got ${addedRejects.join(', ')}`);
   console.log(`e2e: check after add ✓ (still exactly the to-do list: ${todo.join(', ')})`);
@@ -151,7 +176,7 @@ try {
 
   // The screenshots are the files the checker reads: both screenshot rules
   // leave the to-do list, and nothing else changes.
-  const after = JSON.parse(sh(process.execPath, [queek(), 'theme', 'check', '--json'], project, true).stdout);
+  const after = parseReport(sh(process.execPath, [queek(), 'theme', 'check', '--json'], project, true).stdout, 'check after screenshot');
   const left = [...new Set(after.findings.filter((f) => f.level === 'error').map((f) => f.rule))].sort();
   const expected = todo.filter((rule) => rule !== 'theme/structure' && rule !== 'theme/template-screenshot');
   if (JSON.stringify(left) !== JSON.stringify(expected)) throw new Error(`check after screenshot: expected ${expected.join(', ')}, got ${left.join(', ')}`);

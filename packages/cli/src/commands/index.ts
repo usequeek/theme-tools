@@ -7,14 +7,26 @@ import Info from './info.js';
 import Init from './init.js';
 import Package from './package.js';
 import Screenshot from './screenshot.js';
+import AuthLogin from './auth/login.js';
+import AuthLogout from './auth/logout.js';
+import AppInit from './app/init.js';
+import AppCodegen from './app/codegen.js';
+import AppDev from './app/dev.js';
+import AppInfo from './app/info.js';
+import AppDeploy from './app/deploy.js';
+import AppConfigLink from './app/config/link.js';
+import AppVersionsList from './app/versions/list.js';
+import AppRelease from './app/release.js';
+import AppSubmit from './app/submit.js';
+import AppWithdraw from './app/withdraw.js';
 
 /**
  * Every command, listed explicitly (oclif's `explicit` strategy) rather than
  * discovered by scanning dist/commands at runtime — the scan found nothing on
  * Windows ("command check not found"), and a list is also faster to load.
- * Ids carry the `theme` topic straight (`queek theme dev`, …): one package,
- * no mapping layer. The three `theme:add:*` ids read `queek theme add
- * template|design|page` (the topic separator is a space).
+ * Ids carry the topic straight (`queek theme dev`, `queek app dev`, …):
+ * one package, no mapping layer. The three `theme:add:*` ids read
+ * `queek theme add template|design|page` (the topic separator is a space).
  */
 export const COMMANDS = {
   'theme:add:design': AddDesign,
@@ -26,4 +38,16 @@ export const COMMANDS = {
   'theme:init': Init,
   'theme:package': Package,
   'theme:screenshot': Screenshot,
+  'auth:login': AuthLogin,
+  'auth:logout': AuthLogout,
+  'app:init': AppInit,
+  'app:codegen': AppCodegen,
+  'app:dev': AppDev,
+  'app:info': AppInfo,
+  'app:deploy': AppDeploy,
+  'app:config:link': AppConfigLink,
+  'app:versions:list': AppVersionsList,
+  'app:release': AppRelease,
+  'app:submit': AppSubmit,
+  'app:withdraw': AppWithdraw,
 };

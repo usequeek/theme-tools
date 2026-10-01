@@ -1,0 +1,48 @@
+{
+  "name": "@usequeek/create-app",
+  "version": "0.1.0",
+  "description": "npm create @usequeek/app — start a Queek installable app from the official starter.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-app": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.8.1",
+    "giget": "^3.3.1"
+  },
+  "keywords": [
+    "queek",
+    "app",
+    "create",
+    "starter"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/usequeek/theme-tools.git",
+    "directory": "packages/create-app"
+  },
+  "bugs": "https://github.com/usequeek/theme-tools/issues",
+  "homepage": "https://github.com/usequeek/theme-tools/tree/main/packages/create-app#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

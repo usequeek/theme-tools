@@ -100,6 +100,24 @@ describe('queek theme check', () => {
     expect(lines.length, stderr).toBeGreaterThan(0);
     for (const line of lines) expect(line).toMatch(/^::(error|warning) file=theme\/[^,]+,title=theme\/[a-z-]+::/);
   }, 60_000);
+
+  it('prints the whole --format json report before exiting 1 (no pipe truncation past ~8K)', () => {
+    const dir = stageTheme((json) => json);
+    try {
+      for (const template of ['fashion', 'electronics', 'furniture']) {
+        const added = runAt(dir, 'theme', 'add', 'template', template, '--yes', '--offline');
+        expect(added.code, added.stderr).toBe(0);
+      }
+      const { code, stdout, stderr } = runAt(dir, 'theme', 'check', '--offline', '--format', 'json');
+      expect(code, stderr).toBe(1);
+      // Non-vacuous: the old this.exit(1) path cut piped stdout at ~8K, so a
+      // small report would pass even with the bug.
+      expect(stdout.length).toBeGreaterThan(8192);
+      expect(() => JSON.parse(stdout)).not.toThrow();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 180_000);
 });
 
 describe('queek theme check vocabulary flags', () => {

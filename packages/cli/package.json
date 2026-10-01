@@ -1,7 +1,7 @@
 {
   "name": "@usequeek/cli",
   "version": "0.13.0",
-  "description": "The Queek developer CLI: build, preview, check and package storefront themes (queek theme …).",
+  "description": "The Queek developer CLI: themes (queek theme …) and installable apps (queek app …, queek auth login).",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -31,6 +31,12 @@
       "theme": {
         "description": "Build, preview, check and package a storefront theme."
       },
+      "app": {
+        "description": "Build an installable Queek app: init, develop, deploy, release."
+      },
+      "auth": {
+        "description": "Developer sign-in for the app commands (usually automatic)."
+      },
       "theme:add": {
         "description": "Add a template, design or page to your theme."
       }
@@ -52,9 +58,12 @@
     "@clack/prompts": "^1.8.1",
     "@oclif/core": "^5.0.0",
     "@oclif/plugin-warn-if-update-available": "^4.0.0",
+    "@usequeek/create-app": "workspace:^",
     "@usequeek/create-theme": "workspace:^",
     "@usequeek/theme-check": "workspace:^",
+    "openapi-typescript": "7.13.0",
     "playwright-core": "^1.59.1",
+    "smol-toml": "^1.9.0",
     "yazl": "^3.3.1"
   },
   "devDependencies": {
@@ -70,6 +79,8 @@
     "queek",
     "theme",
     "storefront",
+    "app",
+    "developer",
     "cli",
     "nextjs"
   ],
