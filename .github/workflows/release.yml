@@ -38,7 +38,7 @@ jobs:
         with:
           publish-script: pnpm release
           # Active development: no public release notes (founder 1/10/26). Re-enable at completion.
-          createGithubReleases: false
+          create-github-releases: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
         env:
           NPM_CONFIG_PROVENANCE: "true"
