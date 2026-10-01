@@ -1,5 +1,11 @@
 # @usequeek/create-theme
 
+## 0.14.1
+
+### Patch Changes
+
+- [#11](https://github.com/usequeek/theme-tools/pull/11) [`b6fad01`](https://github.com/usequeek/theme-tools/commit/b6fad01bed53beeedaf95dabcb194915fc63c7f7) Thanks [@ichie-benjamin](https://github.com/ichie-benjamin)! - The theme starter this version downloads (usequeek/theme-starter) now takes `@usequeek/cli` 0.14: its `@usequeek/cli` range is `^0.14.0`, so a new theme project installs the same checker Queek runs.
+
 ## 0.13.0
 
 ### Patch Changes
