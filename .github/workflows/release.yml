@@ -37,6 +37,8 @@ jobs:
         uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           publish-script: pnpm release
+          # Active development: no public release notes (founder 1/10/26). Re-enable at completion.
+          createGithubReleases: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
         env:
           NPM_CONFIG_PROVENANCE: "true"
