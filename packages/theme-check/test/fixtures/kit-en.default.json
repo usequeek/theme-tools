@@ -1,0 +1,138 @@
+{
+  "cart": {
+    "title": "Your cart",
+    "empty": {
+      "message": "Your cart is empty.",
+      "browse": "Browse products"
+    },
+    "item": {
+      "each": "{price} each",
+      "decrease": "Decrease {title}",
+      "increase": "Increase {title}",
+      "remove": "Remove {title}"
+    },
+    "related": {
+      "title": "You may also like",
+      "prev": "Previous",
+      "next": "Next",
+      "choose": "Choose options for {title}",
+      "add": "Add {title} to cart",
+      "from": "From {price}"
+    },
+    "summary": {
+      "title": "Order summary",
+      "subtotal": "Subtotal:",
+      "continue": "Continue shopping"
+    },
+    "note": {
+      "toggle": "Add order note",
+      "placeholder": "Order instructions (optional)"
+    },
+    "terms": {
+      "agree": "I agree to the ",
+      "policy": "terms and refund policy"
+    },
+    "checkout": {
+      "action": "Checkout"
+    }
+  },
+  "checkout": {
+    "empty": {
+      "message": "Your cart is empty.",
+      "browse": "Browse products"
+    },
+    "page": {
+      "back": "Continue shopping"
+    },
+    "contact": {
+      "label": "Contact",
+      "signin": "Sign in",
+      "signout": "Sign out",
+      "options": "Account options"
+    },
+    "delivery": {
+      "title": "How you'll get it"
+    },
+    "zone": {
+      "title": "Shipping zone"
+    },
+    "address": {
+      "title": "Delivery address"
+    },
+    "schedule": {
+      "title": "Schedule"
+    },
+    "payment": {
+      "title": "Payment",
+      "secure": "All transactions are secure and encrypted."
+    },
+    "summary": {
+      "title": "Order summary",
+      "empty": "Your cart is empty",
+      "subtotal": "Subtotal",
+      "proceed": "Proceed to checkout"
+    },
+    "tabs": {
+      "summary": "Summary",
+      "checkout": "Checkout"
+    },
+    "policy": {
+      "close": "Close",
+      "view": "View full page",
+      "list": "Store policies"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Enter your email and password",
+      "email": "Email address",
+      "password": "Password"
+    },
+    "email": {
+      "title": "Sign in",
+      "subtitle": "Enter your email to continue",
+      "or": "or",
+      "placeholder": "your@email.com"
+    },
+    "code": {
+      "title": "Enter code",
+      "sent": "{length}-digit code sent to {email}",
+      "digit": "Digit {index}"
+    },
+    "register": {
+      "title": "Create account",
+      "subtitle": "Fill in your details to get started",
+      "first": "First name",
+      "last": "Last name (optional)",
+      "email": "Email address",
+      "password": "Password (min 8 characters)"
+    },
+    "signup": {
+      "title": "Create your account",
+      "subtitle": "Just a few details to get you started",
+      "first": "First name",
+      "last": "Last name (optional)"
+    }
+  },
+  "blog": {
+    "pagination": {
+      "prev": "← Previous",
+      "next": "Next →",
+      "nav": "Blog pagination",
+      "page": "Page {current}"
+    },
+    "filter": {
+      "all": "All",
+      "nav": "Blog categories"
+    },
+    "share": {
+      "label": "Share",
+      "action": "Share",
+      "x": "Share on X",
+      "facebook": "Share on Facebook",
+      "whatsapp": "Share on WhatsApp",
+      "copy": "Copy link"
+    }
+  }
+}

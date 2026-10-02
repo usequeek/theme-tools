@@ -35,16 +35,21 @@ key exists in `en.default.json` (English is the fallback authority) and its `{va
 a subset of the English ones. Brand tokens that may stay untranslated live in
 `src/allowlist/brand-names.json`.
 New rules (warn one release, then reject): `theme/locale-key-exists` — every `t('a.b')`
-call in TS/TSX resolves to the theme's own `locales/en.default.json` or the kit core
-dictionary (a missing key renders EMPTY, never the raw key); dynamic keys are info-only.
-`theme/locale-key-unused` (info) — `en.default.json` keys nothing references are dead copy.
-`theme/no-hardcoded-strings` — shopper-visible JSX text and copy-attribute literals
-(`aria-label`, `aria-description`, `placeholder`, `title`, `alt`, `label`, plus the audited
-`actionLabel`/`moreLabel`) go through `t()`, not hard-coded. Merchant data (`{product.title}`),
-non-copy attributes, brand/unit tokens and strings already inside `t()` never flag. Kit core
-keys come from the generated snapshot in `src/kit-core-strings.ts` (no new dependency —
-regenerate with `scripts/sync-kit-core-strings.mjs`; the drift test fails when a resolvable
-kit dictionary disagrees), layered over the theme project's own installed kit dictionary
+call in TS/TSX (through `t`, `*.t`, or an alias bound to `useThemeStrings()` /
+`createThemeStrings()` / `getThemeStrings()`, e.g. `const ts = …` or
+`const { t: translate } = …`) resolves to the theme's own `locales/en.default.json` or
+the kit core dictionary (a missing key renders EMPTY, never the raw key); dynamic keys are
+info-only. Limitation: a bound `t` handed to another file's helper under a different
+parameter name is not followed. `theme/locale-key-unused` (info) — `en.default.json` keys
+nothing references are dead copy. `theme/no-hardcoded-strings` — shopper-visible JSX text
+and copy-attribute literals (`aria-label`, `aria-description`, `placeholder`, `title`, `alt`,
+`label`, plus the audited `actionLabel`/`moreLabel`) go through `t()`, not hard-coded.
+Merchant data (`{product.title}`), non-copy attributes, brand/unit tokens and strings
+already inside `t()` never flag. Kit core keys come from the generated snapshot in
+`src/kit-core-strings.ts` (no new dependency — regenerate with
+`scripts/sync-kit-core-strings.mjs`, which also refreshes the committed copy at
+`test/fixtures/kit-en.default.json` that the drift test compares, including in CI via
+`KIT_DICTIONARY_PATH`), layered over the theme project's own installed kit dictionary
 when readable.
 
 ## Project config
