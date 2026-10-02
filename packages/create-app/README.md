@@ -27,8 +27,10 @@ and with no folder the folder is named after the slug (my-app with --yes or no t
 Next: `cd my-app`, `queek auth login`, `queek app dev` (creates a dev store
 with test data when you have none).
 
-Every scaffolded app also ships the AI setup: `AGENTS.md` (how to build a
-Queek app — SDK, `queek.app.toml`, dev loop, the docs at
-https://docs.usequeek.com; "do not add tooling to this repo"), `CLAUDE.md`
-(`@AGENTS.md`), and `.mcp.json` + `.cursor/mcp.json` — the wiring location
-for the Queek MCP, empty until it publishes. The success banner names it.
+Every scaffolded app also ships the AI setup verbatim from the starter:
+`AGENTS.md` (capacity check via the Queek AI toolkit first, SDK entries,
+`queek.app.toml`, dev loop, the live Merchant spec, `queek app codegen`;
+"do not add tooling to this repo") and `CLAUDE.md` (`@AGENTS.md`) — the
+starter is the single source of truth, the scaffolder never rewrites them —
+plus `.mcp.json` + `.cursor/mcp.json`, the wiring location for the Queek
+MCP, empty until it publishes. The success banner names it.

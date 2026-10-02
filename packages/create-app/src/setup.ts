@@ -10,28 +10,13 @@ import { UsageError, type PackageManager } from './options.js';
 export const QUEEK_DOCS_URL = 'https://docs.usequeek.com';
 
 /**
- * What every `npm create @usequeek/app` output ships (Shopify item 15
- * parity): how an agent builds a Queek app — SDK, toml, dev loop, docs, MCP
- * status, and the no-new-tooling rule. The scaffolder owns this text so a
- * drifting template branch can never drop it.
+ * The agent files every `npm create @usequeek/app` output ships. `AGENTS.md`
+ * and `CLAUDE.md` are the starter's own files, copied verbatim — the
+ * starter repo is the single source of truth, so no second scaffolder copy
+ * can drift stale (no `src/` handler claims, no unshipped-MCP notice). The
+ * scaffolder never rewrites them; it only guarantees they exist and adds
+ * the MCP wiring location below.
  */
-export function agentsMd(): string {
-  return `# Building this Queek app
-
-You are working in a Queek installable app (scaffolded by \`@usequeek/create-app\`).
-
-- SDK: \`@usequeek/app-sdk\` — install/uninstall/settings/webhooks handlers live in \`src/\`. The SDK README in \`node_modules/@usequeek/app-sdk\` is the handler contract.
-- Config: \`queek.app.toml\` IS the app — scopes (\`[access]\`), webhook topics (\`[webhooks]\`), app URLs (\`[app]\`), merchant settings (\`[[settings]]\`). \`queek app config link\` pulls the live config into the file; \`queek app deploy\` validates the whole config server-side and releases a version.
-- Dev loop: \`queek app dev\` — creates a dev store with test data when you have none, then tunnels, installs (scopes auto-granted, no consent screen) and watches. \`queek app info\` shows the current configuration.
-- Docs: ${QUEEK_DOCS_URL} — the reference for the manifest, scopes, webhooks and the review submission flow.
-- Queek MCP: not published yet. \`.mcp.json\` (and \`.cursor/mcp.json\`) is the standard location — wire the Queek MCP there when it ships; until then use the docs above.
-
-Do not add tooling to this repo: no new build systems, linters, formatters, test frameworks or CI beyond what the starter ships. Fix the app, not the scaffold.
-`;
-}
-
-/** `CLAUDE.md` is exactly the pointer — one line, no trailing prose. */
-export const CLAUDE_MD = '@AGENTS.md';
 
 /**
  * The MCP wiring location, shipped from day one. No developer MCP server
@@ -42,20 +27,28 @@ export function mcpJson(): string {
   return `${JSON.stringify({ mcpServers: {} }, null, 2)}\n`;
 }
 
-/** The success banner: next steps plus the AI setup (AGENTS.md + docs + MCP location). */
+/** The success banner: next steps plus the AI setup (starter AGENTS.md + MCP location). */
 export function successBanner(dir: string): string {
   return [
     `Next steps:`,
     `  cd ${dir}`,
     `  queek app dev          # creates a dev store if you have none, then tunnels + installs + watches`,
-    `AI assistants: AGENTS.md points at the Queek docs (${QUEEK_DOCS_URL}); .mcp.json is ready for the Queek MCP when it ships — do not add tooling to this repo.`,
+    `AI assistants: AGENTS.md ships verbatim from the starter (toolkit capacity check first, then the live Merchant spec); .mcp.json is ready for the Queek MCP when it ships — do not add tooling to this repo.`,
   ].join('\n');
 }
 
-/** Write the agent files every scaffolded app ships (overwrites template drift — the scaffolder owns them). */
+/**
+ * Ship the agent files every scaffolded app carries. The starter's
+ * `AGENTS.md`/`CLAUDE.md` pass through byte-identical (a missing file is a
+ * hard error, never a fallback to scaffolder-owned text); only the MCP
+ * wiring is scaffolder-owned.
+ */
 export function setupAgentFiles(stage: string): void {
-  writeFileSync(join(stage, 'AGENTS.md'), agentsMd());
-  writeFileSync(join(stage, 'CLAUDE.md'), CLAUDE_MD);
+  for (const file of ['AGENTS.md', 'CLAUDE.md'] as const) {
+    if (!existsSync(join(stage, file))) {
+      throw new UsageError(`The starter has no ${file} — is it a Queek app starter?`);
+    }
+  }
   writeFileSync(join(stage, '.mcp.json'), mcpJson());
   mkdirSync(join(stage, '.cursor'), { recursive: true });
   writeFileSync(join(stage, '.cursor', 'mcp.json'), mcpJson());

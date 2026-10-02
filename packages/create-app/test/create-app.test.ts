@@ -44,26 +44,70 @@ describe('@usequeek/create-app', () => {
     expect(readFileSync(join(stage, '.env.example'), 'utf8')).toContain('./data/bookings.db');
   });
 
-  it('ships the agent files: AGENTS.md, exact CLAUDE.md pointer, both MCP wirings', () => {
+  it('ships the starter agent files verbatim plus both MCP wirings', () => {
     const stage = mkdtempSync(join(tmpdir(), 'starter-'));
     dirs.push(stage);
+    // A starter-shaped stage: the real layout words, the capacity-check
+    // pointer, and none of the stale scaffolder claims.
+    const agents = [
+      '# My App — Queek app',
+      'FIRST run the capacity check: install the Queek AI toolkit',
+      'npx skills add usequeek/queek-ai-toolkit',
+      'and follow its `queek-capacity` skill',
+      '- Layout — handlers live in `app/` (there is no `src/`): install/uninstall/settings handoff in `app/queek.server.ts`; embedded admin in `app/routes/admin*`; `queek.app.toml` is the manifest source of truth.',
+      '- Dev loop: `queek app dev` over `@usequeek/app-sdk`.',
+      'Do not add tooling to this repo.',
+      '',
+    ].join('\n');
+    writeFileSync(join(stage, 'AGENTS.md'), agents);
+    writeFileSync(join(stage, 'CLAUDE.md'), '@AGENTS.md');
     setupAgentFiles(stage);
-    const agents = readFileSync(join(stage, 'AGENTS.md'), 'utf8');
-    for (const must of ['@usequeek/app-sdk', 'queek.app.toml', 'queek app dev', 'https://docs.usequeek.com', 'Queek MCP', 'Do not add tooling to this repo']) {
-      expect(agents).toContain(must);
-    }
+    // Verbatim: the scaffolder never rewrites the starter's bytes.
+    expect(readFileSync(join(stage, 'AGENTS.md'), 'utf8')).toBe(agents);
     expect(readFileSync(join(stage, 'CLAUDE.md'), 'utf8')).toBe('@AGENTS.md');
     for (const mcp of [join(stage, '.mcp.json'), join(stage, '.cursor', 'mcp.json')]) {
       expect(JSON.parse(readFileSync(mcp, 'utf8'))).toEqual({ mcpServers: {} });
     }
   });
 
-  it('banners the next steps plus the AI setup (docs + MCP location)', () => {
+  it('scaffolded AGENTS.md carries the capacity check and the real layout, never the stale claims', () => {
+    const stage = mkdtempSync(join(tmpdir(), 'starter-'));
+    dirs.push(stage);
+    const agents = [
+      '# My App — Queek app',
+      'FIRST run the capacity check: install the Queek AI toolkit',
+      'npx skills add usequeek/queek-ai-toolkit',
+      'and follow its `queek-capacity` skill',
+      '- Layout — handlers live in `app/` (there is no `src/`): install/uninstall/settings handoff in `app/queek.server.ts`; embedded admin in `app/routes/admin*`; `queek.app.toml` is the manifest source of truth.',
+      '- Dev loop: `queek app dev` over `@usequeek/app-sdk`.',
+      '',
+    ].join('\n');
+    writeFileSync(join(stage, 'AGENTS.md'), agents);
+    writeFileSync(join(stage, 'CLAUDE.md'), '@AGENTS.md');
+    setupAgentFiles(stage);
+    const shipped = readFileSync(join(stage, 'AGENTS.md'), 'utf8');
+    for (const must of ['queek-capacity', 'npx skills add usequeek/queek-ai-toolkit', 'app/routes/admin', 'app/queek.server.ts', 'queek app dev', 'queek.app.toml', '@usequeek/app-sdk']) {
+      expect(shipped).toContain(must);
+    }
+    expect(shipped).not.toContain('not published yet');
+    expect(shipped).not.toContain('live in `src/`');
+    expect(shipped).not.toContain('handlers live in `src/`');
+  });
+
+  it('refuses a stage without the starter agent files instead of inventing them', () => {
+    const stage = mkdtempSync(join(tmpdir(), 'starter-'));
+    dirs.push(stage);
+    expect(() => setupAgentFiles(stage)).toThrow('AGENTS.md');
+    writeFileSync(join(stage, 'AGENTS.md'), '# My App\n');
+    expect(() => setupAgentFiles(stage)).toThrow('CLAUDE.md');
+  });
+
+  it('banners the next steps plus the AI setup (starter AGENTS.md + MCP location)', () => {
     const banner = successBanner('my-app');
     expect(banner).toContain('cd my-app');
     expect(banner).toContain('queek app dev');
     expect(banner).toContain('AGENTS.md');
-    expect(banner).toContain('https://docs.usequeek.com');
+    expect(banner).toContain('capacity check');
     expect(banner).toContain('Queek MCP');
   });
 
