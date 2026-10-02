@@ -278,6 +278,10 @@ importers:
       giget:
         specifier: ^3.3.1
         version: 3.3.1
+    devDependencies:
+      smol-toml:
+        specifier: ^1.4.2
+        version: 1.9.0
 
   packages/create-theme:
     dependencies:

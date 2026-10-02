@@ -2,8 +2,11 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { assertNodeVersion, fetchStarter, nodeVersionProblem, setupAgentFiles, setupApp, successBanner, sweepTemplateIdentity } from '../src/setup.js';
-import { slugProblem, slugify } from '../src/naming.js';
+import { parse as parseToml } from 'smol-toml';
+import { assertNodeVersion, fetchStarter, nameForFile, nodeVersionProblem, setupAgentFiles, setupApp, successBanner, sweepTemplateIdentity, tomlString } from '../src/setup.js';
+import { runCreate } from '../src/index.js';
+import { MAX_DISPLAY_NAME_LENGTH, nameProblem, slugProblem, slugify } from '../src/naming.js';
+import { UsageError } from '../src/options.js';
 
 /** Every staged file still carrying the template identity (`my-app`/`My App`). */
 function templateLeftovers(stage: string): string[] {
@@ -222,6 +225,150 @@ describe('@usequeek/create-app', () => {
     expect(existsSync(join(into, '.env.example'))).toBe(true);
     for (const junk of ['.git', 'node_modules', 'dist', 'build', 'dist-admin', '.react-router', 'data', '.queek', '.env']) {
       expect(existsSync(join(into, junk))).toBe(false);
+    }
+  });
+
+  it('validates display names in one place: empty, long, control chars, markup', () => {
+    expect(nameProblem('Paystack Bridge')).toBeNull();
+    expect(nameProblem('  Paystack Bridge  ')).toBeNull();
+    expect(nameProblem('')).not.toBeNull();
+    expect(nameProblem('   ')).not.toBeNull();
+    expect(nameProblem('x'.repeat(MAX_DISPLAY_NAME_LENGTH))).toBeNull();
+    expect(nameProblem('x'.repeat(MAX_DISPLAY_NAME_LENGTH + 1))).toContain('80');
+    expect(nameProblem('Pay $& Go')).toBeNull();
+    expect(nameProblem('Evil "name')).toBeNull();
+    expect(nameProblem('back\\slash')).toBeNull();
+    expect(nameProblem('café 🎉')).toBeNull();
+    for (const bad of ['Evil\nname', 'Evil\rname', 'tab\tname', 'nul\0here', 'del\x7fhere', '{markup}']) {
+      expect(nameProblem(bad)).not.toBeNull();
+    }
+  });
+
+  it('quotes TOML strings without injection', () => {
+    expect(tomlString('Paystack Bridge')).toBe('"Paystack Bridge"');
+    expect(tomlString('Evil "name')).toBe('"Evil \\"name"');
+    expect(tomlString('back\\slash')).toBe('"back\\\\slash"');
+    expect(tomlString('Pay $& $\' $1')).toBe('"Pay $& $\' $1"');
+    // A quoted hostile name is itself valid TOML (proven end to end below).
+    expect(parseToml(`name = ${tomlString('Evil "name')}`)).toEqual({ name: 'Evil "name' });
+  });
+
+  it('escapes the name per destination file', () => {
+    const nasty = 'A"B\\C';
+    expect(nameForFile('app/x.toml', nasty)).toBe('A\\"B\\\\C');
+    expect(nameForFile('app/x.json', nasty)).toBe('A\\"B\\\\C');
+    expect(nameForFile('app/x.ts', nasty)).toBe('A\\"B\\\\C');
+    expect(nameForFile('app/x.tsx', 'A"B&C<D>')).toBe('A&quot;B&amp;C&lt;D&gt;');
+    expect(nameForFile('README.md', nasty)).toBe(nasty);
+  });
+
+  it('scaffolds a hostile display name without resurrection or injection', () => {
+    const stage = mkdtempSync(join(tmpdir(), 'starter-'));
+    dirs.push(stage);
+    // `Pay $& Go` is the MUST-1 resurrection case: `$&` reinserts the match.
+    const nasty = 'Pay $& $\' $1 "Go" \\ café 🎉';
+    expect(nameProblem(nasty)).toBeNull();
+    writeFileSync(join(stage, 'queek.app.toml'), 'slug = "my-app"\nname = "My App"\n');
+    writeFileSync(join(stage, 'package.json'), JSON.stringify({ name: 'my-app' }));
+    writeFileSync(join(stage, 'README.md'), '# My App\n');
+    writeFileSync(join(stage, 'CLAUDE.md'), '@AGENTS.md');
+    writeFileSync(join(stage, 'AGENTS.md'), '# My App — Queek app\n');
+    writeFileSync(join(stage, 'server.js'), 'console.log(`[my-app]`);\n');
+    mkdirSync(join(stage, 'app', 'routes'), { recursive: true });
+    writeFileSync(join(stage, 'app', 'bridge.client.ts'), 'throw new Error("Open My App from your Queek dashboard.");\n');
+    writeFileSync(join(stage, 'app', 'routes', 'admin.tsx'), '<span className="t">My App</span>\n');
+    writeFileSync(join(stage, 'app', 'routes', 'admin.settings.tsx'), 'placeholder="Hello from My App"\n');
+    mkdirSync(join(stage, 'tests'), { recursive: true });
+    writeFileSync(join(stage, 'tests', 'helpers.ts'), 'APP_BASE_URL: "https://my-app.apps.queek.com.ng",\n');
+    setupApp(stage, { slug: 'paystack-bridge', name: nasty });
+    setupAgentFiles(stage);
+    expect(templateLeftovers(stage)).toEqual([]);
+    // The scaffolded manifest parses with the exact hostile name and slug.
+    const doc = parseToml(readFileSync(join(stage, 'queek.app.toml'), 'utf8')) as { slug: string; name: string };
+    expect(doc.slug).toBe('paystack-bridge');
+    expect(doc.name).toBe(nasty);
+    // Per-destination escaping: JS strings stay JS, TSX markup stays markup.
+    expect(readFileSync(join(stage, 'app', 'bridge.client.ts'), 'utf8')).toContain('Open Pay $& $\' $1 \\"Go\\" \\\\ café 🎉 from');
+    expect(readFileSync(join(stage, 'app', 'routes', 'admin.settings.tsx'), 'utf8')).toContain('Hello from Pay $&amp; $\' $1 &quot;Go&quot; \\ café 🎉');
+    expect(readFileSync(join(stage, 'app', 'routes', 'admin.tsx'), 'utf8')).toContain('>Pay $&amp; $\' $1 &quot;Go&quot; \\ café 🎉<');
+    expect(readFileSync(join(stage, 'README.md'), 'utf8')).toContain(`# ${nasty}`);
+    expect(readFileSync(join(stage, 'server.js'), 'utf8')).toContain('[paystack-bridge]');
+  });
+
+  it('rejects newline and over-long names at the sweep boundary', () => {
+    const stage = mkdtempSync(join(tmpdir(), 'starter-'));
+    dirs.push(stage);
+    writeFileSync(join(stage, 'queek.app.toml'), 'slug = "my-app"\nname = "My App"\n');
+    expect(() => setupApp(stage, { slug: 'bookings', name: 'Evil\nname = "x"' })).toThrow(UsageError);
+    expect(() => setupApp(stage, { slug: 'bookings', name: 'x'.repeat(MAX_DISPLAY_NAME_LENGTH + 1) })).toThrow(UsageError);
+    expect(() => setupApp(stage, { slug: 'bookings', name: '{x}' })).toThrow(UsageError);
+    // Untouched by the failed attempts: the template identity is intact.
+    expect(readFileSync(join(stage, 'queek.app.toml'), 'utf8')).toContain('slug = "my-app"');
+  });
+
+  it('never leaves two slug lines when the starter has slug and handle', () => {
+    const stage = mkdtempSync(join(tmpdir(), 'starter-'));
+    dirs.push(stage);
+    writeFileSync(join(stage, 'queek.app.toml'), 'slug = "my-app"\nhandle = "legacy"\nname = "My App"\n');
+    setupApp(stage, { slug: 'paystack-bridge', name: 'Paystack Bridge' });
+    const toml = readFileSync(join(stage, 'queek.app.toml'), 'utf8');
+    expect(toml.match(/^slug = /gm)).toHaveLength(1);
+    expect(toml).not.toContain('handle');
+    expect(toml).toContain('slug = "paystack-bridge"');
+  });
+
+  it('keeps a handle-only starter working (legacy key becomes slug)', () => {
+    const stage = mkdtempSync(join(tmpdir(), 'starter-'));
+    dirs.push(stage);
+    writeFileSync(join(stage, 'queek.app.toml'), 'handle = "legacy"\nname = "My App"\n');
+    setupApp(stage, { slug: 'paystack-bridge', name: 'Paystack Bridge' });
+    const toml = readFileSync(join(stage, 'queek.app.toml'), 'utf8');
+    expect(toml.match(/^slug = /gm)).toHaveLength(1);
+    expect(toml).toContain('slug = "paystack-bridge"');
+  });
+
+  it('runCreate rejects a bad slug with exit 2 and creates nothing', async () => {
+    const dir = join(tmpdir(), `bad-slug-${Date.now()}`);
+    try {
+      await runCreate(
+        { dir, slug: 'Bad!', name: 'Bad', install: false, git: false, yes: true, dryRun: false, force: false },
+        null,
+      );
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toBeInstanceOf(UsageError);
+      expect((error as UsageError).exitCode).toBe(2);
+    }
+    expect(existsSync(dir)).toBe(false);
+  });
+
+  it('runCreate rejects a bad display name with exit 2 and creates nothing', async () => {
+    const dir = join(tmpdir(), `bad-name-${Date.now()}`);
+    try {
+      await runCreate(
+        { dir, slug: 'fine-slug', name: 'Evil\nname', install: false, git: false, yes: true, dryRun: false, force: false },
+        null,
+      );
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toBeInstanceOf(UsageError);
+      expect((error as UsageError).exitCode).toBe(2);
+    }
+    expect(existsSync(dir)).toBe(false);
+  });
+
+  it('runCreate preflights Node before writing anything', async () => {
+    const real = Object.getOwnPropertyDescriptor(process, 'version');
+    Object.defineProperty(process, 'version', { value: 'v22.12.0', configurable: true });
+    try {
+      const dir = join(tmpdir(), `old-node-${Date.now()}`);
+      await expect(runCreate(
+        { dir, slug: 'fine-slug', name: 'Fine', install: false, git: false, yes: true, dryRun: false, force: false },
+        null,
+      )).rejects.toThrow('Node >= 22.14');
+      expect(existsSync(dir)).toBe(false);
+    } finally {
+      if (real) Object.defineProperty(process, 'version', real);
     }
   });
 });

@@ -16,7 +16,7 @@ npm needs -- before these flags. In a terminal, anything you leave out is asked,
 and with no folder the folder is named after the slug (my-app with --yes or no terminal).
 
   --slug <slug>          2-64 lowercase letters, digits or hyphens (default: the folder name)
-  --name <text>          display name (default: the slug)
+  --name <text>          display name, 1-80 chars, single line (default: the slug)
   --pm <npm|pnpm|yarn|bun>, --no-install, --no-git
   --yes, -y              never prompt; take the default for everything else
   --dry-run              print what would be written; write nothing

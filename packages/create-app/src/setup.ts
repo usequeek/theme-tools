@@ -3,7 +3,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { downloadTemplate } from 'giget';
-import { slugify } from './naming.js';
+import { nameProblem, slugify } from './naming.js';
 import { UsageError, type PackageManager } from './options.js';
 
 /** The Queek developer docs every scaffolded file points at (the MCP ships later — never invented here). */
@@ -71,9 +71,51 @@ const TEMPLATE_SLUG = 'my-app';
 const TEMPLATE_NAME = 'My App';
 
 /**
+ * Quote a display name as a TOML basic string. Inside a single-line basic
+ * string only `"` and `\` are special (control characters are rejected by
+ * nameProblem), so those two escapes are complete.
+ */
+export function tomlString(value: string): string {
+  return `"${value.replaceAll('\\', () => '\\\\').replaceAll('"', () => '\\"')}"`;
+}
+
+/**
+ * Escape a display name for the file it lands in. The template puts
+ * `My App` in: TOML (`name = "…"`), JSON strings, JS/TS string literals,
+ * TSX markup (JSX text and attribute strings, where HTML entities decode),
+ * and plain text (markdown, env, logs). Every branch uses a replacer
+ * function, so `$&`, `$'`, `$1` in the name stay literal.
+ */
+export function nameForFile(file: string, name: string): string {
+  if (file.endsWith('.toml')) {
+    return name.replaceAll('\\', () => '\\\\').replaceAll('"', () => '\\"');
+  }
+  if (file.endsWith('.json')) {
+    return name.replaceAll('\\', () => '\\\\').replaceAll('"', () => '\\"');
+  }
+  if (file.endsWith('.tsx') || file.endsWith('.jsx') || file.endsWith('.html')) {
+    return name
+      .replaceAll('&', () => '&amp;')
+      .replaceAll('<', () => '&lt;')
+      .replaceAll('>', () => '&gt;')
+      .replaceAll('"', () => '&quot;');
+  }
+  if (/\.[cm]?[jt]s$/.test(file)) {
+    return name
+      .replaceAll('\\', () => '\\\\')
+      .replaceAll('"', () => '\\"')
+      .replaceAll('`', () => '\\`')
+      .replaceAll('${', () => '\\${');
+  }
+  return name;
+}
+
+/**
  * Rename the template identity across every staged text file (binary files —
  * images, fonts, archives — are skipped via a null-byte check). One token,
- * one pass: future starter files are covered without a per-file rule.
+ * one pass: future starter files are covered without a per-file rule. The
+ * slug is interpolated with a replacer function even though slugs are
+ * validated — `$` patterns must never resurrect the template.
  */
 export function sweepTemplateIdentity(stage: string, slug: string, name: string): void {
   const walk = (dir: string): void => {
@@ -90,7 +132,10 @@ export function sweepTemplateIdentity(stage: string, slug: string, name: string)
       if (bytes.includes(0)) continue;
       const text = bytes.toString('utf8');
       if (!text.includes(TEMPLATE_SLUG) && !text.includes(TEMPLATE_NAME)) continue;
-      writeFileSync(full, text.replaceAll(TEMPLATE_SLUG, slug).replaceAll(TEMPLATE_NAME, name));
+      writeFileSync(
+        full,
+        text.replaceAll(TEMPLATE_SLUG, () => slug).replaceAll(TEMPLATE_NAME, () => nameForFile(full, name)),
+      );
     }
   };
   walk(stage);
@@ -104,11 +149,22 @@ export function sweepTemplateIdentity(stage: string, slug: string, name: string)
 export function setupApp(stage: string, answers: Answers): { files: string[] } {
   const toml = join(stage, 'queek.app.toml');
   if (!existsSync(toml)) throw new UsageError('The starter has no queek.app.toml — is it a Queek app starter?');
+  // The sweep's third application of nameProblem: a direct setupApp caller
+  // bypasses --name and the prompt, so validate here too (ONE rule, three
+  // call sites). The name is trimmed for use; the slug stays runCreate's.
+  const name = answers.name.trim();
+  const nameIssue = nameProblem(name);
+  if (nameIssue) throw new UsageError(`${nameIssue} (pass --name).`);
   const before = readFileSync(toml, 'utf8');
+  // Replacer functions throughout: a display name holding `$&`, `$'` or
+  // `$1` must land literally, never as a replacement pattern. A starter
+  // carrying both `slug` and legacy `handle` keeps exactly one `slug`
+  // line — the legacy key is dropped instead of duplicated.
+  const hasSlug = /^slug = ".*"/m.test(before);
   const renamed = before
-    .replace(/^slug = ".*"/m, `slug = "${answers.slug}"`)
-    .replace(/^handle = ".*"/m, `slug = "${answers.slug}"`)
-    .replace(/^name = ".*"/m, `name = "${answers.name}"`);
+    .replace(/^slug = ".*"/m, () => `slug = "${answers.slug}"`)
+    .replace(/^handle = ".*"(?:\r?\n|$)/m, () => (hasSlug ? '' : `slug = "${answers.slug}"\n`))
+    .replace(/^name = ".*"/m, () => `name = ${tomlString(name)}`);
   writeFileSync(toml, renamed);
 
   const pkgFile = join(stage, 'package.json');
@@ -126,7 +182,7 @@ export function setupApp(stage: string, answers: Answers): { files: string[] } {
     if (lock.packages?.['']) lock.packages[''].name = answers.slug;
     writeFileSync(lockFile, `${JSON.stringify(lock, null, 2)}\n`);
   }
-  sweepTemplateIdentity(stage, answers.slug, answers.name);
+  sweepTemplateIdentity(stage, answers.slug, name);
   const files = readdirSync(stage).sort();
   return { files };
 }
