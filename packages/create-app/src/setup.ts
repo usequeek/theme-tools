@@ -3,35 +3,20 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { downloadTemplate } from 'giget';
-import { slugify } from './naming.js';
+import { nameProblem, slugify } from './naming.js';
 import { UsageError, type PackageManager } from './options.js';
 
 /** The Queek developer docs every scaffolded file points at (the MCP ships later — never invented here). */
 export const QUEEK_DOCS_URL = 'https://docs.usequeek.com';
 
 /**
- * What every `npm create @usequeek/app` output ships (Shopify item 15
- * parity): how an agent builds a Queek app — SDK, toml, dev loop, docs, MCP
- * status, and the no-new-tooling rule. The scaffolder owns this text so a
- * drifting template branch can never drop it.
+ * The agent files every `npm create @usequeek/app` output ships. `AGENTS.md`
+ * and `CLAUDE.md` are the starter's own files, copied verbatim — the
+ * starter repo is the single source of truth, so no second scaffolder copy
+ * can drift stale (no `src/` handler claims, no unshipped-MCP notice). The
+ * scaffolder never rewrites them; it only guarantees they exist and adds
+ * the MCP wiring location below.
  */
-export function agentsMd(): string {
-  return `# Building this Queek app
-
-You are working in a Queek installable app (scaffolded by \`@usequeek/create-app\`).
-
-- SDK: \`@usequeek/app-sdk\` — install/uninstall/settings/webhooks handlers live in \`src/\`. The SDK README in \`node_modules/@usequeek/app-sdk\` is the handler contract.
-- Config: \`queek.app.toml\` IS the app — scopes (\`[access]\`), webhook topics (\`[webhooks]\`), app URLs (\`[app]\`), merchant settings (\`[[settings]]\`). \`queek app config link\` pulls the live config into the file; \`queek app deploy\` validates the whole config server-side and releases a version.
-- Dev loop: \`queek app dev\` — creates a dev store with test data when you have none, then tunnels, installs (scopes auto-granted, no consent screen) and watches. \`queek app info\` shows the current configuration.
-- Docs: ${QUEEK_DOCS_URL} — the reference for the manifest, scopes, webhooks and the review submission flow.
-- Queek MCP: not published yet. \`.mcp.json\` (and \`.cursor/mcp.json\`) is the standard location — wire the Queek MCP there when it ships; until then use the docs above.
-
-Do not add tooling to this repo: no new build systems, linters, formatters, test frameworks or CI beyond what the starter ships. Fix the app, not the scaffold.
-`;
-}
-
-/** `CLAUDE.md` is exactly the pointer — one line, no trailing prose. */
-export const CLAUDE_MD = '@AGENTS.md';
 
 /**
  * The MCP wiring location, shipped from day one. No developer MCP server
@@ -42,20 +27,28 @@ export function mcpJson(): string {
   return `${JSON.stringify({ mcpServers: {} }, null, 2)}\n`;
 }
 
-/** The success banner: next steps plus the AI setup (AGENTS.md + docs + MCP location). */
+/** The success banner: next steps plus the AI setup (starter AGENTS.md + MCP location). */
 export function successBanner(dir: string): string {
   return [
     `Next steps:`,
     `  cd ${dir}`,
     `  queek app dev          # creates a dev store if you have none, then tunnels + installs + watches`,
-    `AI assistants: AGENTS.md points at the Queek docs (${QUEEK_DOCS_URL}); .mcp.json is ready for the Queek MCP when it ships — do not add tooling to this repo.`,
+    `AI assistants: AGENTS.md ships verbatim from the starter (toolkit capacity check first, then the live Merchant spec); .mcp.json is ready for the Queek MCP when it ships — do not add tooling to this repo.`,
   ].join('\n');
 }
 
-/** Write the agent files every scaffolded app ships (overwrites template drift — the scaffolder owns them). */
+/**
+ * Ship the agent files every scaffolded app carries. The starter's
+ * `AGENTS.md`/`CLAUDE.md` pass through byte-identical (a missing file is a
+ * hard error, never a fallback to scaffolder-owned text); only the MCP
+ * wiring is scaffolder-owned.
+ */
 export function setupAgentFiles(stage: string): void {
-  writeFileSync(join(stage, 'AGENTS.md'), agentsMd());
-  writeFileSync(join(stage, 'CLAUDE.md'), CLAUDE_MD);
+  for (const file of ['AGENTS.md', 'CLAUDE.md'] as const) {
+    if (!existsSync(join(stage, file))) {
+      throw new UsageError(`The starter has no ${file} — is it a Queek app starter?`);
+    }
+  }
   writeFileSync(join(stage, '.mcp.json'), mcpJson());
   mkdirSync(join(stage, '.cursor'), { recursive: true });
   writeFileSync(join(stage, '.cursor', 'mcp.json'), mcpJson());
@@ -67,33 +60,112 @@ export interface Answers {
 }
 
 /**
+ * The template identity baked into the starter (`my-app` / `My App`). The
+ * starter repo keeps its own working values so its suite is green on main;
+ * the sweep below renames every occurrence so no scaffolded file — app
+ * code, env, Dockerfile, README, agent files, or test fixtures — keeps the
+ * template identity (APP_SLUG feeds the app credential, so a leftover is a
+ * runtime bug, not cosmetics).
+ */
+const TEMPLATE_SLUG = 'my-app';
+const TEMPLATE_NAME = 'My App';
+
+/**
+ * Quote a display name as a TOML basic string. Inside a single-line basic
+ * string only `"` and `\` are special (control characters are rejected by
+ * nameProblem), so those two escapes are complete.
+ */
+export function tomlString(value: string): string {
+  return `"${value.replaceAll('\\', () => '\\\\').replaceAll('"', () => '\\"')}"`;
+}
+
+/**
+ * Escape a display name for the file it lands in. The template puts
+ * `My App` in: TOML (`name = "…"`), JSON strings, JS/TS string literals,
+ * TSX markup (JSX text and attribute strings, where HTML entities decode),
+ * and plain text (markdown, env, logs). Every branch uses a replacer
+ * function, so `$&`, `$'`, `$1` in the name stay literal.
+ */
+export function nameForFile(file: string, name: string): string {
+  if (file.endsWith('.toml')) {
+    return name.replaceAll('\\', () => '\\\\').replaceAll('"', () => '\\"');
+  }
+  if (file.endsWith('.json')) {
+    return name.replaceAll('\\', () => '\\\\').replaceAll('"', () => '\\"');
+  }
+  if (file.endsWith('.tsx') || file.endsWith('.jsx') || file.endsWith('.html')) {
+    return name
+      .replaceAll('&', () => '&amp;')
+      .replaceAll('<', () => '&lt;')
+      .replaceAll('>', () => '&gt;')
+      .replaceAll('"', () => '&quot;');
+  }
+  if (/\.[cm]?[jt]s$/.test(file)) {
+    return name
+      .replaceAll('\\', () => '\\\\')
+      .replaceAll('"', () => '\\"')
+      .replaceAll('`', () => '\\`')
+      .replaceAll('${', () => '\\${');
+  }
+  return name;
+}
+
+/**
+ * Rename the template identity across every staged text file (binary files —
+ * images, fonts, archives — are skipped via a null-byte check). One token,
+ * one pass: future starter files are covered without a per-file rule. The
+ * slug is interpolated with a replacer function even though slugs are
+ * validated — `$` patterns must never resurrect the template.
+ */
+export function sweepTemplateIdentity(stage: string, slug: string, name: string): void {
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) {
+        if (STAGE_DENY.has(entry.name)) continue;
+        walk(full);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const bytes = readFileSync(full);
+      if (bytes.includes(0)) continue;
+      const text = bytes.toString('utf8');
+      if (!text.includes(TEMPLATE_SLUG) && !text.includes(TEMPLATE_NAME)) continue;
+      writeFileSync(
+        full,
+        text.replaceAll(TEMPLATE_SLUG, () => slug).replaceAll(TEMPLATE_NAME, () => nameForFile(full, name)),
+      );
+    }
+  };
+  walk(stage);
+}
+
+/**
  * Turn a downloaded starter into the developer's app. Pure file work:
- * the slug lands in queek.app.toml + package.json (+ README title);
- * no network, no install.
+ * structural edits (toml slug/name keys, package/lock names) plus the
+ * template-identity sweep over every staged file; no network, no install.
  */
 export function setupApp(stage: string, answers: Answers): { files: string[] } {
   const toml = join(stage, 'queek.app.toml');
   if (!existsSync(toml)) throw new UsageError('The starter has no queek.app.toml — is it a Queek app starter?');
+  // The sweep's third application of nameProblem: a direct setupApp caller
+  // bypasses --name and the prompt, so validate here too (ONE rule, three
+  // call sites). The name is trimmed for use; the slug stays runCreate's.
+  const name = answers.name.trim();
+  const nameIssue = nameProblem(name);
+  if (nameIssue) throw new UsageError(`${nameIssue} (pass --name).`);
   const before = readFileSync(toml, 'utf8');
+  // Replacer functions throughout: a display name holding `$&`, `$'` or
+  // `$1` must land literally, never as a replacement pattern. A starter
+  // carrying both `slug` and legacy `handle` keeps exactly one `slug`
+  // line — the legacy key is dropped instead of duplicated.
+  const hasSlug = /^slug = ".*"/m.test(before);
   const renamed = before
-    .replace(/^slug = ".*"/m, `slug = "${answers.slug}"`)
-    .replace(/^handle = ".*"/m, `slug = "${answers.slug}"`)
-    .replace(/^name = ".*"/m, `name = "${answers.name}"`)
-    // The starter's default host is slug-based (<slug>.apps.queek.com.ng).
-    .replaceAll('https://my-app.apps.queek.com.ng', `https://${answers.slug}.apps.queek.com.ng`);
+    .replace(/^slug = ".*"/m, () => `slug = "${answers.slug}"`)
+    .replace(/^handle = ".*"(?:\r?\n|$)/m, () => (hasSlug ? '' : `slug = "${answers.slug}"\n`))
+    .replace(/^name = ".*"/m, () => `name = ${tomlString(name)}`);
   writeFileSync(toml, renamed);
-
-  const configFile = join(stage, 'src', 'config.ts');
-  if (existsSync(configFile)) {
-    const configBefore = readFileSync(configFile, 'utf8');
-    writeFileSync(
-      configFile,
-      configBefore
-        .replace(/^export const APP_SLUG = ".*";/m, `export const APP_SLUG = "${answers.slug}";`)
-        .replace(/^export const DEFAULT_BASE_URL = ".*";/m, `export const DEFAULT_BASE_URL = "https://${answers.slug}.apps.queek.com.ng";`)
-        .replaceAll('"./data/my-app.db"', `"./data/${answers.slug}.db"`),
-    );
-  }
 
   const pkgFile = join(stage, 'package.json');
   if (existsSync(pkgFile)) {
@@ -110,26 +182,7 @@ export function setupApp(stage: string, answers: Answers): { files: string[] } {
     if (lock.packages?.['']) lock.packages[''].name = answers.slug;
     writeFileSync(lockFile, `${JSON.stringify(lock, null, 2)}\n`);
   }
-  const readme = join(stage, 'README.md');
-  if (existsSync(readme)) {
-    writeFileSync(
-      readme,
-      readFileSync(readme, 'utf8')
-        .replace(/^# .*/m, `# ${answers.name}`)
-        .replaceAll('my-app.apps.queek.com.ng', `${answers.slug}.apps.queek.com.ng`),
-    );
-  }
-  const dockerfile = join(stage, 'Dockerfile');
-  if (existsSync(dockerfile)) {
-    writeFileSync(dockerfile, readFileSync(dockerfile, 'utf8').replace('docker build -t my-app', `docker build -t ${answers.slug}`));
-  }
-  // The dev database path bakes the template slug in three places.
-  for (const file of ['Dockerfile', '.env.example'] as const) {
-    const target = join(stage, file);
-    if (existsSync(target)) {
-      writeFileSync(target, readFileSync(target, 'utf8').replaceAll('my-app.db', `${answers.slug}.db`));
-    }
-  }
+  sweepTemplateIdentity(stage, answers.slug, name);
   const files = readdirSync(stage).sort();
   return { files };
 }
@@ -147,10 +200,12 @@ export interface CreateOptions {
 /**
  * Never scaffolded: VCS history, installed dependencies, build output, local
  * data and secrets. A local `--template` folder usually contains all of
- * these (a 123 MB node_modules, a foreign .git); the GitHub tarball never
- * does. `.env` stays behind, `.env.example` ships.
+ * these (a 123 MB node_modules, a foreign .git, a stale `build/`); the
+ * GitHub tarball never does. `.env` stays behind, `.env.example` ships.
  */
-const STAGE_DENY = new Set(['.git', 'node_modules', 'dist', 'data', '.queek', '.env']);
+const STAGE_DENY = new Set([
+  '.git', 'node_modules', 'dist', 'build', 'dist-admin', '.react-router', 'data', '.queek', '.env',
+]);
 
 function stageable(path: string): boolean {
   const base = basename(path);
@@ -209,4 +264,35 @@ export async function createApp(dir: string, answers: Answers, options: CreateOp
 
 export function defaultSlug(dir: string): string {
   return slugify(basename(resolve(dir))) || 'my-app';
+}
+
+/**
+ * Minimum Node for the scaffolded app: the SDK stores installations in
+ * `node:sqlite`, stable since Node 22.14 (on older 22.x the app's tests die
+ * with "No such built-in module: node:sqlite"). Checked up front so the
+ * developer learns before scaffolding, not after the first test run.
+ */
+export const REQUIRED_NODE_MAJOR = 22;
+export const REQUIRED_NODE_MINOR = 14;
+
+/** Null when `version` (default: this process) can run the scaffolded app. */
+export function nodeVersionProblem(version: string = process.version): string | null {
+  const match = /^v?(\d+)\.(\d+)\.\d+/.exec(version.trim());
+  if (!match) return `Cannot parse Node version ${JSON.stringify(version)} — install Node >= 22.14 and re-run.`;
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  if (major > REQUIRED_NODE_MAJOR || (major === REQUIRED_NODE_MAJOR && minor >= REQUIRED_NODE_MINOR)) {
+    return null;
+  }
+  return (
+    `Scaffolding needs Node >= 22.14 but you have ${version}: the app SDK stores installations ` +
+    `in node:sqlite (stable since 22.14). Switch with 'nvm install 22 && nvm use 22' (or your ` +
+    `version manager), then re-run.`
+  );
+}
+
+/** Throw before anything is asked or written when Node is too old. */
+export function assertNodeVersion(version: string = process.version): void {
+  const problem = nodeVersionProblem(version);
+  if (problem) throw new Error(problem);
 }

@@ -18,7 +18,7 @@
     "!dist/**/*.map"
   ],
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.14.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -27,6 +27,9 @@
   "dependencies": {
     "@clack/prompts": "^1.8.1",
     "giget": "^3.3.1"
+  },
+  "devDependencies": {
+    "smol-toml": "^1.4.2"
   },
   "keywords": [
     "queek",

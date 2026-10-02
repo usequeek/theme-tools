@@ -20,9 +20,16 @@ export function clackPrompter(): Prompter {
         p.log.warn(issue);
       }
     },
-    async name(initial) {
-      const typed = answer<string>(await p.text({ message: 'Display name', placeholder: initial, defaultValue: initial }));
-      return typed.trim() || initial;
+    async name(initial, problem) {
+      for (;;) {
+        const typed = answer<string>(
+          await p.text({ message: 'Display name', placeholder: initial, defaultValue: initial, validate: (value) => problem(value?.trim() || initial) }),
+        );
+        const name = typed.trim() || initial;
+        const issue = problem(name);
+        if (issue === undefined) return name;
+        p.log.warn(issue);
+      }
     },
   };
 }
