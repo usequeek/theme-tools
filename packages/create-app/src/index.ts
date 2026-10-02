@@ -2,7 +2,7 @@ import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { slugProblem, slugify } from './naming.js';
 import { UsageError, type Flags, type PackageManager, type Prompter } from './options.js';
-import { createApp, defaultSlug } from './setup.js';
+import { assertNodeVersion, createApp, defaultSlug } from './setup.js';
 
 export { UsageError, CancelledError, type Flags, type Prompter, type PackageManager } from './options.js';
 export { setupApp, type Answers } from './setup.js';
@@ -34,6 +34,9 @@ and with no folder the folder is named after the slug (my-app with --yes or no t
   --template <source>    another starter: a giget source or a local folder`;
 
 export async function runCreate(flags: Flags, prompter: Prompter | null, log?: (line: string) => void): Promise<string> {
+  // Fail before anything is asked or written: the scaffolded app's tests
+  // need node:sqlite (stable since Node 22.14).
+  assertNodeVersion();
   const dir = flags.dir ?? 'my-app';
   // Before anything is asked or written: a file is never a target, and a
   // busy folder needs --force.

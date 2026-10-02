@@ -60,9 +60,46 @@ export interface Answers {
 }
 
 /**
+ * The template identity baked into the starter (`my-app` / `My App`). The
+ * starter repo keeps its own working values so its suite is green on main;
+ * the sweep below renames every occurrence so no scaffolded file — app
+ * code, env, Dockerfile, README, agent files, or test fixtures — keeps the
+ * template identity (APP_SLUG feeds the app credential, so a leftover is a
+ * runtime bug, not cosmetics).
+ */
+const TEMPLATE_SLUG = 'my-app';
+const TEMPLATE_NAME = 'My App';
+
+/**
+ * Rename the template identity across every staged text file (binary files —
+ * images, fonts, archives — are skipped via a null-byte check). One token,
+ * one pass: future starter files are covered without a per-file rule.
+ */
+export function sweepTemplateIdentity(stage: string, slug: string, name: string): void {
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) {
+        if (STAGE_DENY.has(entry.name)) continue;
+        walk(full);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const bytes = readFileSync(full);
+      if (bytes.includes(0)) continue;
+      const text = bytes.toString('utf8');
+      if (!text.includes(TEMPLATE_SLUG) && !text.includes(TEMPLATE_NAME)) continue;
+      writeFileSync(full, text.replaceAll(TEMPLATE_SLUG, slug).replaceAll(TEMPLATE_NAME, name));
+    }
+  };
+  walk(stage);
+}
+
+/**
  * Turn a downloaded starter into the developer's app. Pure file work:
- * the slug lands in queek.app.toml + package.json (+ README title);
- * no network, no install.
+ * structural edits (toml slug/name keys, package/lock names) plus the
+ * template-identity sweep over every staged file; no network, no install.
  */
 export function setupApp(stage: string, answers: Answers): { files: string[] } {
   const toml = join(stage, 'queek.app.toml');
@@ -71,22 +108,8 @@ export function setupApp(stage: string, answers: Answers): { files: string[] } {
   const renamed = before
     .replace(/^slug = ".*"/m, `slug = "${answers.slug}"`)
     .replace(/^handle = ".*"/m, `slug = "${answers.slug}"`)
-    .replace(/^name = ".*"/m, `name = "${answers.name}"`)
-    // The starter's default host is slug-based (<slug>.apps.queek.com.ng).
-    .replaceAll('https://my-app.apps.queek.com.ng', `https://${answers.slug}.apps.queek.com.ng`);
+    .replace(/^name = ".*"/m, `name = "${answers.name}"`);
   writeFileSync(toml, renamed);
-
-  const configFile = join(stage, 'src', 'config.ts');
-  if (existsSync(configFile)) {
-    const configBefore = readFileSync(configFile, 'utf8');
-    writeFileSync(
-      configFile,
-      configBefore
-        .replace(/^export const APP_SLUG = ".*";/m, `export const APP_SLUG = "${answers.slug}";`)
-        .replace(/^export const DEFAULT_BASE_URL = ".*";/m, `export const DEFAULT_BASE_URL = "https://${answers.slug}.apps.queek.com.ng";`)
-        .replaceAll('"./data/my-app.db"', `"./data/${answers.slug}.db"`),
-    );
-  }
 
   const pkgFile = join(stage, 'package.json');
   if (existsSync(pkgFile)) {
@@ -103,26 +126,7 @@ export function setupApp(stage: string, answers: Answers): { files: string[] } {
     if (lock.packages?.['']) lock.packages[''].name = answers.slug;
     writeFileSync(lockFile, `${JSON.stringify(lock, null, 2)}\n`);
   }
-  const readme = join(stage, 'README.md');
-  if (existsSync(readme)) {
-    writeFileSync(
-      readme,
-      readFileSync(readme, 'utf8')
-        .replace(/^# .*/m, `# ${answers.name}`)
-        .replaceAll('my-app.apps.queek.com.ng', `${answers.slug}.apps.queek.com.ng`),
-    );
-  }
-  const dockerfile = join(stage, 'Dockerfile');
-  if (existsSync(dockerfile)) {
-    writeFileSync(dockerfile, readFileSync(dockerfile, 'utf8').replace('docker build -t my-app', `docker build -t ${answers.slug}`));
-  }
-  // The dev database path bakes the template slug in three places.
-  for (const file of ['Dockerfile', '.env.example'] as const) {
-    const target = join(stage, file);
-    if (existsSync(target)) {
-      writeFileSync(target, readFileSync(target, 'utf8').replaceAll('my-app.db', `${answers.slug}.db`));
-    }
-  }
+  sweepTemplateIdentity(stage, answers.slug, answers.name);
   const files = readdirSync(stage).sort();
   return { files };
 }
@@ -140,10 +144,12 @@ export interface CreateOptions {
 /**
  * Never scaffolded: VCS history, installed dependencies, build output, local
  * data and secrets. A local `--template` folder usually contains all of
- * these (a 123 MB node_modules, a foreign .git); the GitHub tarball never
- * does. `.env` stays behind, `.env.example` ships.
+ * these (a 123 MB node_modules, a foreign .git, a stale `build/`); the
+ * GitHub tarball never does. `.env` stays behind, `.env.example` ships.
  */
-const STAGE_DENY = new Set(['.git', 'node_modules', 'dist', 'data', '.queek', '.env']);
+const STAGE_DENY = new Set([
+  '.git', 'node_modules', 'dist', 'build', 'dist-admin', '.react-router', 'data', '.queek', '.env',
+]);
 
 function stageable(path: string): boolean {
   const base = basename(path);
@@ -202,4 +208,35 @@ export async function createApp(dir: string, answers: Answers, options: CreateOp
 
 export function defaultSlug(dir: string): string {
   return slugify(basename(resolve(dir))) || 'my-app';
+}
+
+/**
+ * Minimum Node for the scaffolded app: the SDK stores installations in
+ * `node:sqlite`, stable since Node 22.14 (on older 22.x the app's tests die
+ * with "No such built-in module: node:sqlite"). Checked up front so the
+ * developer learns before scaffolding, not after the first test run.
+ */
+export const REQUIRED_NODE_MAJOR = 22;
+export const REQUIRED_NODE_MINOR = 14;
+
+/** Null when `version` (default: this process) can run the scaffolded app. */
+export function nodeVersionProblem(version: string = process.version): string | null {
+  const match = /^v?(\d+)\.(\d+)\.\d+/.exec(version.trim());
+  if (!match) return `Cannot parse Node version ${JSON.stringify(version)} — install Node >= 22.14 and re-run.`;
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  if (major > REQUIRED_NODE_MAJOR || (major === REQUIRED_NODE_MAJOR && minor >= REQUIRED_NODE_MINOR)) {
+    return null;
+  }
+  return (
+    `Scaffolding needs Node >= 22.14 but you have ${version}: the app SDK stores installations ` +
+    `in node:sqlite (stable since 22.14). Switch with 'nvm install 22 && nvm use 22' (or your ` +
+    `version manager), then re-run.`
+  );
+}
+
+/** Throw before anything is asked or written when Node is too old. */
+export function assertNodeVersion(version: string = process.version): void {
+  const problem = nodeVersionProblem(version);
+  if (problem) throw new Error(problem);
 }
