@@ -77,6 +77,8 @@ export { ANALYSIS_RULES, variantParityRule, fieldParityRule, designTokensRule } 
 // Theme string files (G0-naming): naming/shape and file-parity rules, plus
 // the shared helpers (locale budgets, brand allowlist) G0-enforce reuses.
 export { localeKeyNamingRule, localeFileParityRule, localeInterpolationVars } from './rules/locale-strings.js';
+export { LOCALE_ENFORCE_RULES, localeKeyExistsRule, localeKeyUnusedRule, noHardcodedStringsRule } from './rules/locale-enforce.js';
+export { KIT_CORE_KEYS, KIT_CORE_SOURCE, kitCoreKeysFor } from './kit-core-strings.js';
 export {
   LOCALE_KEY_PATTERN,
   LOCALE_KEY_MAX_LENGTH,

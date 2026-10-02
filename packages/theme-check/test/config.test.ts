@@ -156,6 +156,9 @@ describe('warningRuleIds and renderInitConfig', () => {
       'theme/template-pages',
       'theme/locale-key-naming',
       'theme/locale-file-parity',
+      'theme/locale-key-exists',
+      'theme/locale-key-unused',
+      'theme/no-hardcoded-strings',
     ]);
   });
 
