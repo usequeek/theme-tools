@@ -136,6 +136,8 @@ export function warningRuleIds(): string[] {
     'theme/demo-completeness',
     'theme/template-business',
     'theme/template-pages',
+    'theme/locale-key-naming',
+    'theme/locale-file-parity',
   ]);
   return RULES.map((rule) => rule.id).filter((id) => warnable.has(id));
 }

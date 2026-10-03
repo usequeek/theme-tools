@@ -1,0 +1,15 @@
+{
+  "cart": {
+    "title": "Your cart",
+    "add": "Add to cart",
+    "count": {
+      "one": "{count} item",
+      "other": "{count} items"
+    }
+  },
+  "cart.empty": "Your cart is empty",
+  "checkout": {
+    "title": "Checkout",
+    "submit": "Pay {total}"
+  }
+}
