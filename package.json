@@ -22,7 +22,7 @@
     "@changesets/cli": "^3.0.3",
     "@eslint/js": "^9.0.0",
     "@queekai/client-sdk": "^0.3.1",
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.6.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@usequeek/theme-kit": "^0.1.12",
