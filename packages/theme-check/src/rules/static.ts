@@ -8,6 +8,7 @@ import { copyViolations, isTestimonialSection, manifestViolations } from '../uti
 import { bundledVocabularyView, type VocabularyView } from '../utils/business-vocabulary.js';
 import { themeSourceFiles } from '../context.js';
 import { localeFileParityRule, localeKeyNamingRule } from './locale-strings.js';
+import { localeKeyExistsRule, localeKeyUnusedRule, noHardcodedStringsRule } from './locale-enforce.js';
 import { finding, type DemoStore, type Finding, type Rule, type ThemeContext } from '../types.js';
 
 /** A theme file as a finding names it: relative to the theme, with `/` on every OS (Windows gave `styles\type.css`). */
@@ -1657,4 +1658,5 @@ export const STATIC_RULES: Rule[] = [moduleContractRule, structureRule, demoStor
   templateBusinessRule, templateVersionsRule, templateDesignsRule, templatePagesRule, templateCopyRule, vendorFactsRule, placeholderContentRule,
   markdownHtmlRule,
   localeKeyNamingRule, localeFileParityRule,
+  localeKeyExistsRule, localeKeyUnusedRule, noHardcodedStringsRule,
 ];

@@ -34,6 +34,18 @@ empties), at most 3400 keys per file; `theme/locale-file-parity` — every `loca
 key exists in `en.default.json` (English is the fallback authority) and its `{variables}` stay
 a subset of the English ones. Brand tokens that may stay untranslated live in
 `src/allowlist/brand-names.json`.
+New rules (warn one release, then reject): `theme/locale-key-exists` — every `t('a.b')`
+call in TS/TSX resolves to the theme's own `locales/en.default.json` or the kit core
+dictionary (a missing key renders EMPTY, never the raw key); dynamic keys are info-only.
+`theme/locale-key-unused` (info) — `en.default.json` keys nothing references are dead copy.
+`theme/no-hardcoded-strings` — shopper-visible JSX text and copy-attribute literals
+(`aria-label`, `aria-description`, `placeholder`, `title`, `alt`, `label`, plus the audited
+`actionLabel`/`moreLabel`) go through `t()`, not hard-coded. Merchant data (`{product.title}`),
+non-copy attributes, brand/unit tokens and strings already inside `t()` never flag. Kit core
+keys come from the generated snapshot in `src/kit-core-strings.ts` (no new dependency —
+regenerate with `scripts/sync-kit-core-strings.mjs`; the drift test fails when a resolvable
+kit dictionary disagrees), layered over the theme project's own installed kit dictionary
+when readable.
 
 ## Project config
 

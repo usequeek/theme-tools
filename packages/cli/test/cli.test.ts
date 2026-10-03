@@ -299,11 +299,11 @@ describe('queek theme check project config', () => {
       const before = runAt(dir, 'theme', 'check', '--offline', '--format', 'json');
       expect(JSON.parse(before.stdout).summary.warnings).toBeGreaterThanOrEqual(1);
 
-      writeFileSync(join(dir, '.queek-theme.yml'), 'rules:\n  theme/template-business: off\n  theme/template-pages: off\n');
+      writeFileSync(join(dir, '.queek-theme.yml'), 'rules:\n  theme/template-business: off\n  theme/template-pages: off\n  theme/locale-key-unused: off\n  theme/no-hardcoded-strings: off\n');
       const { code, stdout, stderr } = runAt(dir, 'theme', 'check', '--offline', '--format', 'json');
       expect(code, stderr).toBe(0);
       expect(JSON.parse(stdout).summary.warnings).toBe(0);
-      expect(stderr).toContain('Using .queek-theme.yml (2 rules changed, 0 ignore patterns).');
+      expect(stderr).toContain('Using .queek-theme.yml (4 rules changed, 0 ignore patterns).');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
