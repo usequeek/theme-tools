@@ -1,7 +1,6 @@
 {
   "name": "@usequeek/create-app",
   "version": "0.15.0",
-  "private": true,
   "description": "npm create @usequeek/app — start a Queek installable app from the official starter.",
   "license": "MIT",
   "type": "module",
