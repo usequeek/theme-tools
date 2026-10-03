@@ -19,9 +19,13 @@ import {
  * - `theme/locale-key-exists`: every `t('literal.key')` call in TS/TSX must
  *   resolve to the theme's own `locales/en.default.json` or the kit core
  *   dictionary. Any identifier called as `t(…)` counts — a `useThemeStrings()`
- *   binding, a `getThemeStrings`/`createThemeStrings` bound `t`, or a
- *   props-passed `t` all call through the same name. Dynamic (non-literal)
- *   keys are reported as info, never failed.
+ *   binding, a `getThemeStrings`/`createThemeStrings` bound `t`, a
+ *   renamed hook binding (`const ts = useThemeStrings()`,
+ *   `const { t: translate } = useThemeStrings()`), or a props-passed `t`
+ *   all call through the collected name. Limitation: a bound `t` handed to a
+ *   helper in another file under a different parameter name is not followed
+ *   (the reference counts only where the alias itself is called). Dynamic
+ *   (non-literal) keys are reported as info, never failed.
  * - `theme/locale-key-unused` (info): keys in `en.default.json` nothing
  *   references via `t('…')`.
  * - `theme/no-hardcoded-strings`: JSX text and copy-attribute string
@@ -124,10 +128,58 @@ function dynamicPrefixOf(first: ts.Expression): string | null {
   return null;
 }
 
-function isTCall(node: ts.CallExpression): boolean {
+/**
+ * Factory calls whose return value IS the theme-strings `t` function (or an
+ * object carrying it as `t`).
+ */
+const THEME_STRING_FACTORIES = new Set(['useThemeStrings', 'createThemeStrings', 'getThemeStrings']);
+
+function isFactoryCall(node: ts.CallExpression): boolean {
   const callee = node.expression;
   return (
-    (ts.isIdentifier(callee) && callee.text === 't') ||
+    (ts.isIdentifier(callee) && THEME_STRING_FACTORIES.has(callee.text)) ||
+    (ts.isPropertyAccessExpression(callee) && THEME_STRING_FACTORIES.has(callee.name.text))
+  );
+}
+
+/**
+ * Per-file alias names bound to a theme-strings `t`: `const ts =
+ * useThemeStrings()` binds `ts`; `const { t: translate } = useThemeStrings()`
+ * binds `translate` (and `const { t } = …` binds `t`, already matched).
+ */
+function themeStringAliasesOf(sourceFile: ts.SourceFile): Set<string> {
+  const aliases = new Set<string>();
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.initializer !== undefined &&
+      ts.isCallExpression(node.initializer) &&
+      isFactoryCall(node.initializer)
+    ) {
+      if (ts.isIdentifier(node.name)) {
+        aliases.add(node.name.text);
+      } else if (ts.isObjectBindingPattern(node.name)) {
+        for (const element of node.name.elements) {
+          if (!ts.isIdentifier(element.name)) continue;
+          if (element.propertyName === undefined) {
+            // Shorthand: only `{ t }` binds the strings function.
+            if (element.name.text === 't') aliases.add('t');
+          } else if (ts.isIdentifier(element.propertyName) && element.propertyName.text === 't') {
+            aliases.add(element.name.text);
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return aliases;
+}
+
+function isTCall(node: ts.CallExpression, aliases: Set<string>): boolean {
+  const callee = node.expression;
+  return (
+    (ts.isIdentifier(callee) && (callee.text === 't' || aliases.has(callee.text))) ||
     (ts.isPropertyAccessExpression(callee) && callee.name.text === 't')
   );
 }
@@ -135,8 +187,9 @@ function isTCall(node: ts.CallExpression): boolean {
 /** Every `t(…)` call in one parsed file: literal keys plus dynamic sites. */
 function tReferencesOf(path: string, sourceFile: ts.SourceFile): TReference[] {
   const refs: TReference[] = [];
+  const aliases = themeStringAliasesOf(sourceFile);
   const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && isTCall(node)) {
+    if (ts.isCallExpression(node) && isTCall(node, aliases)) {
       const first = node.arguments[0];
       if (first === undefined) {
         // `t()` with no key: not a lookup, not a finding.

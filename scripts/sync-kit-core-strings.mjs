@@ -9,14 +9,19 @@
  *
  * The path defaults to the sibling kit worktree the snapshot was cut from;
  * pass `--check` to verify the snapshot is current instead of rewriting it
- * (non-zero exit when it drifts). Never writes outside the repo.
+ * (non-zero exit when it drifts). Besides `kit-core-strings.ts` it refreshes
+ * the verbatim copy at `packages/theme-check/test/fixtures/kit-en.default.json`
+ * that the drift test compares (also in CI via KIT_DICTIONARY_PATH), so the
+ * guard fires even where the kit worktree is absent. Never writes outside the
+ * repo.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(root, 'packages/theme-check/src/kit-core-strings.ts');
+const FIXTURE = join(root, 'packages/theme-check/test/fixtures/kit-en.default.json');
 const DEFAULT_KIT = '/Users/benny/Documents/products/packages/theme-kit-wt-i18n/locales/en.default.json';
 
 const PLURAL = new Set(['one', 'two', 'few', 'many', 'other', 'zero']);
@@ -38,8 +43,23 @@ const kitPath = resolve(process.argv.find((arg) => !arg.startsWith('-') && arg.e
 const sourceArg = process.argv.find((arg) => arg.startsWith('--source='));
 const version = (sourceArg ?? '').slice('--source='.length);
 
-const dict = JSON.parse(readFileSync(kitPath, 'utf8'));
+const raw = readFileSync(kitPath, 'utf8');
+const dict = JSON.parse(raw);
 const keys = flatten(dict, '', []).sort();
+let fixtureCurrent = null;
+try {
+  fixtureCurrent = readFileSync(FIXTURE, 'utf8');
+} catch {
+  fixtureCurrent = null;
+}
+if (fixtureCurrent !== raw) {
+  if (checkOnly) {
+    console.error(`kit fixture ${FIXTURE} drifts from ${kitPath}. Run scripts/sync-kit-core-strings.mjs.`);
+    process.exit(1);
+  }
+  mkdirSync(dirname(FIXTURE), { recursive: true });
+  writeFileSync(FIXTURE, raw);
+}
 const lines = keys.map((key) => `  '${key}',`).join('\n');
 const body = `/** Sorted flattened keys of the kit core English dictionary (generated). */
 export const KIT_CORE_KEYS: readonly string[] = [
@@ -65,4 +85,4 @@ if (version !== '') {
 } else {
   writeFileSync(OUT, next);
 }
-console.log(`kit-core-strings.ts updated from ${kitPath} (${keys.length} keys).`);
+console.log(`kit-core-strings.ts + test fixture updated from ${kitPath} (${keys.length} keys).`);

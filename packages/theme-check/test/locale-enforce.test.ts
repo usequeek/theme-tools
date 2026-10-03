@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { KIT_CORE_KEYS, KIT_CORE_SOURCE } from '../src/kit-core-strings.js';
 import { localeKeyExistsRule, localeKeyUnusedRule, noHardcodedStringsRule } from '../src/rules/locale-enforce.js';
@@ -104,6 +105,26 @@ describe('theme/locale-key-exists', () => {
     expect(findings[0]?.found).toContain('props.missing');
   });
 
+  it('resolves keys through a renamed hook binding and flags missing ones (roast ts() shape)', () => {
+    const dir = themeDir({
+      'locales/en.default.json': JSON.stringify({ testimonials: { next: 'Next' } }),
+      'blocks/a.tsx': `'use client';\nimport { useThemeStrings } from '@usequeek/theme-kit/provider';\nexport function Block(): unknown {\n  const ts = useThemeStrings();\n  return <button aria-label={ts('testimonials.next')}>{ts('alias.missing')}</button>;\n}\n`,
+    });
+    const findings = localeKeyExistsRule.run(contextFor(dir));
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.found).toContain('alias.missing');
+  });
+
+  it('treats a destructured renamed binding as t', () => {
+    const dir = themeDir({
+      'locales/en.default.json': EN,
+      'blocks/a.tsx': `'use client';\nimport { useThemeStrings } from '@usequeek/theme-kit/provider';\nexport function Block(): unknown {\n  const { t: translate } = useThemeStrings();\n  return <h1>{translate('renamed.missing')}</h1>;\n}\n`,
+    });
+    const findings = localeKeyExistsRule.run(contextFor(dir));
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.found).toContain('renamed.missing');
+  });
+
   it('reports dynamic (non-literal) keys as info instead of failing them', () => {
     const dir = themeDir({
       'locales/en.default.json': EN,
@@ -162,6 +183,16 @@ describe('theme/locale-key-unused', () => {
     });
     expect(localeKeyUnusedRule.run(contextFor(dir))).toEqual([]);
     expect(localeKeyUnusedRule.run(contextFor(themeDir({ 'blocks/a.tsx': CLIENT('<h1>Hi</h1>') })))).toEqual([]);
+  });
+
+  it('keeps keys alive that only a renamed hook binding references (roast ts() shape)', () => {
+    const dir = themeDir({
+      'locales/en.default.json': JSON.stringify({ 'testimonials.next': 'Next', 'stale.key': 'Stale' }),
+      'blocks/a.tsx': `'use client';\nimport { useThemeStrings } from '@usequeek/theme-kit/provider';\nexport function Block(): unknown {\n  const ts = useThemeStrings();\n  return <button aria-label={ts('testimonials.next')}>x</button>;\n}\n`,
+    });
+    const unused = localeKeyUnusedRule.run(contextFor(dir));
+    expect(unused).toHaveLength(1);
+    expect(unused[0]?.found).toContain('stale.key');
   });
 
   it('keeps keys alive that a dynamic template prefix covers (lumiere orders.tab shape)', () => {
@@ -246,25 +277,24 @@ describe('kit core snapshot', () => {
     expect(KIT_CORE_SOURCE).toContain('@usequeek/theme-kit');
   });
 
-  it('drifts loudly: when a kit dictionary is resolvable it must equal the snapshot', () => {
+  it('drifts loudly: the committed kit fixture must equal the snapshot', () => {
     const fromEnv = process.env.KIT_DICTIONARY_PATH;
-    const candidates = [
-      ...(fromEnv ? [fromEnv] : []),
-      '/Users/benny/Documents/products/packages/theme-kit-wt-i18n/locales/en.default.json',
-    ];
+    const fixture = fileURLToPath(new URL('./fixtures/kit-en.default.json', import.meta.url));
+    const candidates = [...(fromEnv ? [fromEnv] : []), fixture];
     let checked = 0;
     for (const path of candidates) {
+      const resolved = isAbsolute(path) ? path : join(process.cwd(), path);
       let parsed: unknown = null;
       try {
-        parsed = JSON.parse(readFileSync(path, 'utf8')) as unknown;
+        parsed = JSON.parse(readFileSync(resolved, 'utf8')) as unknown;
       } catch {
         continue;
       }
       if (parsed === null || typeof parsed !== 'object') continue;
       const keys = flattenLocaleEntries(parsed).leaves.map((leaf) => leaf.key).sort();
-      expect(keys, `snapshot drifts from ${path}: run scripts/sync-kit-core-strings.mjs`).toEqual(KIT_CORE_KEYS);
+      expect(keys, `snapshot drifts from ${resolved}: run scripts/sync-kit-core-strings.mjs`).toEqual(KIT_CORE_KEYS);
       checked += 1;
     }
-    expect(checked, 'no kit dictionary resolvable here; snapshot self-consistency only').toBeGreaterThanOrEqual(0);
+    expect(checked, 'kit fixture missing: run scripts/sync-kit-core-strings.mjs').toBeGreaterThanOrEqual(1);
   });
 });

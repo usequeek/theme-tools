@@ -70,6 +70,8 @@ jobs:
         run: pnpm build
       - name: Test
         run: pnpm test
+        env:
+          KIT_DICTIONARY_PATH: packages/theme-check/test/fixtures/kit-en.default.json
 
   e2e:
     name: End to end (installed from the packed tarballs)
