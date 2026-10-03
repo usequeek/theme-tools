@@ -87,18 +87,29 @@
       "title": "Sign in",
       "subtitle": "Enter your email and password",
       "email": "Email address",
-      "password": "Password"
+      "password": "Password",
+      "signing": "Signing in…",
+      "create": "Don't have an account? Create one",
+      "code": "Use an email code instead"
     },
     "email": {
       "title": "Sign in",
       "subtitle": "Enter your email to continue",
+      "placeholder": "your@email.com",
       "or": "or",
-      "placeholder": "your@email.com"
+      "google": "Continue with Google",
+      "sending": "Sending code…",
+      "continue": "Continue",
+      "password": "Have a password? Sign in with it instead"
     },
     "code": {
       "title": "Enter code",
-      "sent": "{length}-digit code sent to {email}",
-      "digit": "Digit {index}"
+      "lead": "{length}-digit code sent to",
+      "digit": "Digit {index}",
+      "verifying": "Verifying…",
+      "verify": "Verify",
+      "resend": "Resend code",
+      "change": "← Change email"
     },
     "register": {
       "title": "Create account",
@@ -106,13 +117,30 @@
       "first": "First name",
       "last": "Last name (optional)",
       "email": "Email address",
-      "password": "Password (min 8 characters)"
+      "password": "Password (min 8 characters)",
+      "creating": "Creating account…",
+      "signin": "Already have an account? Sign in"
     },
     "signup": {
       "title": "Create your account",
       "subtitle": "Just a few details to get you started",
       "first": "First name",
-      "last": "Last name (optional)"
+      "last": "Last name (optional)",
+      "create": "Create account",
+      "creating": "Creating account…",
+      "different": "← Use a different email"
+    },
+    "error": {
+      "credentials": "Wrong email or password. Please try again.",
+      "method": "This account uses a different sign-in method (Google or phone).",
+      "exists": "Email already registered. Please sign in instead.",
+      "phone": "Phone number already in use.",
+      "resend": "Please wait before requesting another code.",
+      "code": "Incorrect code. Please try again.",
+      "generic": "Something went wrong. Please try again.",
+      "firstname": "Please enter your first name.",
+      "register": "Registration failed. Try again.",
+      "google": "Could not connect to Google sign-in. Please try again."
     }
   },
   "blog": {
@@ -132,7 +160,17 @@
       "x": "Share on X",
       "facebook": "Share on Facebook",
       "whatsapp": "Share on WhatsApp",
-      "copy": "Copy link"
+      "copy": "Copy link",
+      "copied": "Copied"
+    },
+    "related": {
+      "title": "Related posts"
+    },
+    "meta": {
+      "reading": {
+        "one": "{count} min read",
+        "other": "{count} min read"
+      }
     }
   }
 }
