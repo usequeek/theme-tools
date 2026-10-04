@@ -6,6 +6,7 @@ import {
   APP_TOML,
   EXTENSION_KEYS,
   fromManifest,
+  isEmbedDescriptorWithinLimit,
   loadApp,
   loadTomlFile,
   MANIFEST_KEYS,
@@ -414,6 +415,51 @@ path = "/admin/services"
   });
 });
 
+describe('[[extensions.embeds]] — storefront embeds', () => {
+  const embed = (overrides = '') => `${BASE}\n[[extensions.embeds]]\nkey = "contact_form"\ntitle = "Contact us"\ntarget = "body"\nurl = "https://forms.example.com/embed"\ncapabilities = ["chat-bubble"]\n${overrides}`;
+  const parsed = (toml: string) => toManifest(loadTomlFile(stageFile(toml)).doc).manifest;
+
+  it('maps TOML array tables into extensions.embeds and round-trips the manifest', () => {
+    const manifest = parsed(embed());
+    expect((manifest.extensions as { embeds: unknown[] }).embeds).toEqual([{
+      key: 'contact_form', title: 'Contact us', target: 'body', url: 'https://forms.example.com/embed',
+      capabilities: ['chat-bubble'], settings: [],
+    }]);
+    expect(toManifest(loadTomlFile(stageFile(fromManifest(manifest))).doc).manifest).toEqual(manifest);
+  });
+
+  it.each([
+    ['bad key', embed().replace('contact_form', 'Bad-key'), /key must match/],
+    ['missing title', embed().replace('title = "Contact us"\n', ''), /title is required/],
+    ['long title', embed().replace('Contact us', 'x'.repeat(81)), /title is required/],
+    ['wrong target', embed().replace('target = "body"', 'target = "head"'), /target must be "body"/],
+    ['non HTTPS URL', embed().replace('https://', 'http://'), /must be an https URL/],
+    ['URL fragment', embed().replace('/embed"', '/embed#form"'), /must not contain a fragment/],
+    ['Queek origin', embed().replace('forms.example.com', 'forms.apps.queek.com.ng'), /must not share a Queek origin/],
+    ['no capability', embed().replace('["chat-bubble"]', '[]'), /exactly one/],
+    ['multiple capabilities', embed().replace('["chat-bubble"]', '["chat-bubble", "banner"]'), /exactly one/],
+    ['unknown capability', embed().replace('chat-bubble', 'support-bubble'), /exactly one/],
+    ['unknown setting key', embed().replace('capabilities =', 'settings = ["missing"]\ncapabilities ='), /settings keys must exist in \[\[settings\]\]/],
+    ['secret setting key', `${BASE}\n[[settings]]\nkey = "private"\nlabel = "Private"\ntype = "secret"\n${embed().split(BASE).pop()!.replace('capabilities =', 'settings = ["private"]\ncapabilities =')}`, /cannot expose secret setting/],
+    ['unknown property', embed() + 'extra = true\n', /Unknown field 'extra'/],
+  ])('rejects %s', (_label, toml, error) => expect(() => parsed(toml)).toThrow(error));
+
+  it('enforces the three-embed cap and unique embed keys', () => {
+    const rows = Array.from({ length: 4 }, (_, i) => `[[extensions.embeds]]\nkey = "e${i}"\ntitle = "Embed ${i}"\ntarget = "body"\nurl = "https://forms.example.com/${i}"\ncapabilities = ["banner"]\n`).join('\n');
+    expect(() => parsed(`${BASE}\n${rows}`)).toThrow('must not have more than 3 embeds');
+    const duplicate = rows.slice(0, rows.indexOf('[[extensions.embeds]]\nkey = "e2"')).replace('key = "e1"', 'key = "e0"');
+    expect(() => parsed(`${BASE}\n${duplicate}`)).toThrow('Storefront embed keys must be unique.');
+  });
+
+  it('measures descriptor size in UTF-8 bytes', () => {
+    const manifest = parsed(embed());
+    const descriptor = (manifest.extensions as { embeds: unknown[] }).embeds[0];
+    expect(new TextEncoder().encode(JSON.stringify(descriptor)).byteLength).toBeLessThanOrEqual(4096);
+    expect(isEmbedDescriptorWithinLimit({ payload: 'x'.repeat(4090) })).toBe(false);
+    expect(isEmbedDescriptorWithinLimit({ payload: 'x'.repeat(4000) })).toBe(true);
+  });
+});
+
 describe('manifest mirror snapshot (backend drift tripwire)', () => {
   it('pins the sorted MANIFEST_KEYS + extensions sub-keys against the backend validator', () => {
     const drift =
@@ -425,7 +471,7 @@ describe('manifest mirror snapshot (backend drift tripwire)', () => {
       'privacy_url', 'scopes', 'settings', 'settings_url', 'slug', 'support_url',
       'tagline', 'uninstall_url', 'version', 'video_url', 'webhook_topics', 'webhook_url',
     ]);
-    expect([...EXTENSION_KEYS].sort(), drift).toEqual(['blocks', 'merchant_page_url', 'nav', 'proxy']);
+    expect([...EXTENSION_KEYS].sort(), drift).toEqual(['blocks', 'embeds', 'merchant_page_url', 'nav', 'proxy']);
   });
 });
 

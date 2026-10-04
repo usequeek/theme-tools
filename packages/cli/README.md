@@ -200,6 +200,13 @@ password, user). `deploy` prints `New version released — <slug>-N ·
 `queek.app.toml` is the local source of truth (same names as the server manifest,
 grouped: `[listing]`, `[access]`, `[webhooks]`, `[app]`, `[[settings]]`,
 `[extensions]`, `[dashboard]`); `-c/--config <name>` reads `queek.app.<name>.toml`.
+Storefront embeds are declared as `[[extensions.embeds]]` array tables with
+`key`, `title`, `target = "body"`, an HTTPS `url`, and exactly one capability
+(`chat-bubble`, `banner`, `popup`, or `scroll-top`). A manifest can declare up
+to three embeds. Optional `settings = ["key"]` entries must name non-secret
+keys declared in `[[settings]]`; embed URLs cannot contain fragments or use a
+Queek origin. `queek app deploy` maps these tables to `manifest.extensions.embeds`
+and checks the contract before upload.
 The toml carries no `version` — the backend auto-assigns the next patch (a leftover
 `version` warns once and is ignored). `handle` is CLI-only sugar for `slug`.
 `[access]` takes `scopes` (required, possibly empty) plus `optional_scopes`

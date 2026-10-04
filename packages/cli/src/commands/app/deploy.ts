@@ -28,7 +28,7 @@ export function deploySuccessLine(input: { slug: string; pId: string; sequence: 
 }
 
 export default class AppDeploy extends BaseCommand {
-  static override summary = 'Deploy queek.app.toml: create a version, released by default.';
+  static override summary = 'Deploy queek.app.toml, including storefront embeds: create a version, released by default.';
 
   static override description = `Pushes the local queek.app.toml to POST vendor/developer/apps — deploy carries config (there is no config push). The toml carries no version: the backend auto-assigns the next patch unless --version names one. An identical manifest is a no-op ("No changes", exit 0). --no-release creates the version without serving it (release it later with \`queek app release\`). A version that adds a review-required capability lands in_review instead of releasing. The signing secret is shown ONCE on first registration and written to .queek/.env.local — it is never returned again. In CI, QUEEK_APP_AUTOMATION_TOKEN authenticates with no login.`;
 

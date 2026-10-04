@@ -26,9 +26,9 @@ export const MANIFEST_KEYS = [
 
 /**
  * The `extensions` sub-keys the backend accepts (`validateExtensions` +
- * `validateNav`): nothing else is sent under `extensions`.
+ * `validateNav` and `validateEmbeds`): nothing else is sent under `extensions`.
  */
-export const EXTENSION_KEYS = ['proxy', 'blocks', 'merchant_page_url', 'nav'] as const;
+export const EXTENSION_KEYS = ['proxy', 'blocks', 'merchant_page_url', 'nav', 'embeds'] as const;
 
 export type ManifestKey = (typeof MANIFEST_KEYS)[number];
 export type AppManifest = Partial<Record<ManifestKey, unknown>> & { slug: string; name: string; scopes: string[]; optional_scopes?: string[]; install_url: string; uninstall_url: string };
@@ -477,6 +477,42 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
   if (extensions.nav !== undefined) {
     out.nav = checkNav(extensions.nav, extensions.merchant_page_url, fail);
   }
+  const embeds = (extensions.embeds ?? []) as unknown;
+  if (!Array.isArray(embeds)) throw fail('The extensions.embeds section must be a list of [[extensions.embeds]] tables.');
+  if (embeds.length > 3) throw fail('The extensions.embeds list must not have more than 3 embeds.');
+  const settingRows = Array.isArray(manifest.settings) ? manifest.settings as Record<string, unknown>[] : [];
+  const settingsByKey = new Map(settingRows.filter(isRecord).map((setting) => [setting.key, setting]));
+  const embedKeys = new Set<string>();
+  const checkedEmbeds = embeds.map((embed, index) => {
+    const where = `manifest.extensions.embeds[${index}]`;
+    if (!isRecord(embed)) throw fail(`The ${where} entry must be a table.`);
+    for (const key of Object.keys(embed)) {
+      if (!['key', 'title', 'target', 'url', 'capabilities', 'settings'].includes(key)) problems.push(unknownField(key, where));
+    }
+    if (typeof embed.key !== 'string' || !SETTING_KEY_RE.test(embed.key)) throw fail(`The ${where}.key must match [a-z0-9_]{1,64}.`);
+    if (embedKeys.has(embed.key)) throw fail('Storefront embed keys must be unique.');
+    embedKeys.add(embed.key);
+    if (typeof embed.title !== 'string' || embed.title.trim() === '' || embed.title.length > 80 || hasControlCharacter(embed.title)) throw fail(`The ${where}.title is required (max 80, no control characters).`);
+    if (embed.target !== 'body') throw fail(`The ${where}.target must be "body".`);
+    if (typeof embed.url !== 'string' || !embed.url.toLowerCase().startsWith('https://')) throw fail(`The ${where}.url must be an https URL.`);
+    if (embed.url.includes('#')) throw fail(`The ${where}.url must not contain a fragment.`);
+    checkCappedUrl(embed.url, `${where}.url`, fail);
+    if (sharesKnownQueekOrigin(embed.url)) throw fail(`The ${where}.url must not share a Queek origin.`);
+    if (!Array.isArray(embed.capabilities) || embed.capabilities.length !== 1 || !['chat-bubble', 'banner', 'popup', 'scroll-top'].includes(String(embed.capabilities[0]))) {
+      throw fail(`The ${where}.capabilities must contain exactly one of: chat-bubble, banner, popup, scroll-top.`);
+    }
+    if (embed.settings !== undefined && !Array.isArray(embed.settings)) throw fail(`The ${where}.settings must be a list of setting keys.`);
+    const embedSettings = (embed.settings ?? []) as unknown[];
+    for (const settingKey of embedSettings) {
+      const setting = settingsByKey.get(settingKey);
+      if (typeof settingKey !== 'string' || !setting) throw fail(`The ${where} settings keys must exist in [[settings]] (unknown key '${String(settingKey)}').`);
+      if (setting.type === 'secret') throw fail(`The ${where} cannot expose secret setting '${settingKey}'.`);
+    }
+    const normalized = { key: embed.key, title: embed.title, target: embed.target, url: embed.url,
+      capabilities: embed.capabilities, settings: [...new Set(embedSettings)] };
+    if (!isEmbedDescriptorWithinLimit(normalized)) throw fail(`The ${where} exceeds the descriptor byte limit (4096 bytes).`);
+    return normalized;
+  });
   const blocks = (extensions.blocks ?? []) as unknown;
   if (!Array.isArray(blocks)) throw fail('The extensions.blocks section must be a list of [[extensions.blocks]] tables.');
   if ((blocks as unknown[]).length > 10) throw fail('The extensions.blocks list must not have more than 10 blocks.');
@@ -508,9 +544,22 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     checked.push(block);
   });
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
-  if (Object.keys(out).length > 0 || (blocks as unknown[]).length > 0) {
-    manifest.extensions = { ...out, ...(((blocks as unknown[]).length > 0) ? { blocks: checked } : {}) };
+  if (Object.keys(out).length > 0 || (blocks as unknown[]).length > 0 || embeds.length > 0) {
+    manifest.extensions = { ...out, ...(((blocks as unknown[]).length > 0) ? { blocks: checked } : {}), ...(embeds.length > 0 ? { embeds: checkedEmbeds } : {}) };
   }
+}
+
+/** Backend descriptor accounting uses UTF-8 bytes of normalized JSON. */
+export function isEmbedDescriptorWithinLimit(descriptor: Record<string, unknown>): boolean {
+  return new TextEncoder().encode(JSON.stringify(descriptor)).byteLength <= 4096;
+}
+
+/** Backend Queek host suffix guard, applied to normalized URL hostnames. */
+function sharesKnownQueekOrigin(value: string): boolean {
+  let host: string;
+  try { host = new URL(value).hostname.toLowerCase().replace(/\.$/, ''); } catch { return true; }
+  const scopes = ['queek.com.ng', 'usequeek.com', 'on-queek.name.ng', 'apps.usequeek.com'];
+  return scopes.some((scope) => host === scope || host.endsWith(`.${scope}`) || scope.endsWith(`.${host}`));
 }
 
 function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (message: string) => never, scopes: string[]): void {
