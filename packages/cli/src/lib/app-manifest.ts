@@ -49,6 +49,8 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,63}$/;
 const SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const ICON_RE = /^[a-z0-9_-]+$/;
 const SETTING_KEY_RE = /^[a-z0-9_]{1,64}$/;
+/** Temporary first-party app pages; remove when usequeek.app lands. */
+const TEMPORARY_PAGE_SUFFIXES = ['.apps.queek.com.ng'];
 
 /** Scopes the CLI refuses without asking the server (plan: never `merchant-apps-*`). */
 const NON_DELEGABLE_PREFIXES = ['merchant-apps-', 'merchant-api_keys-', 'merchant-roles-', 'merchant-users-', 'merchant-employees-', 'merchant-pos-'];
@@ -492,7 +494,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     if (typeof embed.key !== 'string' || !SETTING_KEY_RE.test(embed.key)) throw fail(`The ${where}.key must match [a-z0-9_]{1,64}.`);
     if (embedKeys.has(embed.key)) throw fail('Storefront embed keys must be unique.');
     embedKeys.add(embed.key);
-    if (typeof embed.title !== 'string' || embed.title.trim() === '' || embed.title.length > 80 || hasControlCharacter(embed.title)) throw fail(`The ${where}.title is required (max 80, no control characters).`);
+    if (typeof embed.title !== 'string' || embed.title.trim() === '' || [...embed.title].length > 80 || hasControlCharacter(embed.title)) throw fail(`The ${where}.title is required (max 80, no control characters).`);
     if (embed.target !== 'body') throw fail(`The ${where}.target must be "body".`);
     if (typeof embed.url !== 'string' || !embed.url.toLowerCase().startsWith('https://')) throw fail(`The ${where}.url must be an https URL.`);
     if (embed.url.includes('#')) throw fail(`The ${where}.url must not contain a fragment.`);
@@ -503,6 +505,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     }
     if (embed.settings !== undefined && !Array.isArray(embed.settings)) throw fail(`The ${where}.settings must be a list of setting keys.`);
     const embedSettings = (embed.settings ?? []) as unknown[];
+    if (embedSettings.length > 12) throw fail(`The ${where}.settings must not have more than 12 entries.`);
     for (const settingKey of embedSettings) {
       const setting = settingsByKey.get(settingKey);
       if (typeof settingKey !== 'string' || !setting) throw fail(`The ${where} settings keys must exist in [[settings]] (unknown key '${String(settingKey)}').`);
@@ -559,7 +562,11 @@ function sharesKnownQueekOrigin(value: string): boolean {
   let host: string;
   try { host = new URL(value).hostname.toLowerCase().replace(/\.$/, ''); } catch { return true; }
   const scopes = ['queek.com.ng', 'usequeek.com', 'on-queek.name.ng', 'apps.usequeek.com'];
-  return scopes.some((scope) => host === scope || host.endsWith(`.${scope}`) || scope.endsWith(`.${host}`));
+  const temporary = TEMPORARY_PAGE_SUFFIXES.some((suffix) => {
+    const suffixHost = suffix.slice(1);
+    return host !== suffixHost && host.endsWith(suffix);
+  });
+  return scopes.some((scope) => host === scope || (!temporary && host.endsWith(`.${scope}`)) || scope.endsWith(`.${host}`));
 }
 
 function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (message: string) => never, scopes: string[]): void {

@@ -32,7 +32,7 @@
         "description": "Build, preview, check and package a storefront theme."
       },
       "app": {
-        "description": "Build an installable Queek app: init, develop, deploy, release, with storefront embeds."
+        "description": "Build an installable Queek app: init, develop, deploy, release."
       },
       "auth": {
         "description": "Developer sign-in for the app commands (usually automatic)."

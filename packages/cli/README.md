@@ -205,7 +205,8 @@ Storefront embeds are declared as `[[extensions.embeds]]` array tables with
 (`chat-bubble`, `banner`, `popup`, or `scroll-top`). A manifest can declare up
 to three embeds. Optional `settings = ["key"]` entries must name non-secret
 keys declared in `[[settings]]`; embed URLs cannot contain fragments or use a
-Queek origin. `queek app deploy` maps these tables to `manifest.extensions.embeds`
+Queek origin; first-party `{app}.apps.queek.com.ng` hosts are allowed.
+`queek app deploy` maps these tables to `manifest.extensions.embeds`
 and checks the contract before upload.
 The toml carries no `version` — the backend auto-assigns the next patch (a leftover
 `version` warns once and is ignored). `handle` is CLI-only sugar for `slug`.

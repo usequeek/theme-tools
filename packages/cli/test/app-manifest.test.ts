@@ -420,12 +420,34 @@ describe('[[extensions.embeds]] — storefront embeds', () => {
   const parsed = (toml: string) => toManifest(loadTomlFile(stageFile(toml)).doc).manifest;
 
   it('maps TOML array tables into extensions.embeds and round-trips the manifest', () => {
-    const manifest = parsed(embed());
+    const withSetting = `${BASE}\n[[settings]]\nkey = "greeting"\nlabel = "Greeting"\ntype = "string"\n${embed().split(BASE).pop()!.replace('capabilities =', 'settings = ["greeting"]\ncapabilities =')}`;
+    const manifest = parsed(withSetting);
+    expect(manifest.settings).toEqual([{ key: 'greeting', label: 'Greeting', type: 'string' }]);
     expect((manifest.extensions as { embeds: unknown[] }).embeds).toEqual([{
       key: 'contact_form', title: 'Contact us', target: 'body', url: 'https://forms.example.com/embed',
-      capabilities: ['chat-bubble'], settings: [],
+      capabilities: ['chat-bubble'], settings: ['greeting'],
     }]);
     expect(toManifest(loadTomlFile(stageFile(fromManifest(manifest))).doc).manifest).toEqual(manifest);
+  });
+
+  it('accepts first-party temporary app hosts and rejects Queek host scopes', () => {
+    expect(() => parsed(embed().replace('forms.example.com', 'x.apps.queek.com.ng'))).not.toThrow();
+    for (const host of ['apps.queek.com.ng', 'x.apps.usequeek.com', 'usequeek.com', 'queek.com.ng:8443']) {
+      expect(() => parsed(embed().replace('forms.example.com', host))).toThrow(/must not share a Queek origin/);
+    }
+  });
+
+  it('counts embed title characters as Unicode code points', () => {
+    expect(() => parsed(embed().replace('Contact us', '😀'.repeat(60)))).not.toThrow();
+    expect(() => parsed(embed().replace('Contact us', 'x'.repeat(81)))).toThrow(/title is required/);
+  });
+
+  it('caps raw embed settings at 12 before deduplicating', () => {
+    const setting = `\n[[settings]]\nkey = "s"\nlabel = "Setting"\ntype = "string"\n`;
+    const references = (count: number) => `settings = [${Array.from({ length: count }, () => '"s"').join(', ')}]\n`;
+    const withReferences = (count: number) => `${BASE}${setting}${embed().split(BASE).pop()!.replace('capabilities =', `${references(count)}capabilities =`)}`;
+    expect((parsed(withReferences(12)).extensions as { embeds: { settings: string[] }[] }).embeds[0].settings).toEqual(['s']);
+    expect(() => parsed(withReferences(13))).toThrow(/settings must not have more than 12 entries/);
   });
 
   it.each([
@@ -435,7 +457,7 @@ describe('[[extensions.embeds]] — storefront embeds', () => {
     ['wrong target', embed().replace('target = "body"', 'target = "head"'), /target must be "body"/],
     ['non HTTPS URL', embed().replace('https://', 'http://'), /must be an https URL/],
     ['URL fragment', embed().replace('/embed"', '/embed#form"'), /must not contain a fragment/],
-    ['Queek origin', embed().replace('forms.example.com', 'forms.apps.queek.com.ng'), /must not share a Queek origin/],
+    ['Queek origin', embed().replace('forms.example.com', 'forms.usequeek.com'), /must not share a Queek origin/],
     ['no capability', embed().replace('["chat-bubble"]', '[]'), /exactly one/],
     ['multiple capabilities', embed().replace('["chat-bubble"]', '["chat-bubble", "banner"]'), /exactly one/],
     ['unknown capability', embed().replace('chat-bubble', 'support-bubble'), /exactly one/],
@@ -446,6 +468,7 @@ describe('[[extensions.embeds]] — storefront embeds', () => {
 
   it('enforces the three-embed cap and unique embed keys', () => {
     const rows = Array.from({ length: 4 }, (_, i) => `[[extensions.embeds]]\nkey = "e${i}"\ntitle = "Embed ${i}"\ntarget = "body"\nurl = "https://forms.example.com/${i}"\ncapabilities = ["banner"]\n`).join('\n');
+    expect((parsed(`${BASE}\n${rows.slice(0, rows.indexOf('[[extensions.embeds]]\nkey = "e3"'))}`).extensions as { embeds: unknown[] }).embeds).toHaveLength(3);
     expect(() => parsed(`${BASE}\n${rows}`)).toThrow('must not have more than 3 embeds');
     const duplicate = rows.slice(0, rows.indexOf('[[extensions.embeds]]\nkey = "e2"')).replace('key = "e1"', 'key = "e0"');
     expect(() => parsed(`${BASE}\n${duplicate}`)).toThrow('Storefront embed keys must be unique.');
@@ -457,6 +480,16 @@ describe('[[extensions.embeds]] — storefront embeds', () => {
     expect(new TextEncoder().encode(JSON.stringify(descriptor)).byteLength).toBeLessThanOrEqual(4096);
     expect(isEmbedDescriptorWithinLimit({ payload: 'x'.repeat(4090) })).toBe(false);
     expect(isEmbedDescriptorWithinLimit({ payload: 'x'.repeat(4000) })).toBe(true);
+  });
+
+  it('rejects a multibyte URL over the descriptor byte limit on manifest import', () => {
+    const manifest = parsed(embed());
+    const extensions = manifest.extensions as { embeds: Record<string, unknown>[] };
+    const oversized = {
+      ...manifest,
+      extensions: { ...extensions, embeds: [{ ...extensions.embeds[0], url: `https://forms.example.com/${'💠'.repeat(1000)}` }] },
+    };
+    expect(() => toManifest(loadTomlFile(stageFile(fromManifest(oversized))).doc)).toThrow(/descriptor byte limit/);
   });
 });
 
