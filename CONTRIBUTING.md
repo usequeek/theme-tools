@@ -135,6 +135,14 @@ create-theme's version, or when that tag's `@usequeek/cli` range does not take
 the CLI being released. Run it yourself after tagging
 (`node scripts/check-starter-tag.mjs`) to find out before CI does.
 
+### Release notes during active development
+
+Until the packages go live, every release is published **without public notes**:
+`.changeset/config.json` has `"changelog": false` and `release.yml` sets
+`create-github-releases: false`. Keep both as they are. A merged "Version Packages"
+PR publishes the new version to npm with no changelog entry and no GitHub Release.
+Re-enable both together at launch, not before.
+
 ## AI-assisted contributions
 
 AI coding assistants are welcome here, under the same bar Storybook sets for
