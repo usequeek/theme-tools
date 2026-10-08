@@ -10,7 +10,7 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "node scripts/check-public-text.mjs && node --test scripts/check-public-text.test.mjs && vitest run",
     "publint": "pnpm -r exec publint --strict",
     "changeset": "changeset",
     "version-packages": "changeset version",

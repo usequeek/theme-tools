@@ -13,4 +13,9 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
+  {
+    // The guard's test matches the literal two-space separator of its report lines.
+    files: ['scripts/check-public-text.test.mjs'],
+    rules: { 'no-regex-spaces': 'off' },
+  },
 );

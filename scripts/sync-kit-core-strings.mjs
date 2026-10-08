@@ -5,15 +5,18 @@
  * without a new dependency.
  *
  * Usage (from the repo root):
- *   node scripts/sync-kit-core-strings.mjs [path-to-kit-locales/en.default.json]
+ *   node scripts/sync-kit-core-strings.mjs <path-to-theme-kit/locales/en.default.json>
+ *   KIT_DICTIONARY_PATH=<path-to-theme-kit/locales/en.default.json> node scripts/sync-kit-core-strings.mjs
  *
- * The path defaults to the sibling kit worktree the snapshot was cut from;
- * pass `--check` to verify the snapshot is current instead of rewriting it
- * (non-zero exit when it drifts). Besides `kit-core-strings.ts` it refreshes
- * the verbatim copy at `packages/theme-check/test/fixtures/kit-en.default.json`
- * that the drift test compares (also in CI via KIT_DICTIONARY_PATH), so the
- * guard fires even where the kit worktree is absent. Never writes outside the
- * repo.
+ * The source dictionary is required: pass it as the first argument, or set
+ * KIT_DICTIONARY_PATH (the same variable the drift test reads). The script
+ * exits 1 with a message when neither is given. Pass `--check` to verify the
+ * snapshot is current instead of rewriting it (non-zero exit when it drifts),
+ * and `--source=<version>` to stamp the theme-kit version the snapshot was cut
+ * from. Besides `kit-core-strings.ts` it refreshes the verbatim copy at
+ * `packages/theme-check/test/fixtures/kit-en.default.json` that the drift test
+ * compares (also in CI via KIT_DICTIONARY_PATH), so the guard fires even where
+ * no kit checkout is available. Never writes outside the repo.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -22,8 +25,6 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(root, 'packages/theme-check/src/kit-core-strings.ts');
 const FIXTURE = join(root, 'packages/theme-check/test/fixtures/kit-en.default.json');
-const DEFAULT_KIT = '/Users/benny/Documents/products/packages/theme-kit-wt-i18n/locales/en.default.json';
-
 const PLURAL = new Set(['one', 'two', 'few', 'many', 'other', 'zero']);
 
 function flatten(node, prefix, out) {
@@ -39,7 +40,12 @@ function flatten(node, prefix, out) {
 }
 
 const checkOnly = process.argv.includes('--check');
-const kitPath = resolve(process.argv.find((arg) => !arg.startsWith('-') && arg.endsWith('.json')) ?? DEFAULT_KIT);
+const kitArg = process.argv.slice(2).find((arg) => !arg.startsWith('-') && arg.endsWith('.json')) ?? process.env.KIT_DICTIONARY_PATH;
+if (!kitArg) {
+  console.error('sync-kit-core-strings: no source dictionary. Pass the path to theme-kit\'s locales/en.default.json as an argument, or set KIT_DICTIONARY_PATH.');
+  process.exit(1);
+}
+const kitPath = resolve(kitArg);
 const sourceArg = process.argv.find((arg) => arg.startsWith('--source='));
 const version = (sourceArg ?? '').slice('--source='.length);
 

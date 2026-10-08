@@ -1,4 +1,4 @@
-// End to end, the way a theme developer gets the tools: the three packages are
+// End to end, the way a theme developer gets the tools: the packages are
 // packed exactly as npm would publish them, installed from those tarballs into
 // a fresh project OUTSIDE this repo next to the fixture theme, and the CLI is
 // run there. Nothing here borrows the monorepo's node_modules — that is the
@@ -91,7 +91,7 @@ try {
   // (create deletes the skeleton's own theme.jpg: it would misrepresent
   // whatever the developer ends up designing). What create declares is
   // complete, so theme/template-designs is never on the list: every design
-  // names its template (contract R2.8). `formatJson` in
+  // names its template. `formatJson` in
   // packages/theme-check/src/format.ts emits findings[].rule and
   // findings[].level, 'error' for a reject.
   const help = sh(process.execPath, [queek(), '--help'], project);
@@ -118,7 +118,7 @@ try {
   if (!info.project || info.project.slug !== 'my-theme') throw new Error(`info: expected the project slug my-theme, got ${JSON.stringify(info.project)}`);
   if (typeof info.port !== 'number') throw new Error(`info: expected a port number, got ${JSON.stringify(info.port)}`);
   console.log(`e2e: info ✓ (queek theme info --json names the project slug ${info.project.slug})`);
-  // Release 2 — `queek theme add`: a second template plus its second design.
+  // `queek theme add`: a second template plus its second design.
   // Both arrive in the same placeholder state create leaves (a description to
   // write, a screenshot to capture, placeholder products, one shared home),
   // and both declare complete templates — so the to-do list gains no
@@ -153,7 +153,7 @@ try {
       if (response.status !== 200 || /Application error|Unhandled Runtime Error/.test(body)) throw new Error(`dev: ${path} → ${response.status}\n${log.slice(-2000)}`);
     }
     if ((await fetch(`http://127.0.0.1:${PORT}/no-such-store`)).status !== 404) throw new Error('dev: an unknown store should 404');
-    // The index groups designs by the template each declares (R2.8), through
+    // The index groups designs by the template each declares, through
     // the resolver the CLI copies into the preview.
     const index = await (await fetch(`http://127.0.0.1:${PORT}/`)).text();
     for (const key of ['laundry', 'foods']) if (!index.includes(`· template ${key}`)) throw new Error(`dev: the index does not list the ${key} template\n${index.slice(0, 2000)}`);

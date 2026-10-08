@@ -1,0 +1,9 @@
+# Intentional exceptions to scripts/check-public-text.mjs: path | rule-id | reason
+packages/theme-check/src/rules/static.ts | rendering-bug | The theme/markdown-html rule message names the symptom a developer sees when renderMarkdown output reaches dangerouslySetInnerHTML.
+packages/theme-check/test/markdown-html.test.ts | rendering-bug | Asserts the theme/markdown-html rule message, which quotes the symptom.
+packages/theme-check/README.md | rendering-bug | Documents the theme/markdown-html rule and the symptom it prevents.
+packages/cli/README.md | rendering-bug | Documents the theme/markdown-html rule and the symptom it prevents.
+packages/theme-check/CHANGELOG.md | rendering-bug | Published release note describing the markdown-html rule's symptom.
+packages/cli/CHANGELOG.md | rendering-bug | Published release note describing the markdown-html rule's symptom.
+packages/create-theme/CHANGELOG.md | rendering-bug | Published release note about a fixed rendering defect, quoting its symptom.
+packages/cli/test/app-env.test.ts | private-key | Fake PEM wrapper around the body "abc", used to test the one-line base64 conversion; not a key.
