@@ -5,21 +5,17 @@ import openapiTS, { astToString, type OpenAPI3 } from 'openapi-typescript';
 import { queekDir, resolveTomlPath } from './app-manifest.js';
 
 /**
- * `queek app codegen`: the app-owned Merchant API types, Shopify's
- * `graphql-codegen` shape — a manual step, never part of `dev`.
+ * `queek app codegen`: generates the app-owned Merchant API types — a
+ * manual step, never part of `dev`.
  *
- * A thin TypeScript port of the SDK's `scripts/gen-merchant-types.mjs`
- * (same pinned spec URL, same sanity check, same `servers` normalize, same
- * openapi-typescript at the same pinned version). A direct import is not
- * possible: the script lives in another repo (`@usequeek/app-sdk`, never a
- * CLI dependency) and the CLI ships the compiled output — so the checks
- * below mirror it constant-for-constant instead of forking it. Coupling
- * note: the SDK pins its `openapi-typescript` independently, so when the
- * SDK bumps its pin, bump the CLI's `dependencies` entry in lockstep —
- * otherwise app-owned output and SDK output can diverge in shape.
+ * It matches the generator `@usequeek/app-sdk` uses for its own Merchant
+ * types (same pinned spec URL, same sanity check, same `servers` normalize,
+ * same openapi-typescript at the same pinned version), so app-owned output
+ * and SDK output have the same shape. When the SDK bumps its
+ * `openapi-typescript` pin, bump the CLI's `dependencies` entry in lockstep.
  *
  * The recorded pin is the `Spec sha256:` line of the committed
- * `types/merchant.ts` provenance header (review-visible per G3);
+ * `types/merchant.ts` provenance header (visible in code review);
  * `.queek/codegen.json` is a local debug aid (`.queek/` is gitignored in
  * apps) that the unchanged check prefers, falling back to the header.
  */
@@ -28,10 +24,10 @@ export const MERCHANT_SPEC_URL = 'https://api.usequeek.com/docs/merchant.json';
 export const MERCHANT_API_BASE = 'https://api.usequeek.com/api/v1/merchant';
 export const EXPECTED_OPENAPI_VERSION = '3.1.0';
 export const REQUIRED_SPEC_PATH = '/orders/import';
-/** Same timeout as the SDK's `check-merchant-snapshot.mjs` live fetch. */
+/** Same timeout as the SDK's live spec fetch. */
 export const SPEC_FETCH_TIMEOUT_MS = 20_000;
 
-/** The committed generated file inside the app (plan G3: stays diffable). */
+/** The committed generated file inside the app (kept in git so changes stay diffable). */
 export const CODEGEN_TYPES_FILE = join('types', 'merchant.ts');
 /**
  * The recorded spec hash. `.queek/` (not the toml): `toManifest` rejects
@@ -62,7 +58,7 @@ export interface CodegenOk {
   source: string;
   /**
    * Content-address of the exact fetched/read bytes (drives
-   * skip-when-unchanged). Distinct from the backend's own
+   * skip-when-unchanged). Distinct from the server's own
    * `x-queek-spec-sha` (`CodegenRecord.serverSpecSha256`): the served
    * bytes embed that hash field, so the two hashes are never equal.
    */
@@ -126,7 +122,7 @@ export function normalizeSpec(spec: Record<string, unknown>): Record<string, unk
 
 /**
  * Content-address of the exact served bytes (drives skip-when-unchanged).
- * Not comparable to the backend's `x-queek-spec-sha`: the served bytes
+ * Not comparable to the server's `x-queek-spec-sha`: the served bytes
  * embed that hash field, so hashing them can never reproduce it — compare
  * `CodegenRecord.serverSpecSha256` to the header/info instead.
  */
@@ -138,7 +134,7 @@ export function specSha256(specText: string): string {
 export function parseSpecText(specText: string, source: string): unknown {
   if (looksLikeHtml(specText)) {
     throw new CodegenError(
-      `Refused HTML from ${source} — expected the Merchant OpenAPI spec, got an error page (login wall or edge 5xx). Fix the backend/edge, then run \`queek app codegen\` again.`,
+      `Refused HTML from ${source} — expected the Merchant OpenAPI spec, got an error page (login wall or edge 5xx). Run \`queek app codegen\` again later.`,
     );
   }
   try {
@@ -153,7 +149,7 @@ export async function generateMerchantTypes(spec: Record<string, unknown>): Prom
   return astToString(await openapiTS(spec as unknown as OpenAPI3));
 }
 
-/** GitHub Actions annotation when running in CI, plain text locally (mirrors `check-merchant-snapshot.mjs`). */
+/** GitHub Actions annotation when running in CI, plain text locally. */
 export function warnLine(message: string): string {
   return process.env.GITHUB_ACTIONS === 'true' ? `::warning::${message}` : `Warning: ${message}`;
 }
@@ -163,7 +159,7 @@ export interface CodegenRecord {
   specSha256: string;
   specVersion: string | null;
   /**
-   * The backend's own hash (the spec's `info['x-queek-spec-sha']` field,
+   * The server's own hash (the spec's `info['x-queek-spec-sha']` field,
    * mirrored in the `x-queek-spec-sha` response header). Absent when the
    * spec carries none. This — never `specSha256` — is the field comparable
    * to the header/info.
@@ -274,9 +270,9 @@ export interface RunCodegenOptions {
 /**
  * Fetch → sanity-check → generate → write `types/merchant.ts` +
  * `.queek/codegen.json`. Network failure always warns and exits 0 with the
- * existing types kept (MUST-4, mirroring `check-merchant-snapshot.mjs`).
+ * existing types kept.
  * Any other failure on the default live URL does the same (a transient
- * edge/backend problem must never red CI); on an explicit source it throws,
+ * server or network problem must never fail CI); on an explicit source it throws,
  * so a named file/URL is refused loudly, never silently kept. When the
  * recorded hash already matches and the types file exists, nothing is
  * rewritten (`unchanged`, so reruns leave the tree clean) — delete

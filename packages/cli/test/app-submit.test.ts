@@ -113,7 +113,7 @@ describe('wordSubmitFailure (thrown submit failures, worded)', () => {
   it('no-ops an already-submitted version', () => {
     expect(wordSubmitFailure({ ...base, errorType: 'already_submitted' })).toEqual({ already: true });
   });
-  it('matches the real lowercase idempotency codes (ApiError.php:222)', () => {
+  it('matches the real lowercase idempotency codes', () => {
     expect(wordSubmitFailure({ ...base, errorCode: 'idempotency_key_reuse' })).toMatchObject({
       already: false,
       message: expect.stringContaining('fresh key'),

@@ -5,7 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { groupStores } from '../preview/app/_lib/group-stores.js';
 import { designsModule, writePreview } from '../src/lib/preview.js';
 
-/** Medley-shaped (contract R2.8), with a design declared before its template's design 1. */
+/** Medley-shaped, with a design declared before its template's design 1. */
 const MEDLEY = {
   name: 'Medley',
   default_demo: { template: 'beauty', label: 'Skincare & make-up', design_label: 'Photo collage', for: ['beauty-cosmetics'] },
@@ -19,7 +19,7 @@ const MEDLEY = {
 };
 const FILES = ['clothes', 'clothes-2', 'food', 'food-2', 'hair'];
 
-describe('the dev preview groups stores by template (R2.8)', () => {
+describe('the dev preview groups stores by template', () => {
   it('lists each template once, the main one first, its design 1 first, each design by its design_label', () => {
     expect(groupStores(MEDLEY, FILES)).toEqual([
       { key: 'beauty', label: 'Skincare & make-up', designs: [{ id: 'default', label: 'Photo collage', declared: true }] },
@@ -35,7 +35,7 @@ describe('the dev preview groups stores by template (R2.8)', () => {
     expect(grouped.at(-1)).toEqual({ key: 'x', label: 'x', designs: [{ id: 'x', label: 'x', declared: false }] });
   });
 
-  it('still lists a config written before R2.8: every design its own template, the main one by the theme name', () => {
+  it('still lists a config with no `template` keys: every design its own template, the main one by the theme name', () => {
     const legacy = { name: 'Old', demos: [{ id: 'food', label: 'Food', for: ['foods'] }, { id: 'food-2', label: 'Food — grill', for: ['foods'] }] };
     expect(groupStores(legacy, ['food', 'food-2'])).toEqual([
       { key: null, label: 'Old', designs: [{ id: 'default', label: 'Old', declared: true }] },

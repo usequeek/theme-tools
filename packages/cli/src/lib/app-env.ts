@@ -117,7 +117,7 @@ export class MissingSecretError extends Error {}
 
 /** The one recovery message, shared by the dev gate and the secrets resolver. */
 export const MISSING_SECRET_MESSAGE =
-  'Missing QUEEK_APP_SECRET and it could not be fetched for this app. Reveal it on the dashboard (Developers → your app → Credentials → Reveal) and put it into .queek/.env.local — or develop against a separate development app: create queek.app.development.toml with its own slug and run `queek app dev -c development` (Shopify\u2019s recommended pattern).';
+  'Missing QUEEK_APP_SECRET and it could not be fetched for this app. Reveal it on the dashboard (Developers → your app → Credentials → Reveal) and put it into .queek/.env.local — or develop against a separate development app: create queek.app.development.toml with its own slug and run `queek app dev -c development`.';
 
 /**
  * The dev-time signing secret, in precedence order: `.queek/.env.local`

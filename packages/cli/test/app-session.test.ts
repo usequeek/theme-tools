@@ -45,7 +45,7 @@ function apiFor(statuses: Array<[number, unknown]>): { api: DeveloperApi; calls:
 
 const io = { log: () => {}, logError: () => {}, debug: () => {} };
 
-describe('deviceLogin backoff (B1: slow_down/429 never throw)', () => {
+describe('deviceLogin backoff (slow_down/429 never throw)', () => {
   it('widens the poll by 5s per slow_down and still logs in', async () => {
     isolatedHome();
     const { api } = apiFor([

@@ -4,7 +4,7 @@ import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 
 /**
  * `queek.app.toml` — the local source of truth for an app's manifest, mapped
- * EXACTLY to the backend's `AppManifestValidator::topLevelKeys()` (28 keys).
+ * EXACTLY to the 28 top-level manifest keys the Queek API accepts.
  * The server never fetches a live manifest URL; `deploy` pushes this file.
  *
  * Secrets NEVER live here: the registration secret (`whsec_…`) goes to
@@ -15,7 +15,7 @@ import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 export const APP_TOML = 'queek.app.toml';
 export const APP_TOML_VARIANT = (name: string): string => `queek.app.${name}.toml`;
 
-/** The 28 manifest keys the backend accepts — nothing else is sent. */
+/** The 28 manifest keys the API accepts — nothing else is sent. */
 export const MANIFEST_KEYS = [
   'slug', 'name', 'description', 'icon', 'developer', 'version', 'distribution',
   'category', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing',
@@ -25,8 +25,8 @@ export const MANIFEST_KEYS = [
 ] as const;
 
 /**
- * The `extensions` sub-keys the backend accepts (`validateExtensions` +
- * `validateNav` and `validateEmbeds`): nothing else is sent under `extensions`.
+ * The `extensions` sub-keys the API accepts: nothing else is sent under
+ * `extensions`.
  */
 export const EXTENSION_KEYS = ['proxy', 'blocks', 'merchant_page_url', 'nav', 'embeds'] as const;
 
@@ -37,7 +37,7 @@ export class TomlError extends Error {
   readonly exitCode = 2;
 }
 
-/** `Unknown field 'x' in manifest.` — byte-identical to the backend's `rejectUnknown`. */
+/** `Unknown field 'x' in manifest.` — byte-identical to the API's own message. */
 export const unknownField = (key: string, where = 'manifest'): string => `Unknown field '${key}' in ${where}.`;
 
 const TOP_LEVEL_TOML_KEYS = new Set([
@@ -49,10 +49,10 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,63}$/;
 const SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const ICON_RE = /^[a-z0-9_-]+$/;
 const SETTING_KEY_RE = /^[a-z0-9_]{1,64}$/;
-/** Temporary first-party app pages; remove when usequeek.app lands. */
+/** Hosts of first-party app pages. */
 const TEMPORARY_PAGE_SUFFIXES = ['.apps.queek.com.ng'];
 
-/** Scopes the CLI refuses without asking the server (plan: never `merchant-apps-*`). */
+/** Scopes the CLI refuses without asking the server (never `merchant-apps-*`). */
 const NON_DELEGABLE_PREFIXES = ['merchant-apps-', 'merchant-api_keys-', 'merchant-roles-', 'merchant-users-', 'merchant-employees-', 'merchant-pos-'];
 
 const DASHBOARD_BLOCK_TARGETS = ['order-details', 'product-details'];
@@ -60,7 +60,7 @@ const DASHBOARD_ACTION_TARGETS = ['order-details'];
 const DASHBOARD_PRINT_TARGETS = ['order-print'];
 const DASHBOARD_PRIMITIVES = ['date', 'time', 'select', 'text', 'slot-list'];
 const DASHBOARD_WHEN_FIELDS = ['order.has_appointment', 'order.is_paid', 'product.has_files'];
-/** Closed visibility conditions for an extension block (validator BLOCK_AVAILABLE_IF). */
+/** Closed visibility conditions for an extension block. */
 const BLOCK_AVAILABLE_IF = ['declared_products'];
 const EXTENSION_BLOCK_TARGETS = ['product'];
 const EXTENSION_PRIMITIVES = ['date', 'time', 'select'];
@@ -104,14 +104,13 @@ function httpsProblem(field: string, value: unknown): string | null {
 }
 
 /**
- * One grantable scope entry, mirroring the backend's `ManifestScopeRule`
- * (a Laratrust `merchant-*` permission a key may actually hold; the
- * `merchant-apps-*` family and friends can never be granted). Shared by
- * `scopes` and `optional_scopes` — the backend applies the same rule to
- * both tiers.
+ * One grantable scope entry: a `merchant-*` permission a key may actually
+ * hold (the `merchant-apps-*` family and friends can never be granted).
+ * Shared by `scopes` and `optional_scopes` — the API applies the same rule
+ * to both tiers.
  */
 function checkScope(scope: unknown, fail: (message: string) => never): void {
-  if (typeof scope !== 'string' || scope === '') throw fail('Each scope must be a Laratrust permission name.');
+  if (typeof scope !== 'string' || scope === '') throw fail('Each scope must be a permission name (a merchant-… scope).');
   if (NON_DELEGABLE_PREFIXES.some((prefix) => scope.startsWith(prefix))) {
     throw fail(`The '${scope}' scope can never be granted to an app: an installation key must never install apps, manage keys or read the team directory.`);
   }
@@ -151,7 +150,7 @@ function checkSchemaFields(list: unknown, where: string, primitives: string[], p
 
 /**
  * Resolve which toml file to read: `-c/--config <name>` picks
- * `queek.app.<name>.toml` (Shopify parity), otherwise `queek.app.toml`,
+ * `queek.app.<name>.toml`, otherwise `queek.app.toml`,
  * looked up in `dir`.
  */
 export function resolveTomlPath(dir: string, variant?: string): string {
@@ -182,20 +181,20 @@ export function loadTomlFile(path: string): LoadedToml {
 
 /**
  * Map the grouped toml onto the flat 28-key manifest the API takes.
- * Throws `TomlError` (exit 2) on anything the backend would refuse —
+ * Throws `TomlError` (exit 2) on anything the API would refuse —
  * the same names, the same limits, the same error text where it matters.
  */
 export interface TomlManifest {
   manifest: AppManifest;
   /** Non-fatal notices (e.g. an ignored `version`) for the command to print once. */
   warnings: string[];
-  /** The CLI-only `[dev]` table (how `queek app dev` starts the app) — never sent to the backend, like `handle`. */
+  /** The CLI-only `[dev]` table (how `queek app dev` starts the app) — never sent to the API, like `handle`. */
   dev?: DevTable;
 }
 
 /**
- * `[dev]` in queek.app.toml (Shopify `shopify.web.toml` parity: the command
- * that serves the app + the port it listens on). CLI-only: `toManifest`
+ * `[dev]` in queek.app.toml: the command that serves the app + the port it
+ * listens on. CLI-only: `toManifest`
  * validates it but never maps it onto the manifest.
  */
 export interface DevTable {
@@ -208,9 +207,9 @@ export const DEFAULT_DEV_PORT = 3000;
 
 /**
  * Map the grouped toml onto the flat manifest the API takes. `version` is
- * deliberately NOT mapped: queek.app.toml carries no version (Shopify
- * parity) — the backend auto-assigns the next patch, or `--version` names
- * one. A leftover `version` warns once instead of failing old checkouts.
+ * deliberately NOT mapped: queek.app.toml carries no version — the API
+ * assigns the next patch, or `--version` names one. A leftover `version`
+ * warns once instead of failing old checkouts.
  */
 export function toManifest(doc: Record<string, unknown>): TomlManifest {
   const problems: string[] = [];
@@ -223,7 +222,7 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
 
   // `handle` is CLI-only sugar, translated to `slug` before POST (the
-  // backend rejects unknown keys including `handle`).
+  // the API rejects unknown keys including `handle`).
   const handle = doc.handle as unknown;
   const slug = doc.slug as unknown;
   if (handle !== undefined && slug !== undefined) {
@@ -238,7 +237,7 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
     throw new TomlError(message);
   };
 
-  // `[dev]` is CLI-only (Shopify `shopify.web.toml` parity): validated here,
+  // `[dev]` is CLI-only: validated here,
   // never mapped onto the manifest below.
   let dev: DevTable | undefined;
   if (doc.dev !== undefined) {
@@ -272,7 +271,7 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
 
   const name = str(doc.name, 'name', 120, true) as string;
   if (doc.version !== undefined) {
-    warnings.push('`version` in queek.app.toml is ignored — the backend auto-assigns the next patch; name one with `queek app deploy --version X.Y.Z` instead.');
+    warnings.push('`version` in queek.app.toml is ignored — the API assigns the next patch; name one with `queek app deploy --version X.Y.Z` instead.');
   }
   const distribution = doc.distribution === undefined ? 'public' : (doc.distribution as string);
   if (!['public', 'development'].includes(distribution as string)) throw fail('The distribution must be one of: public, development.');
@@ -297,16 +296,14 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   }
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
 
-  // `scopes` is present-but-empty-able (backend `present,array`: Shopify
-  // parity, `scopes = ""` with the field still present) — `required` would
-  // refuse `[]`. Each entry follows the backend's ManifestScopeRule, same as
-  // `optional_scopes` below.
+  // `scopes` must be present but may be empty (`scopes = []`). Each entry
+  // follows the grantable-scope rule, same as `optional_scopes` below.
   const scopes = access.scopes as unknown;
   if (!Array.isArray(scopes)) throw fail('The scopes field is required (a list, possibly empty).');
   for (const scope of scopes as unknown[]) checkScope(scope, fail);
-  // Optional scopes (backend `sometimes,array`): requested post-install,
-  // never granted at install. Same grantable-scope rule; disjointness from
-  // `scopes` is checked below (backend: one tier only).
+  // Optional scopes: requested post-install, never granted at install. Same
+  // grantable-scope rule; disjointness from `scopes` is checked below (a
+  // scope belongs to one tier only).
   const optionalScopes = access.optional_scopes as unknown;
   if (optionalScopes !== undefined) {
     if (!Array.isArray(optionalScopes)) throw fail('The optional_scopes field must be a list.');
@@ -358,9 +355,9 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   });
 
   const manifest: AppManifest = { slug: resolvedSlug, name, scopes: scopes as string[], install_url: app.install_url as string, uninstall_url: app.uninstall_url as string };
-  // Absent-when-undeclared parity (backend `sometimes`): an app without
-  // `optional_scopes` re-registers byte-identical to its pre-optional
-  // versions, or the registry mints a phantom version.
+  // Absent when undeclared: an app without `optional_scopes` re-registers
+  // byte-identical to its pre-optional versions, or the registry mints a
+  // phantom version.
   if (optionalScopes !== undefined) manifest.optional_scopes = optionalScopes as string[];
   if (distribution !== 'public') manifest.distribution = distribution;
   for (const key of ['icon', 'developer', 'category'] as const) {
@@ -371,10 +368,10 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
     if (listing[key] !== undefined) listingOut[key] = listing[key];
   }
   if ((listingOut.description_long as string)?.length > 2000) throw fail('The description_long field must be plain text (max 2000).');
-  // Listing promo URLs ride the same guard as the handoff URLs server-side
-  // (assertAppUrl: https + WebhookUrlGuard, capped 2048); the video host is
-  // a NAMED allowlist (YouTube/Vimeo — the store page embeds it). Mirrored
-  // here so a mistake fails on the developer's machine, same error text.
+  // Listing promo URLs must be https and at most 2048 characters; the video
+  // host is a NAMED allowlist (YouTube/Vimeo — the store page embeds it).
+  // Checked here too so a mistake fails on the developer's machine, with the
+  // same error text.
   if (listingOut.demo_url !== undefined) checkCappedUrl(listingOut.demo_url, 'demo_url', fail);
   if (listingOut.video_url !== undefined) {
     checkCappedUrl(listingOut.video_url, 'video_url', fail);
@@ -387,7 +384,7 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   if ((settings as unknown[]).length > 0) manifest.settings = settings as AppManifest['settings'];
 
   checkExtensions(doc.extensions, manifest, fail);
-  // Declared means either tier (backend): an optional-scope action
+  // Declared means either tier: an optional-scope action
   // registers, and the grant-based submit check passes it once approved.
   checkDashboard(doc.dashboard, manifest, fail, [...manifest.scopes, ...(manifest.optional_scopes ?? [])]);
 
@@ -401,14 +398,14 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   return { manifest, warnings, ...(dev !== undefined ? { dev } : {}) };
 }
 
-/** Strict X.Y.Z for `deploy --version` (the backend auto-assigns when absent). */
+/** Strict X.Y.Z for `deploy --version` (the API assigns one when absent). */
 export function assertSemver(version: string): void {
   if (!SEMVER_RE.test(version)) throw new TomlError('The --version must be strict X.Y.Z (e.g. 1.2.0).');
 }
 
 /**
- * The promo-video host allowlist, mirroring the backend's isAllowedVideoHost
- * (YouTube/Vimeo — the store page embeds it): exact host or any subdomain,
+ * The promo-video host allowlist (YouTube/Vimeo — the store page embeds
+ * it): exact host or any subdomain,
  * case-insensitive. Anything else is refused at deploy, so refuse it here.
  */
 function isAllowedVideoHost(value: string): boolean {
@@ -421,14 +418,14 @@ function isAllowedVideoHost(value: string): boolean {
   return ['youtube.com', 'youtu.be', 'vimeo.com'].some((allowed) => host === allowed || host.endsWith(`.${allowed}`));
 }
 
-/** Offline https check mirroring assertAppUrl's scheme line (the guard's DNS half stays server-side). */
+/** Offline https check (the server also resolves the host, which stays server-side). */
 function checkUrl(value: unknown, field: string, fail: (message: string) => never): void {
   const problem = httpsProblem(field, value);
   if (problem) throw fail(problem);
 }
 
 function checkImage(image: unknown, where: string, problems: string[], fail: (message: string) => never): void {
-  // A non-table image is nulled server-side (normalizeExtensions/normalizeDashboard);
+  // A non-table image is nulled server-side;
   // the container key's own allow-list lives with the caller.
   if (!isRecord(image)) return;
   for (const key of Object.keys(image)) {
@@ -438,11 +435,10 @@ function checkImage(image: unknown, where: string, problems: string[], fail: (me
 }
 
 /**
- * https URL the backend caps at 2048 (proxy.url, merchant_page_url,
- * block link_url/image.url, dashboard link_url/notify_url — validator
- * `max:2048`). Fields the backend leaves uncapped (install_url and friends)
- * keep the plain scheme check: refusing locally what the server accepts
- * would be a lie.
+ * https URL the API caps at 2048 characters (proxy.url, merchant_page_url,
+ * block link_url/image.url, dashboard link_url/notify_url). Fields the API
+ * leaves uncapped (install_url and friends) keep the plain scheme check:
+ * refusing locally what the server accepts would be a lie.
  */
 function checkCappedUrl(value: unknown, field: string, fail: (message: string) => never): void {
   checkUrl(value, field, fail);
@@ -663,7 +659,7 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
   const blocks = dashboard.blocks as unknown[] | undefined;
   const actions = dashboard.actions as unknown[] | undefined;
   const print = dashboard.print as unknown[] | undefined;
-  // Absent-when-undeclared parity: no [dashboard] tables, no dashboard key.
+  // Absent when undeclared: no [dashboard] tables, no dashboard key.
   if ((blocks?.length ?? 0) + (actions?.length ?? 0) + (print?.length ?? 0) > 0) {
     out.blocks = blocks ?? [];
     out.actions = actions ?? [];
@@ -679,7 +675,7 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
  */
 export function fromManifest(manifest: Record<string, unknown>): string {
   const doc: Record<string, unknown> = {};
-  // No `version`: the toml never carries one (Shopify parity) — the linked
+  // No `version`: the toml never carries one — the linked
   // version is printed by `config link` itself.
   for (const key of ['slug', 'name', 'distribution', 'icon', 'developer', 'category']) {
     if (manifest[key] !== undefined) doc[key] = manifest[key];
@@ -744,8 +740,7 @@ export function queekDir(dir: string): string {
 
 /**
  * `[[extensions.nav]]` — the app's own menu, shown under the app in the
- * dashboard sidebar (Shopify's s-app-nav). Same rules the backend validator
- * applies, checked here so a mistake fails on the developer's machine: at
+ * dashboard sidebar. Same rules the API applies, checked here so a mistake fails on the developer's machine: at
  * most 10 items, label 1–40 characters, path a relative "/…" inside the
  * merchant page's path (no "//", "\\", "..", scheme or encoded variants).
  */

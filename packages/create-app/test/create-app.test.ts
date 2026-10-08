@@ -265,7 +265,7 @@ describe('@usequeek/create-app', () => {
   it('scaffolds a hostile display name without resurrection or injection', () => {
     const stage = mkdtempSync(join(tmpdir(), 'starter-'));
     dirs.push(stage);
-    // `Pay $& Go` is the MUST-1 resurrection case: `$&` reinserts the match.
+    // `Pay $& Go` is the resurrection case: `$&` reinserts the match.
     const nasty = 'Pay $& $\' $1 "Go" \\ café 🎉';
     expect(nameProblem(nasty)).toBeNull();
     writeFileSync(join(stage, 'queek.app.toml'), 'slug = "my-app"\nname = "My App"\n');

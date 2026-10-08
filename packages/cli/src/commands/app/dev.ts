@@ -51,7 +51,7 @@ export function withDevUrls(manifest: AppManifest, tunnelUrl: string): AppManife
 }
 
 /**
- * One terminal handoff line, Shopify's shape (`HH:MM:SS │ <process> │ …`):
+ * One terminal handoff line (`HH:MM:SS │ <process> │ …`):
  * every install and every app stdout/stderr line carries its time + source.
  * app-run already prefixes `[app] ` — that folds into the source column
  * instead of printing twice.
@@ -63,9 +63,9 @@ export function handoffLine(source: string, line: string, at: Date = new Date())
 }
 
 /**
- * The Preview URL (D4): the served `admin_url` (`/open-store?store={p_id}`,
+ * The Preview URL: the served `admin_url` (`/open-store?store={p_id}`,
  * which switches into the dev store) plus `&app={slug}`, which routes to the
- * embedded app. Null when the backend sent no admin_url (the caller falls
+ * embedded app. Null when the API sent no admin_url (the caller falls
  * back to the dashboard links) — never constructed from anything else.
  */
 export function previewUrl(adminUrl: string | null, appSlug: string): string | null {
@@ -78,20 +78,19 @@ export function formatDevStores(stores: DevStore[]): string {
 }
 
 /**
- * Shopify's refusal shape (item 18: "Could not find store … Ensure … the
- * store is a dev store"): a --store that names no dev store never reads as
- * "not found", it reads as "wrong kind of store".
+ * A --store that names no dev store never reads as "not found", it reads as
+ * "wrong kind of store".
  */
 export function devStoreRefusal(wanted: string, stores: DevStore[]): string {
   return `Could not find dev store '${wanted}'. Yours: ${formatDevStores(stores)}. Ensure the store is a dev store (dashboard → Developers → Dev stores) — merchant and test stores cannot run \`queek app dev\`.`;
 }
 
 /**
- * Install-handoff retry gate: the backend answers 424 Failed Dependency when
- * the app handoff fails (Cloudflare replaces an origin 502 with its own
- * error page, so our JSON never reaches the CLI on 502). 502 stays
- * retryable for backward compatibility until every backend has rolled out;
- * the errorType alone also retries (shape-proof when the status is masked).
+ * Install-handoff retry gate: the API answers 424 Failed Dependency when the
+ * app handoff fails (Cloudflare replaces an origin 502 with its own error
+ * page, so the API's JSON never reaches the CLI on 502). 502 stays retryable
+ * for older servers; the errorType alone also retries (shape-proof when the
+ * status is masked).
  */
 export function isRetryableHandoffFailure(failure: ApiFailure | null | undefined): boolean {
   if (!failure) return false;
@@ -99,7 +98,7 @@ export function isRetryableHandoffFailure(failure: ApiFailure | null | undefined
 }
 
 /**
- * B2: everything started after the tunnel stops on EVERY exit path —
+ * Everything started after the tunnel stops on EVERY exit path —
  * `this.error` throws through the task, so the finally owns the cleanup and
  * cloudflared is never left running. Stoppers never fail the run.
  */
@@ -118,13 +117,13 @@ export async function withDevResources(stops: Array<() => void>, task: () => Pro
 }
 
 /**
- * Dead-tunnel supervision (the Booking outage: the quick tunnel died and
- * `dev` kept serving the dead URL). The /health probe runs every 30s; two
+ * Dead-tunnel supervision (a quick tunnel can die while `dev` keeps serving
+ * the dead URL). The /health probe runs every 30s; two
  * misses in a row — or the cloudflared child exiting — restarts with
  * backoff, giving up after a sane number of failed starts with a clear
  * message. The restart reuses startCloudflared and the toml-save cycle; the
  * dead tunnel stops on every path, so no orphan cloudflared is left.
- * Storm guards (30/9/26: exits self-fed ~30 restarts into a 429 ban):
+ * Storm guards (without them, exits could feed ~30 restarts into a 429 ban):
  * exits restart only the watched tunnel, every restart waits first, fresh
  * tunnels get a grace period, restarts are capped per 10 minutes, and a
  * refused start stops supervision.
@@ -223,8 +222,7 @@ export function buildDevAppEnv(options: {
 }): NodeJS.ProcessEnv {
   return {
     // The dashboard that frames the app's embedded pages (CSP frame-ancestors,
-    // postMessage peer) — injected like Shopify injects its host values;
-    // a value in the shell or the project .env still wins.
+    // postMessage peer); a value in the shell or the project .env still wins.
     QUEEK_DASHBOARD_ORIGINS: new URL(DASHBOARD_URL).origin,
     ...process.env,
     ...options.projectEnv,
@@ -402,11 +400,11 @@ export interface DevTunnelSupervisorDeps {
 
 /**
  * The tunnel watchdog, extracted so tests drive it with fakes and a virtual
- * clock. It fixes the 30/9/26 restart storm (~30 restarts in 4 minutes, one
- * dev version per restart, then a Cloudflare 429 ban): the old code fanned
- * every stopped tunnel's exit event into a new restart — including the stop
- * the restart itself had just issued — and applied no backoff, grace, cap,
- * or rate-limit handling. Now an exit restarts only the still-watched
+ * clock. It prevents a restart storm (many restarts in minutes, one dev
+ * version per restart, then a Cloudflare 429 ban) that follows when every
+ * stopped tunnel's exit event fans into a new restart — including the stop
+ * the restart itself just issued — with no backoff, grace, cap, or
+ * rate-limit handling. An exit restarts only the still-watched
  * tunnel, every restart waits first, at most one runs at a time, a fresh
  * tunnel gets a grace period, restarts are capped per 10 minutes, and a
  * refused start stops supervision instead of extending the ban.
@@ -582,7 +580,7 @@ export default class AppDev extends BaseCommand {
     store: Flags.string({ summary: 'The owned dev store (numeric p_id, slug or name). The only store when you own exactly one. Merchant and test stores are refused.', env: 'QUEEK_APP_STORE' }),
     'create-dev-store': Flags.boolean({ summary: 'With no dev store, create one named after the app with test data instead of asking (CI).', default: false }),
     'dev-store-name': Flags.string({ summary: 'Name for a first-run created dev store (default: "<app name> dev").', env: 'QUEEK_APP_DEV_STORE_NAME' }),
-    'dev-store-address': Flags.string({ summary: 'Slug (address) for a first-run created dev store (default: backend derives it from the name). Taken slugs 422 with a suggestion.', env: 'QUEEK_APP_DEV_STORE_SLUG' }),
+    'dev-store-address': Flags.string({ summary: 'Slug (address) for a first-run created dev store (default: derived from the name). Taken slugs 422 with a suggestion.', env: 'QUEEK_APP_DEV_STORE_SLUG' }),
     port: Flags.integer({ summary: 'Your local app server port the tunnel forwards to (default: [dev].port, else 3000).', min: 1, max: 65535 }),
     url: Flags.string({ summary: 'Your own tunnel URL (https). Skips starting cloudflared.' }),
   };
@@ -626,7 +624,7 @@ export default class AppDev extends BaseCommand {
     // let: a dead cloudflared tunnel restarts in place (superviseTunnel
     // below); the stopper always reads the current one, so no orphan.
     let tunnel = await this.tunnel(flags.path, flags.url, port);
-    // B2: the tunnel (and the app, once started) stop on EVERY exit path —
+    // The tunnel (and the app, once started) stop on EVERY exit path —
     // error exits throw through the task into the finally.
     const stops: Array<() => void> = [() => tunnel.stop()];
     await withDevResources(stops, async () => {
@@ -653,8 +651,8 @@ export default class AppDev extends BaseCommand {
         const { manifest } = loadApp(flags.path, flags.config);
         const devManifest = withDevUrls(manifest, tunnelUrl);
         const result = await api.deploy(devManifest).catch((error: Error) => this.error(error.message, { exit: 1 }));
-        // Development builds release even with the explicit-submit switch on —
-        // but if the backend ever gates one, dev cannot install what was never
+        // Development builds release even when explicit submit is required —
+        // but if the API ever gates one, dev cannot install what was never
         // created: say so instead of crashing on the union.
         if (result.status === 'review_required') {
           this.error(
@@ -669,7 +667,7 @@ export default class AppDev extends BaseCommand {
           storeSlug: flags['dev-store-address'],
           interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
         });
-        // The backend delivers the install handoff to the app THROUGH the
+        // Queek delivers the install handoff to the app THROUGH the
         // tunnel, so a fresh quick-tunnel host that is not resolvable yet
         // answers 424 app_handoff_failed (502 before the Cloudflare fix):
         // retry a few times before giving up.
@@ -680,7 +678,7 @@ export default class AppDev extends BaseCommand {
             installed = await installOnce();
           } catch (error) {
             const failure = apiFailureOf(error);
-            // The backend requires a dev store (422 dev_store_required): a
+            // The API requires a dev store (422 dev_store_required): a
             // store that stopped being one must read as wrong-kind, with the
             // server's reason verbatim.
             if (failure?.errorType === 'dev_store_required') {
@@ -703,7 +701,7 @@ export default class AppDev extends BaseCommand {
       };
 
       // Install only once the app answers locally AND through the tunnel —
-      // the backend's install handoff goes app ← tunnel, so installing first
+      // the install handoff goes app ← tunnel, so installing first
       // races a cold app and a not-yet-resolvable tunnel host.
       const healthy = await waitForHealthy(`http://127.0.0.1:${port}/health`, 90_000);
       if (!healthy) {
@@ -828,7 +826,7 @@ export default class AppDev extends BaseCommand {
   }
 
   /**
-   * The Shopify-style ready block, once the app answers its health route:
+   * The ready block, once the app answers its health route:
    * tunnel URL plus the Preview URL (the app open inside the dev store's
    * dashboard, from the served admin_url). Without an admin_url, the
    * dashboard links stand in — the storefront comes from the API, never
@@ -848,13 +846,13 @@ export default class AppDev extends BaseCommand {
 
   /**
    * The dev-store selector. `--store` takes a p_id, slug or name and only
-   * ever matches a dev store (anything else reads as wrong-kind, Shopify's
-   * refusal shape). With no dev store at all: --create-dev-store (CI) or one
-   * TTY question creates it with test data — named "<app name> dev" (R2)
-   * unless --dev-store-name says otherwise, slug backend-derived unless
+   * ever matches a dev store (anything else reads as wrong-kind). With no dev
+   * store at all: --create-dev-store (CI) or one
+   * TTY question creates it with test data — named "<app name> dev"
+   * unless --dev-store-name says otherwise, slug server-derived unless
    * --dev-store-address names one; a non-interactive run without the flag
    * errors with the dashboard path. The 201's storefront password prints
-   * once on stdout (never logs/debug) — the backend will not resend it.
+   * once on stdout (never logs/debug) — the API will not resend it.
    */
   private async pickDevStore(
     api: DeveloperApi,
@@ -902,16 +900,16 @@ export function devLinks(store: { name: string; storefront_url: string | null },
 }
 
 /**
- * Served preview wins; admin_url+slug rebuilds only as fallback (the
- * backend computes the same value server-side — never diverge from it).
+ * Served preview wins; admin_url+slug rebuilds only as fallback (the API
+ * computes the same value server-side — never diverge from it).
  */
 export function resolvePreview(served: string | undefined, adminUrl: string | null, appSlug: string): string | null {
   return served ?? previewUrl(adminUrl, appSlug);
 }
 
 /**
- * First-run default dev-store name (R2): "<app name> dev" — the backend
- * derives the slug (slugified name + "-dev") unless --dev-store-address
+ * First-run default dev-store name: "<app name> dev" — the API derives the
+ * slug (slugified name + "-dev") unless --dev-store-address
  * names one explicitly.
  */
 export function defaultDevStoreName(appName: string): string {
@@ -919,9 +917,9 @@ export function defaultDevStoreName(appName: string): string {
 }
 
 /**
- * The Shopify-style ready block lines, pure for tests. The storefront
- * password (R1) is a shareable dev password, shown like Shopify shows it —
- * stdout only, one line, omitted when the backend did not serve one. It
+ * The ready block lines, pure for tests. The storefront password is a
+ * shareable dev password — stdout only, one line, omitted when the API did
+ * not serve one. It
  * never reaches debug output or logs: readyLines callers print, never store.
  */
 export function readyLines(tunnelUrl: string, preview: string | null, store: DevStore, appPid: string): string[] {

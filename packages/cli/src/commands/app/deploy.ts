@@ -17,10 +17,10 @@ export function printSecretToStdout(): boolean {
 }
 
 /**
- * Shopify deploy parity: "New version released — <slug>-N · <message> · <link
- * to the version page>". The message segment drops out when no --message was
- * passed; the link is the one-version page (D5:
- * `/developers?app={p_id}&section=versions&version={sequence}`).
+ * "New version released — <slug>-N · <message> · <link to the version page>".
+ * The message segment drops out when no --message was passed; the link is the
+ * one-version page
+ * (`/developers?app={p_id}&section=versions&version={sequence}`).
  */
 export function deploySuccessLine(input: { slug: string; pId: string; sequence: number; message?: string }): string {
   const note = input.message ? ` · ${input.message}` : '';
@@ -30,7 +30,7 @@ export function deploySuccessLine(input: { slug: string; pId: string; sequence: 
 export default class AppDeploy extends BaseCommand {
   static override summary = 'Deploy queek.app.toml: create a version, released by default.';
 
-  static override description = `Pushes the local queek.app.toml to POST vendor/developer/apps — deploy carries config (there is no config push). The toml carries no version: the backend auto-assigns the next patch unless --version names one. An identical manifest is a no-op ("No changes", exit 0). --no-release creates the version without serving it (release it later with \`queek app release\`). A version that adds a review-required capability lands in_review instead of releasing. The signing secret is shown ONCE on first registration and written to .queek/.env.local — it is never returned again. In CI, QUEEK_APP_AUTOMATION_TOKEN authenticates with no login.`;
+  static override description = `Pushes the local queek.app.toml to POST vendor/developer/apps — deploy carries config (there is no config push). The toml carries no version: the API assigns the next patch unless --version names one. An identical manifest is a no-op ("No changes", exit 0). --no-release creates the version without serving it (release it later with \`queek app release\`). A version that adds a review-required capability lands in_review instead of releasing. The signing secret is shown ONCE on first registration and written to .queek/.env.local — it is never returned again. In CI, QUEEK_APP_AUTOMATION_TOKEN authenticates with no login.`;
 
   static override examples = [
     '<%= config.bin %> <%= command.id %>',
@@ -40,7 +40,7 @@ export default class AppDeploy extends BaseCommand {
 
   static override flags = {
     ...appFlags,
-    version: Flags.string({ summary: 'Name this version X.Y.Z (default: backend auto-assigns the next patch).' }),
+    version: Flags.string({ summary: 'Name this version X.Y.Z (default: the next patch).' }),
     message: Flags.string({ summary: 'Release note for the new version (max 2000 chars).', env: 'QUEEK_APP_MESSAGE' }),
     'no-release': Flags.boolean({ summary: 'Create the version without releasing it.', default: false }),
   };
@@ -72,8 +72,8 @@ export default class AppDeploy extends BaseCommand {
       .deploy(manifest, { version: flags.version, message: flags.message, noRelease: flags['no-release'] })
       .catch((error: Error) => this.error(error.message, { exit: 1 }));
 
-    // Gated by the backend's explicit-submit switch: a successful deploy
-    // whose version waits in development — not a failure, exit 0.
+    // When the server requires an explicit submit, a successful deploy
+    // leaves its version waiting in development — not a failure, exit 0.
     if (result.status === 'review_required') {
       this.log(`v${result.version} is ready for review. Run: queek app submit ${manifest.slug} --sequence ${result.sequence}`);
       this.log('Track it on the Developer page: https://dashboard.usequeek.com/developers');

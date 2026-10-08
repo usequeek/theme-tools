@@ -6,23 +6,18 @@ import { downloadTemplate } from 'giget';
 import { nameProblem, slugify } from './naming.js';
 import { UsageError, type PackageManager } from './options.js';
 
-/** The Queek developer docs every scaffolded file points at (the MCP ships later — never invented here). */
+/** The Queek developer docs every scaffolded file points at. */
 export const QUEEK_DOCS_URL = 'https://docs.usequeek.com';
 
 /**
  * The agent files every `npm create @usequeek/app` output ships. `AGENTS.md`
  * and `CLAUDE.md` are the starter's own files, copied verbatim — the
  * starter repo is the single source of truth, so no second scaffolder copy
- * can drift stale (no `src/` handler claims, no unshipped-MCP notice). The
- * scaffolder never rewrites them; it only guarantees they exist and adds
- * the MCP wiring location below.
+ * can drift stale. The scaffolder never rewrites them; it only guarantees
+ * they exist and adds the MCP wiring location below.
  */
 
-/**
- * The MCP wiring location, shipped from day one. No developer MCP server
- * exists in the repos yet, so this wires nothing invented — an empty
- * `mcpServers` object the Queek MCP lands in when it publishes.
- */
+/** The MCP wiring location: an empty `mcpServers` object, the file where the Queek MCP is configured. */
 export function mcpJson(): string {
   return `${JSON.stringify({ mcpServers: {} }, null, 2)}\n`;
 }
@@ -33,7 +28,7 @@ export function successBanner(dir: string): string {
     `Next steps:`,
     `  cd ${dir}`,
     `  queek app dev          # creates a dev store if you have none, then tunnels + installs + watches`,
-    `AI assistants: AGENTS.md ships verbatim from the starter (toolkit capacity check first, then the live Merchant spec); .mcp.json is ready for the Queek MCP when it ships — do not add tooling to this repo.`,
+    `AI assistants: AGENTS.md ships verbatim from the starter (toolkit capacity check first, then the live Merchant spec); .mcp.json is where the Queek MCP is configured.`,
   ].join('\n');
 }
 

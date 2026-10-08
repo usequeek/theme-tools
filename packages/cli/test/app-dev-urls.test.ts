@@ -5,14 +5,14 @@ import type { AppManifest } from '../src/lib/app-manifest.js';
 
 const STORE: DevStore = { id: 7, p_id: 12, name: 'Hello dev', slug: 'hello-dev', storefront_url: null, admin_url: 'https://admin.example.com/store/hello-dev', created_at: null };
 
-describe('dev ready block helpers (Shopify parity)', () => {
+describe('dev ready block helpers', () => {
   it('logs handoff lines as HH:MM:SS │ source │ line, folding the [app] prefix into the source', () => {
     const at = new Date(2026, 8, 29, 9, 4, 7);
     expect(handoffLine('queek', 'Dev install: hello 1.0.0', at)).toBe('09:04:07 │ queek │ Dev install: hello 1.0.0');
     expect(handoffLine('app', '[app] listening on 3000', at)).toBe('09:04:07 │ app │ listening on 3000');
   });
 
-  it('builds the Preview URL as admin_url + &app={slug} (D4), null without an admin_url', () => {
+  it('builds the Preview URL as admin_url + &app={slug}, null without an admin_url', () => {
     expect(previewUrl('https://dashboard.usequeek.com/open-store?store=12', 'hello')).toBe(
       'https://dashboard.usequeek.com/open-store?store=12&app=hello',
     );
@@ -27,11 +27,11 @@ describe('dev ready block helpers (Shopify parity)', () => {
     expect(resolvePreview(undefined, null, 'hello')).toBeNull();
   });
 
-  it('defaults the first-run name to "<app name> dev" (R2)', () => {
+  it('defaults the first-run name to "<app name> dev"', () => {
     expect(defaultDevStoreName('Hello')).toBe('Hello dev');
   });
 
-  it('prints the storefront password once in the ready block (R1), omits it when unserved', () => {
+  it('prints the storefront password once in the ready block, omits it when unserved', () => {
     expect(readyLines('https://abc.trycloudflare.com', 'https://dash/open-store?store=12&app=hello', { ...STORE, storefront_password: 'dev-pass-123' }, 'app_1')).toEqual([
       '✅ Ready, watching for changes',
       'Tunnel: https://abc.trycloudflare.com',
@@ -79,7 +79,7 @@ describe('install-handoff retry (backend 502 → 424 Failed Dependency)', () => 
   });
 });
 
-describe('withDevResources (B2: the tunnel stops on every error path)', () => {
+describe('withDevResources (the tunnel stops on every error path)', () => {
   it('stops everything when the task throws, then rethrows', async () => {
     const stopped: string[] = [];
     await expect(withDevResources(

@@ -200,7 +200,7 @@ title = "Recommendations"
 targets = ["product"]
 `;
 
-describe('backend parity (validator origin/master 29/9)', () => {
+describe('server parity', () => {
   it("accepts available_if: declared_products on a block (BLOCK_AVAILABLE_IF)", () => {
     const { doc } = loadTomlFile(stageFile(`${BASE}${BLOCK}available_if = "declared_products"\n`));
     const { manifest, warnings } = toManifest(doc);
@@ -493,10 +493,10 @@ describe('[[extensions.embeds]] — storefront embeds', () => {
   });
 });
 
-describe('manifest mirror snapshot (backend drift tripwire)', () => {
-  it('pins the sorted MANIFEST_KEYS + extensions sub-keys against the backend validator', () => {
+describe('manifest key snapshot (drift tripwire)', () => {
+  it('pins the sorted MANIFEST_KEYS + extensions sub-keys against the accepted keys', () => {
     const drift =
-      'backend AppManifestValidator::topLevelKeys() changed — update the mirror + this snapshot consciously';
+      'the accepted manifest keys changed — update MANIFEST_KEYS + this snapshot consciously';
     expect([...MANIFEST_KEYS].sort(), drift).toEqual([
       'category', 'dashboard', 'demo_url', 'description', 'description_long', 'developer',
       'developer_url', 'distribution', 'extensions', 'highlights', 'icon',

@@ -7,12 +7,12 @@ const config = {
   tags: ['minimal'],
   categories: ['shop'],
   rank: 0,
-  // Theme → template → design (themes/THEME.md#templates). Every demo store is
+  // Theme → template → design. Every demo store is
   // a design; a template is the business a design is dressed as, and groups
   // its designs. demo.json is the main template's first design. `template` is
   // that template's key: a slug for its business, never renamed once shipped.
   // `label` names the business and `for` lists it (its business category
-  // first) in the vocabulary of lib/storefront/business-vocabulary.json. Its
+  // first) in the vocabulary of docs/business-vocabulary.json. Its
   // description is what an AI reads to choose it for a merchant — write your own.
   default_demo: {
     template: 'shop',

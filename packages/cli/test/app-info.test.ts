@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { infoLines, infoScopes } from '../src/commands/app/info.js';
 
-describe('app info (Shopify info parity)', () => {
+describe('app info', () => {
   it('prints the CURRENT APP CONFIGURATION box: file, app, ID, scopes, store, password, user', () => {
     expect(infoLines({
       file: '/work/hello/queek.app.toml',

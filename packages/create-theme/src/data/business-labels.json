@@ -1,5 +1,5 @@
 {
-  "$comment": "Display names for every key in business-vocabulary.json, for pickers (npm create @usequeek/theme). Ours: the vocabulary itself is agreed with the backend and its format never changes for labels. tests/business-labels.test.ts fails when a key has none.",
+  "$comment": "Display names for every key in business-vocabulary.json, for the pickers in `npm create @usequeek/theme`; the labels test fails when a key has none.",
   "labels": {
     "android-phones": "Android Phones",
     "art-supplies": "Art Supplies",

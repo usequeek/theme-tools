@@ -1,8 +1,7 @@
 /**
- * The lists a developer picks from, bundled at build time from the storefront
- * (their source of truth, synced by `yarn tools:sync-lists` there): no network
- * before a question is asked, and the same vocabulary the checker of this
- * release enforces.
+ * The lists a developer picks from, bundled at build time: no network before
+ * a question is asked, and the same vocabulary the checker of this release
+ * enforces.
  *
  * A run's lists are a BusinessLists built from one vocabulary copy: the
  * cached-or-bundled copy while prompting, the live copy for the final check
@@ -144,7 +143,7 @@ export function cachedLists(): BusinessLists | null {
   });
 }
 
-/** Business categories: what a vendor picks at setup (R2.7). */
+/** Business categories: what a vendor picks at setup. */
 export const SERVICES: readonly string[] = BUNDLED.services;
 
 /** Catalogue keys that are not also a business category: a template for one kind of product. */

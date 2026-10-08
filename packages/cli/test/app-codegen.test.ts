@@ -280,7 +280,7 @@ describe('specSha256 vs serverSpecSha256 (live-proven distinct)', () => {
   });
 });
 
-describe('recordedSpecHash (MUST-1: the header is the pin, the JSON a debug aid)', () => {
+describe('recordedSpecHash (the header is the pin, the JSON a debug aid)', () => {
   it('is null with neither record nor types, and reads the record first', async () => {
     const dir = stageApp();
     expect(recordedSpecHash(dir)).toBeNull();

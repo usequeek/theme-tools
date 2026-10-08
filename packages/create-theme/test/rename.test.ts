@@ -163,7 +163,7 @@ describe('renameTheme end to end on a real-theme-like fixture', () => {
 });
 
 describe('the package entry', () => {
-  // Queek's `yarn theme:new` copies a theme under a new name with this rename.
+  // Tools that copy a theme under a new name use this rename.
   it('exports the rename and the skeleton identity', async () => {
     const api = await import('../src/index.js');
     expect(api.renameTheme).toBe(renameTheme);

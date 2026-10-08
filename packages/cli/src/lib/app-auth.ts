@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 /**
- * CLI auth, Shopify parity:
+ * CLI auth:
  *
  * - CI (`QUEEK_APP_AUTOMATION_TOKEN`): a per-app App Automation Token minted
  *   on the Developer page. When set it is the Bearer for app commands and no
@@ -22,10 +22,8 @@ export const ENV_AUTOMATION_TOKEN = 'QUEEK_APP_AUTOMATION_TOKEN';
 export const ENV_API_BASE = 'QUEEK_API_BASE';
 
 /**
- * The backend host serving BOTH routers: vendor API at
- * `{base}/api/v1/biz/...` and OAuth at `{base}/oauth/...`
- * (bootstrap/app.php:86 prefix `api` + routes/api.php `v1/` group +
- * vendor-api.php `v1/biz/` group; web.php `oauth` prefix on the web router).
+ * The API host serving BOTH routers: vendor API at
+ * `{base}/api/v1/biz/...` and OAuth at `{base}/oauth/...`.
  */
 export const DEFAULT_API_BASE = 'https://api.usequeek.com';
 

@@ -2,8 +2,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { closeSync, existsSync, openSync, readFileSync } from 'node:fs';
 
 /**
- * `app dev` serves the app's tunnel URL to Queek (tunnel URLs pass the same
- * `assertAppUrl`: https only). `cloudflared` (Cloudflare Quick Tunnels,
+ * `app dev` serves the app's tunnel URL to Queek (https only, like every app
+ * URL). `cloudflared` (Cloudflare Quick Tunnels,
  * no account) is used when installed; otherwise the caller passes `--url`
  * from any tunnel, or develops knowing Queek cannot call back to localhost.
  */

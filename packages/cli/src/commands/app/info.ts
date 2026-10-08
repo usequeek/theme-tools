@@ -17,10 +17,10 @@ export interface InfoFacts {
 }
 
 /**
- * The CURRENT APP CONFIGURATION box (Shopify `app info` parity): config
- * file, app, app ID, scopes, dev store, storefront password, user. Pure for
- * tests — run() only gathers the facts. The password (R1: shareable dev
- * password, re-viewable by the owner) prints on stdout only, never logs.
+ * The CURRENT APP CONFIGURATION box: config file, app, app ID, scopes, dev
+ * store, storefront password, user. Pure for tests — run() only gathers the
+ * facts. The password (a shareable dev password, re-viewable by the owner)
+ * prints on stdout only, never logs.
  */
 export function infoLines(facts: InfoFacts): string[] {
   return [
@@ -72,7 +72,7 @@ export default class AppInfo extends BaseCommand {
     let store: string | null = null;
     let storefrontPassword: string | null = null;
     if (flags.store) {
-      // Dev-store reads sit outside the automation grant by backend design:
+      // Dev-store reads sit outside the automation grant by design:
       // say so instead of dumping the 401/403 envelope.
       const { data: stores } = await api.devStores().catch((error: Error) => {
         if (error instanceof AutomationTokenError) {

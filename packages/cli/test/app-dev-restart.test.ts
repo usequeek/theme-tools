@@ -452,7 +452,7 @@ function supervisorHarness(hooks: {
 
 const startsOf = (calls: string[]): string[] => calls.filter((call) => call.startsWith('start:'));
 
-describe('DevTunnelSupervisor (the 30/9/26 restart-storm regression)', () => {
+describe('DevTunnelSupervisor (restart-storm regression)', () => {
   it('a killed old tunnel firing exit never causes a second restart', async () => {
     const { sup, calls, advance } = supervisorHarness({ probeHealthy: false });
     const old = fakeWatchedTunnel(calls, OLD_URL);

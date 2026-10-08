@@ -17,12 +17,12 @@ const config = {
     description: 'Skincare, cosmetics and other bundle-led shops. White and airy with big serif headlines; opens on a photo collage drifting round the headline, then mix-and-match bundles, kits, how-to steps, before/after and a tilted ribbon. Needs 6+ product photos on plain backdrops.',
   },
   // More designs (demos/<id>.json), previewed at /medley~<id> and grouped by
-  // their `template` (themes/THEME.md#templates): clothes and food have two
+  // their `template`: clothes and food have two
   // designs each, the others one. Each design has its own home composition,
   // header, footer, palette and faces — not the beauty store with the copy
   // swapped. `for` names each template's business in
-  // lib/storefront/business-vocabulary.json: a whole business leads with its
-  // category, a niche (hair, shoes) names only catalogue keys (R2.7).
+  // docs/business-vocabulary.json: a whole business leads with its
+  // category, a niche (hair, shoes) names only catalogue keys.
   demos: [
     {
       id: 'clothes', template: 'clothes', design_label: 'Campaign',

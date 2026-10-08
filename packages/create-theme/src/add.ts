@@ -127,7 +127,7 @@ export async function planAddTemplate(themeDir: string, input: { business: strin
   }
   const label = (input.label ?? lists.labelOf(business)).trim();
   if (!label) throw new UsageError('--label cannot be empty.');
-  // The template's `for`, category first (contract R2.7): planTemplates
+  // The template's `for`, category first: planTemplates
   // already computes it — a category leads with itself, a niche names only
   // its own key. The new template is never the primary, so its design 1 id
   // is its key, never `default`.

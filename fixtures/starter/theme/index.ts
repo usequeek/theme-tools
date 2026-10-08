@@ -44,7 +44,7 @@ export const variantImplementations = {
   contact: { default: ContactBlock },
 } satisfies ThemeVariantImplementations;
 
-/** How each variant lays out, for the backend's section picker. */
+/** How each variant lays out, for Queek's section picker. */
 export const variantShapes = {
   gallery: { banner: 'hero' },
   products: { grid: 'grid' },

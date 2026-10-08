@@ -1,6 +1,6 @@
 import { RESERVED_PREFIXES, RESERVED_SLUGS, getActiveLists, type BusinessLists } from './lists.js';
 
-/** `Mọ́ Laundry & Co.` → `mo-laundry-co`: what `yarn theme:pull` accepts, `^[a-z][a-z0-9-]{1,30}$`. */
+/** `Mọ́ Laundry & Co.` → `mo-laundry-co`: what Queek accepts as a theme slug, `^[a-z][a-z0-9-]{1,30}$`. */
 export function slugify(name: string): string {
   let slug = name.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -30,7 +30,7 @@ export interface TemplatePlan {
   id: string;
   /** The business picked. */
   key: string;
-  /** The template key theme.config.ts declares on the design (contract R2.8): the business picked. */
+  /** The template key theme.config.ts declares on the design: the business picked. */
   template: string;
   label: string;
   for: string[];
@@ -39,13 +39,12 @@ export interface TemplatePlan {
 }
 
 /**
- * One template per business picked, each with one design (contract R2.8:
- * theme → template → design). The main template's design is `default`
- * (demo.json); every other design's id is its template's key, which makes it
- * that template's design 1. The key is the business picked, so a template is
- * never inferred from an id. A business category makes a general template, a
- * niche a niche one — either way `for` is just that key, so a niche never
- * names a category (R2.7).
+ * One template per business picked, each with one design (theme → template
+ * → design). The main template's design is `default` (demo.json); every other
+ * design's id is its template's key, which makes it that template's design 1.
+ * The key is the business picked, so a template is never inferred from an id.
+ * A business category makes a general template, a niche a niche one — either
+ * way `for` is just that key, so a niche never names a category.
  */
 export function planTemplates(keys: string[], primary?: string, lists: BusinessLists = getActiveLists()): TemplatePlan[] {
   const unique = [...new Set(keys)];

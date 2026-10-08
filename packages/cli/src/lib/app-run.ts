@@ -2,8 +2,8 @@ import { spawn as nodeSpawn } from 'node:child_process';
 import type { Readable } from 'node:stream';
 
 /**
- * The local half of `queek app dev` (Shopify `dev` parity: the CLI owns the
- * app process, not just the tunnel). A spawned `[dev].command` with
+ * The local half of `queek app dev` (the CLI owns the app process, not just
+ * the tunnel). A spawned `[dev].command` with
  * prefixed output, restart-with-backoff on crashes, and a health waiter.
  * `spawn`/`fetch` inject so tests drive the whole lifecycle with fakes.
  */

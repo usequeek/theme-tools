@@ -3,8 +3,7 @@ import type { ApiFailure, SubmissionCheck, SubmitBody } from './app-api.js';
 /**
  * Pure submit plumbing for `queek app submit` (tested in
  * app-submit.test.ts): the command owns prompts/flags/network, this module
- * owns every decision. Server shapes mirror SubmitAppVersionRequest.php and
- * SubmissionCheckService.php evaluate().
+ * owns every decision.
  */
 
 /** The newest sequence, or null when nothing is deployed yet. */
@@ -57,7 +56,7 @@ export interface SubmitForm {
 
 /**
  * Validate the submit form into the POST body (exit 2 upstream on throw).
- * Lengths/URLs mirror the request rules; the help behind test instructions
+ * Lengths and URLs follow the server's rules; the help behind test instructions
  * is test-store credentials only, never production credentials.
  */
 export function submitBody(form: SubmitForm): SubmitBody {

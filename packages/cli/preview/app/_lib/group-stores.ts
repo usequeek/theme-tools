@@ -23,7 +23,7 @@ export interface TemplateEntry {
 
 /**
  * Every store the theme ships, grouped as Queek groups them (theme → template
- * → design, contract R2.8): by the `template` each design declares, the main
+ * → design): by the `template` each design declares, the main
  * template first, each template's design 1 first. `files` are the ids of
  * `theme/demos/*.json`. A declared design with no file is left out (it has
  * nothing to render); a file nobody declared is its own entry, `declared: false`.

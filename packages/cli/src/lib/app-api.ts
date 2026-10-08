@@ -1,15 +1,12 @@
 import type { AppManifest } from './app-manifest.js';
 
 /**
- * The developer API the `app` commands talk to, verified against the S1
- * backend slice (devflow-s1 @ 9de8c58c) — every row of the call→route table
- * in the impl report names its serving route + file:line.
+ * The developer API the `app` commands talk to.
  *
  * Two routers on one host (`QUEEK_API_BASE`): vendor API at
- * `{base}/api/v1/biz/...`, OAuth at `{base}/oauth/...` (web router, no /api
- * prefix). Every vendor response wears the `{status, message, data}`
- * envelope (Controller.php:21); OAuth failures wear
- * `{error, error_description}` (OAuthException.php:54).
+ * `{base}/api/v1/biz/...`, OAuth at `{base}/oauth/...` (no /api prefix).
+ * Every vendor response wears the `{status, message, data}` envelope; OAuth
+ * failures wear `{error, error_description}`.
  *
  * Auth kinds: a CI automation token (`QUEEK_APP_AUTOMATION_TOKEN`, per-app,
  * dashboard-minted) is used as-is — a 403 names the app + action instead of
@@ -71,7 +68,7 @@ export interface TestStore {
 }
 
 /**
- * A developer-owned dev store (S-A contract): `is_test` plus the
+ * A developer-owned dev store: `is_test` plus the
  * `is_dev_store` flag, standalone (`test_of_vendor_id` NULL) — never a mode
  * of a merchant's live store. The preview URL is built from `admin_url`,
  * served here, never constructed in commands.
@@ -85,9 +82,9 @@ export interface DevStore {
   admin_url: string | null;
   created_at: string | null;
   /**
-   * Shareable dev storefront password (R1: re-viewable by the owner, NOT a
+   * Shareable dev storefront password (re-viewable by the owner, NOT a
    * credential key). Carried on GET rows for the owner and on the POST 201 —
-   * the backend never resends a lost one outside these payloads. Displayed
+   * the API never resends a lost one outside these payloads. Displayed
    * on stdout only (ready block / info / after creation); never in debug
    * output, and never logged.
    */
@@ -104,11 +101,11 @@ export interface AppVersion {
 }
 
 export interface DeployOptions {
-  /** Optional X.Y.Z name (Shopify `--version`); absent → backend auto-assigns the next patch. */
+  /** Optional X.Y.Z name (`--version`); absent → the API assigns the next patch. */
   version?: string;
-  /** Optional release note (Shopify `--message`). */
+  /** Optional release note (`--message`). */
   message?: string;
-  /** Create the version without releasing it (Shopify `--no-release`). */
+  /** Create the version without releasing it (`--no-release`). */
   noRelease?: boolean;
 }
 
@@ -135,8 +132,8 @@ export interface ReleaseResult {
 }
 
 /**
- * The gated outcome, behind the backend's explicit-submit switch (default
- * OFF): HTTP 409 `{status:"failed", error_type:"review_required", ...,
+ * The gated outcome, when the server requires an explicit submit before a
+ * release: HTTP 409 `{status:"failed", error_type:"review_required", ...,
  * data:{version, sequence, submission_url}}` — no top-level `code`. A normal
  * outcome, never an ApiError: the version waits in development for
  * `queek app submit`.
@@ -148,7 +145,7 @@ export interface ReviewRequired {
   submission_url: string | null;
 }
 
-/** One readiness probe (SubmissionCheckService.php `run`). `label`/`message` are the server-written sentences; older servers send neither. */
+/** One readiness probe. `label`/`message` are the server-written sentences; older servers send neither. */
 export interface SubmissionCheck {
   key: string;
   level: string;
@@ -159,13 +156,13 @@ export interface SubmissionCheck {
   message?: string | null;
 }
 
-/** Attestation block of the checklist (lands in a parallel backend slice — all optional here). */
+/** Attestation block of the checklist (all fields optional here). */
 export interface SubmissionAttestation {
   required: boolean;
   items: Array<{ key: string; text: string }>;
 }
 
-/** GET …/versions/{sequence}/submission (DeveloperAppController.php `submission`). */
+/** GET …/versions/{sequence}/submission. */
 export interface SubmissionChecklist {
   version: string;
   sequence: number;
@@ -177,7 +174,7 @@ export interface SubmissionChecklist {
   thread?: unknown[];
 }
 
-/** POST …/versions/{sequence}/submit body (SubmitAppVersionRequest.php rules). */
+/** POST …/versions/{sequence}/submit body. */
 export interface SubmitBody {
   test_instructions: string;
   screencast_url: string;
@@ -187,7 +184,7 @@ export interface SubmitBody {
   attestation?: { items: string[] };
 }
 
-/** One per-key submit refusal (SubmitAppVersionRequest / evaluate()). */
+/** One per-key submit refusal. */
 export interface SubmitFailure {
   key: string;
   reason: string;
@@ -253,10 +250,10 @@ export interface DevInstallResult {
   app_p_id: string;
   status: string;
   installed_version: string;
-  /** Served when the backend attaches them; the CLI never constructs dashboard/store URLs itself. */
+  /** Served when the API attaches them; the CLI never constructs dashboard/store URLs itself. */
   admin_url?: string;
   storefront_url?: string;
-  /** Served preview URL (DevStoreService::previewUrl); the CLI rebuilds it from admin_url+slug only as fallback. */
+  /** Served preview URL; the CLI rebuilds it from admin_url+slug only as fallback. */
   preview_url?: string;
 }
 
@@ -264,10 +261,8 @@ const VENDOR_PREFIX = '/api/v1/biz/vendor/developer';
 const OAUTH_PREFIX = '/oauth';
 
 /**
- * Production Developer dashboard (backend `dashboard_url` default).
- * Staging dashboards are unsupported: every dashboard link assumes
- * production, even under a staging QUEEK_API_BASE, until the backend serves
- * its own dashboard_url to the CLI.
+ * Production Developer dashboard. Every dashboard link assumes production,
+ * even under a different QUEEK_API_BASE.
  */
 export const DASHBOARD_URL = 'https://dashboard.usequeek.com';
 
@@ -370,7 +365,7 @@ export class DeveloperApi {
 
   // ── OAuth (web router, unauthenticated except by code/verifier) ──
 
-  /** Issue a headless device pair (AgentOAuthController.php:84). */
+  /** Issue a headless device pair. */
   async deviceCode(): Promise<DeviceCode> {
     const { status, body } = await this.raw(`${this.base}${OAUTH_PREFIX}/device/code`, {
       method: 'POST',
@@ -392,12 +387,12 @@ export class DeveloperApi {
   }
 
   /**
-   * Poll until approval (AgentOAuthController.php:97): 202 pending → null,
+   * Poll until approval: 202 pending → null,
    * 200 → token pair, 403 access_denied → DeniedError (user denied, stop
    * polling), 404 / expired_token → expired message (fetch a fresh code).
    * RFC 8628 §3.5 `slow_down` (usually 400) and the 429 throttle are NOT
    * errors: they report through `onSlowDown` and read as null (keep polling,
-   * slower) — the B1 crash was throwing on them.
+   * slower) — throwing on them would end a login that is still valid.
    */
   async deviceStatus(deviceCode: string, hooks?: { onSlowDown?: (serverIntervalSec?: number) => void }): Promise<TokenPair | null> {
     const { status, body } = await this.raw(`${this.base}${OAUTH_PREFIX}/device/status?code=${encodeURIComponent(deviceCode)}`, {
@@ -424,11 +419,9 @@ export class DeveloperApi {
   }
 
   /**
-   * PKCE code-for-token exchange (AgentOAuthController.php:54). Sent WITHOUT
-   * client_secret on purpose: the CLI is a public native client (RFC 8252) —
-   * a secret baked into npm tarballs is not a secret. If the backend keeps
-   * requiring one for `cli`, it 401s `invalid_client` and that is a backend
-   * must-fix (see open_questions), not something to smuggle in here.
+   * PKCE code-for-token exchange. Sent WITHOUT client_secret on purpose: the
+   * CLI is a public native client (RFC 8252) — a secret baked into npm
+   * tarballs is not a secret.
    */
   async oauthToken(input: { code: string; code_verifier: string; redirect_uri: string }): Promise<TokenPair> {
     return this.tokenGrant({
@@ -440,7 +433,7 @@ export class DeveloperApi {
     });
   }
 
-  /** Rotate a refresh token into a fresh pair (AgentOAuthService.php:219). */
+  /** Rotate a refresh token into a fresh pair. */
   async refreshTokens(refreshToken: string): Promise<TokenPair> {
     return this.tokenGrant({ grant_type: 'refresh_token', client_id: 'cli', refresh_token: refreshToken });
   }
@@ -457,7 +450,7 @@ export class DeveloperApi {
   }
 
   /**
-   * Best-effort revoke for `auth logout` (AgentOAuthController.php:72). The
+   * Best-effort revoke for `auth logout`. The
    * `cli` client is public (PKCE, no secret), so this succeeds secretless —
    * but logout never depends on it: the caller always clears local creds.
    */
@@ -479,7 +472,7 @@ export class DeveloperApi {
    * is enough. Default deploy RELEASES through the release policy (first
    * listing → in_review, harmless N+1 on an approved app → released);
    * `no_release: true` holds the version in development (created). The
-   * outcome is `data.status` — never the HTTP code (DeveloperAppController.php:180).
+   * outcome is `data.status` — never the HTTP code.
    */
   async deploy(manifest: AppManifest, options: DeployOptions = {}): Promise<DeployResult | ReviewRequired> {
     let data: Record<string, unknown>;
@@ -512,7 +505,7 @@ export class DeveloperApi {
     const unchanged = data.unchanged === true || /no changes/i.test(message);
     const reviewStatus = version.review_status as string;
     // The contract guarantees data.status (released|in_review|created):
-    // an answer without one is a backend regression, and 'released' would
+    // an answer without one is a server fault, and 'released' would
     // be the most dangerous guess — fail loudly instead.
     if (data.status !== 'released' && data.status !== 'in_review' && data.status !== 'created') {
       throw new ApiError('Unexpected deploy response from Queek — no status (expected released|in_review|created).', httpStatus, data);
@@ -531,7 +524,7 @@ export class DeveloperApi {
     };
   }
 
-  /** One page of owned test stores (DeveloperAppController.php:239). */
+  /** One page of owned test stores. */
   async testStores(page = 1): Promise<{ data: TestStore[]; total: number }> {
     const { data } = await this.vendor<{ data: TestStore[]; meta: { total: number } }>(
       'GET',
@@ -541,7 +534,7 @@ export class DeveloperApi {
     return { data: data.data, total: data.meta.total };
   }
 
-  /** One page of owned dev stores (DeveloperAppController.php:855). */
+  /** One page of owned dev stores. */
   async devStoresPage(page = 1): Promise<{ data: DevStore[]; total: number }> {
     const { data } = await this.vendor<{ data: DevStore[]; meta?: { total?: number } }>(
       'GET',
@@ -565,12 +558,12 @@ export class DeveloperApi {
   }
 
   /**
-   * Create a dev store (S-A contract, D1; names R2): POST /dev-stores
+   * Create a dev store: POST /dev-stores
    * {name (≤60), slug?, test_data} → 201 the store incl. storefront_password.
-   * Slug omitted means the backend default (slugified name + "-dev");
+   * Slug omitted means the server default (slugified name + "-dev");
    * taken → 422 with a suggested free slug, surfaced verbatim. The 201's
    * storefront_password is threaded through (never dropped): it is the only
-   * copy the backend will show. Idempotency-Key is fresh per creation
+   * copy the API will show. Idempotency-Key is fresh per creation
    * attempt; a re-run lists first and only creates when still absent —
    * list-then-create is the dedupe, not key reuse.
    */
@@ -601,7 +594,7 @@ export class DeveloperApi {
     return { data: all, total: first.total };
   }
 
-  /** Install an unreviewed dev build on an owned test store (DeveloperAppController.php:268). */
+  /** Install an unreviewed dev build on an owned test store. */
   async devInstall(app: string, testStorePId: number, settings?: Record<string, unknown>): Promise<DevInstallResult> {
     const { data } = await this.vendor<DevInstallResult>(
       'POST',
@@ -616,13 +609,13 @@ export class DeveloperApi {
     return data;
   }
 
-  /** Server → toml (DeveloperAppController.php:308). */
+  /** Server → toml. */
   async appConfig(app: string): Promise<AppConfig> {
     const { data } = await this.vendor<AppConfig>('GET', `/apps/${encodeURIComponent(app)}/config`, `linking config of '${app}'`, undefined, app);
     return data;
   }
 
-  /** Every version snapshot, newest first (DeveloperAppController.php:342). */
+  /** Every version snapshot, newest first. */
   async appVersions(app: string): Promise<{ versions: AppVersion[] }> {
     const { data: rows } = await this.vendor<Record<string, unknown>[]>(
       'GET',
@@ -644,10 +637,9 @@ export class DeveloperApi {
   }
 
   /**
-   * Serve a created version: released now, or held in review (review-policy
-   * §116). The route takes the version SEQUENCE (ReleaseVersionRequest
-   * ctype_digit gate — a semver reads as 404): a semver input is resolved
-   * via the versions list first. Unknown input errors listing what exists.
+   * Serve a created version: released now, or held in review. The route
+   * takes the version SEQUENCE (digits only — a semver reads as 404): a
+   * semver input is resolved via the versions list first. Unknown input errors listing what exists.
    */
   async releaseVersion(app: string, input: string): Promise<ReleaseResult | ReviewRequired> {
     let sequence: number;
@@ -688,7 +680,7 @@ export class DeveloperApi {
   }
 
   /**
-   * Mint a keypair for the app (DeveloperAppKeyController.php `generate`):
+   * Mint a keypair for the app:
    * POST …/keys/generate → 201 `data.{kid, added_at, private_key}`. The
    * private PEM is shown ONCE — a replayed request answers `private_key:
    * null`, which reads as an error here (generate again instead).
@@ -702,7 +694,7 @@ export class DeveloperApi {
   }
 
   /**
-   * The app's recorded public keys (DeveloperAppKeyController.php `index`):
+   * The app's recorded public keys:
    * GET …/keys → `data.keys: [{kid, added_at}]`. `queek app dev` reads this
    * before minting so a full keyring stops with a clear message instead of
    * failing mid-flow. There is deliberately no rotate-secret wrapper: dev
@@ -714,10 +706,10 @@ export class DeveloperApi {
   }
 
   /**
-   * Owner-only secret re-view (DeveloperAppKeyController.php `showSecret`):
+   * Owner-only secret re-view:
    * GET …/signing-secret → `data.{signing_secret, previous_expires_at?}`.
    * Read over the signed-in developer's session — an automation token 401s
-   * here by backend design (AutomationTokenError, never retried), so
+   * here by design (AutomationTokenError, never retried), so
    * `queek app dev` refuses those before calling this. There is
    * deliberately no rotate wrapper: dev and production share one app
    * record, so rotation is never automatic.
@@ -740,8 +732,7 @@ export class DeveloperApi {
   }
 
   /**
-   * Readiness checklist for one owned version (DeveloperAppController.php
-   * `submission`): stored checks return with zero egress when fresh,
+   * Readiness checklist for one owned version: stored checks return with zero egress when fresh,
    * otherwise the server re-probes. `review_note`/`submitted`/`attestation`/
    * `thread` are read by exact name and defaulted when absent.
    */
@@ -788,8 +779,7 @@ export class DeveloperApi {
   }
 
   /**
-   * Explicit submit of the `{sequence}` version (DeveloperAppController.php
-   * `submitVersion`): 200 `data.submitted_version`. The Idempotency-Key is
+   * Explicit submit of the `{sequence}` version: 200 `data.submitted_version`. The Idempotency-Key is
    * caller-owned — fresh per logical submit, reused on retry — because a
    * replayed body under the same key answers the stored response while a
    * changed body 409s key-reuse. 409/422/429 propagate as ApiError for the
@@ -818,8 +808,7 @@ export class DeveloperApi {
   }
 
   /**
-   * Withdraw the `{sequence}` version from review (DeveloperAppController.php
-   * `withdraw`): in_review → development with the server-written note.
+   * Withdraw the `{sequence}` version from review: in_review → development with the server-written note.
    * 200 `data.withdrawn_version.{version, sequence, review_status,
    * review_note}`.
    */

@@ -10,7 +10,7 @@ import { FIXTURE_THEME } from './helpers.js';
 
 const SKELETON_STORE = resolve(import.meta.dirname, '../src/data/skeleton-store.json');
 const STARTER_DEMO = resolve(import.meta.dirname, '../../../fixtures/starter/theme/demo.json');
-/** A hand-edited theme config, copied from the storefront's themes/medley/theme.config.ts: the fixture the AST edits prove themselves on. */
+/** A hand-edited theme config (the medley theme's): the fixture the AST edits prove themselves on. */
 const MEDLEY_FIXTURE = resolve(import.meta.dirname, '../../../fixtures/medley-theme.config.ts');
 
 /** Added vs removed lines (LCS): small files only, no `diff` binary. */
@@ -99,7 +99,7 @@ describe('config edits', () => {
 
   // A Windows checkout (and many Windows editors) writes CRLF. The edit must land in
   // the same place and keep the file's own line endings — Windows CI caught a
-  // CRLF config getting its neighbouring lines rewritten (29/9/26).
+  // CRLF config getting its neighbouring lines rewritten.
   it('edits a CRLF config exactly as it edits the LF one, keeping CRLF', () => {
     const crlf = (text: string): string => text.replace(/\r?\n/g, '\r\n');
     const lf = (text: string): string => text.replace(/\r\n/g, '\n');

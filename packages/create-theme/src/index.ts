@@ -15,11 +15,11 @@ export { appendDemoEntry, setDesignLabel } from './config-edit.js';
 export { planAddTemplate, planAddDesign, planAddPage, applyAddPlan, vocabularyLists, type AddPlan } from './add.js';
 export { clackPrompter, templateOptions } from './prompts.js';
 export { bundledLists, cachedLists, createLists, getActiveLists, setActiveLists, SHOP_HINT, SHOP_KEY, SHOP_LABEL, type BusinessLists, type BusinessOption, type ListsData } from './lists.js';
-/** The rename `npm create` applies to the starter, for tools that copy a theme under a new name (Queek's `yarn theme:new`). */
+/** The rename `npm create` applies to the starter, for tools that copy a theme under a new name. */
 export { renameTheme, SKELETON, type Identity } from './rename.js';
 
 const VERSION = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
-/** The starter this release was tested with: its tag matches this package's version (`yarn starter:publish --tag`). */
+/** The starter this release was tested with: its tag matches this package's version. */
 export const STARTER = `github:usequeek/theme-starter#v${VERSION}`;
 
 export function detectPackageManager(userAgent = process.env.npm_config_user_agent ?? ''): PackageManager {

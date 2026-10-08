@@ -27,7 +27,7 @@ const SUBMIT_BODY = {
   acknowledged_warnings: [],
 };
 
-/** Envelope the backend wears: {status, message, data} (Controller.php:21). */
+/** Envelope the API wears: {status, message, data}. */
 const ok = (data: unknown): [number, unknown] => [200, { status: 'success', message: 'ok', data }];
 const fail = (status: number, error: string, errorType = 'error'): [number, unknown] => [
   status,
@@ -204,7 +204,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     });
   });
 
-  it('never throws on slow_down/429: null + onSlowDown, keeps polling (B1)', async () => {
+  it('never throws on slow_down/429: null + onSlowDown, keeps polling', async () => {
     let slowed = 0;
     const fetchImpl: FetchImpl = vi.fn(async () => ({
       ok: false, status: 400, json: async () => ({ error: 'slow_down', error_description: 'Polling too fast; slow down.' }),
@@ -219,7 +219,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(slowed).toBe(2);
   });
 
-  it('lists dev stores + creates one with test_data and Idempotency-Key (S-A contract, D1)', async () => {
+  it('lists dev stores + creates one with test_data and Idempotency-Key', async () => {
     const store = { id: 7, p_id: 12, name: 'Hello dev', slug: 'hello-dev', storefront_url: 'https://hello-dev.example.com', admin_url: 'https://admin.example.com/store/hello-dev', created_at: '2026-09-29T00:00:00Z', storefront_password: 'dev-pass-123' };
     const { fetchImpl, calls } = mockFetch({
       'GET /api/v1/biz/vendor/developer/dev-stores?per_page=50&page=1': [200, { status: 'success', message: 'ok', data: { data: [store], meta: { total: 1 } } }],
@@ -235,7 +235,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     await expect(api.createDevStore('x'.repeat(61), true, 'key-2')).rejects.toThrow('allows 60');
   });
 
-  it('sends an explicit slug (R2 --dev-store-address), omits it for the backend default', async () => {
+  it('sends an explicit slug (--dev-store-address), omits it for the server default', async () => {
     const store = { id: 7, p_id: 12, name: 'Hello dev', slug: 'hello-dev', storefront_url: null, admin_url: null, created_at: null };
     const { fetchImpl, calls } = mockFetch({
       'POST /api/v1/biz/vendor/developer/dev-stores': [201, { status: 'success', message: 'Dev store created.', data: store }],
@@ -408,7 +408,7 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(apiFailureOf(error)).toMatchObject({ status: 409, errorType: 'already_submitted' });
   });
 
-  it('matches the real idempotency envelopes (lowercase error_code, ApiError.php:222)', async () => {
+  it('matches the real idempotency envelopes (lowercase error_code)', async () => {
     const api = new DeveloperApi('https://api.test', {
       fetchImpl: mockFetch({
         'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/submit': [

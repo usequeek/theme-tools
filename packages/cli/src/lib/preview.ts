@@ -9,7 +9,7 @@ import type { Project } from './project.js';
 const TEMPLATE = fileURLToPath(new URL('../../templates/preview', import.meta.url));
 
 /**
- * The design resolver the preview groups stores with (contract R2.8), as the
+ * The design resolver the preview groups stores with, as the
  * theme-check this CLI installed publishes it. It imports nothing, so it is
  * copied into the preview rather than imported there: the developer's project
  * need not resolve @usequeek/theme-check itself (under pnpm it cannot).

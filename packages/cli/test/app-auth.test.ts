@@ -34,7 +34,7 @@ describe('CLI auth storage', () => {
     expect(automationToken()).toBeUndefined();
     process.env.QUEEK_APP_AUTOMATION_TOKEN = 'auto-tok';
     expect(automationToken()).toBe('auto-tok');
-    // The personal override is gone (Shopify has none): only the session file counts.
+    // The personal override is gone: only the session file counts.
     process.env.QUEEK_CLI_TOKEN = 'legacy';
     expect(await readSession()).toBeNull();
   });

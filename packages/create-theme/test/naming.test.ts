@@ -19,7 +19,7 @@ describe('slugify', () => {
 });
 
 describe('slugProblem', () => {
-  it("accepts a slug theme:pull accepts, and refuses Queek's own", () => {
+  it("accepts a valid slug, and refuses Queek's own", () => {
     expect(slugProblem('mo-laundry')).toBeNull();
     expect(slugProblem('medley')).toBe('"medley" is one of Queek\'s own themes. Choose another name.');
     expect(slugProblem('x')).toMatch(/2 to 31/);
@@ -43,14 +43,14 @@ describe('prefixFor', () => {
 });
 
 describe('planTemplates', () => {
-  it('puts the main template first as default, the rest under their key, without duplicates; each template keyed by its business (R2.8)', () => {
+  it('puts the main template first as default, the rest under their key, without duplicates; each template keyed by its business', () => {
     expect(planTemplates(['foods', 'laundry', 'foods'], 'laundry')).toEqual([
       { id: 'default', key: 'laundry', template: 'laundry', label: 'Laundry', for: ['laundry'], primary: true },
       { id: 'foods', key: 'foods', template: 'foods', label: 'Foods', for: ['foods'], primary: false },
     ]);
   });
 
-  it('keeps a niche template niche: no business category in its for (R2.7)', () => {
+  it('keeps a niche template niche: no business category in its for', () => {
     expect(planTemplates(['wigs-extensions-hair-accessories'])[0].for).toEqual(['wigs-extensions-hair-accessories']);
   });
 

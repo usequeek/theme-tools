@@ -135,7 +135,7 @@ const newlineOf = (source: string): string => (source.includes('\r\n') ? '\r\n' 
 /**
  * Edit a CRLF file (a Windows checkout, many Windows editors) as LF and give it back
  * as CRLF. The parser's node offsets do not line up with a CRLF source, so an edit
- * spliced at them lands mid-line and rewrites its neighbours (Windows CI, 29/9/26).
+ * spliced at them lands mid-line and rewrites its neighbours.
  */
 function preservingLineEndings(source: string, edit: (lf: string) => string): string {
   if (!source.includes('\r\n')) return edit(source);

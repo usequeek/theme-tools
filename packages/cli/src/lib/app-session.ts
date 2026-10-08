@@ -75,10 +75,8 @@ function waitForCode(server: Server, redirectUri: string, state: string, timeout
 }
 
 /**
- * Browser login against the reused connector OAuth machinery
- * (routes/web.php:110 `oauth/authorize` → AgentOAuthController.php:33;
- * loopback redirect per RFC 8252, AgentOAuthService.php:580). Returns the
- * saved session's storage for the receipt.
+ * Browser login through `oauth/authorize` with a loopback redirect (RFC
+ * 8252). Returns the saved session's storage for the receipt.
  */
 export async function browserLogin(api: DeveloperApi, base: string, io: FlowIO): Promise<'keychain' | 'file'> {
   const verifier = base64url(randomBytes(32));
@@ -98,8 +96,8 @@ export async function browserLogin(api: DeveloperApi, base: string, io: FlowIO):
   }
   const port = (address as { port: number }).port;
   const redirectUri = `http://127.0.0.1:${port}/callback`;
-  // Exact authorize shape (AuthorizeRequest.php): client_id, redirect_uri,
-  // response_type=code, S256 challenge, scope, state.
+  // The authorize request: client_id, redirect_uri, response_type=code,
+  // S256 challenge, scope, state.
   const authorize = new URL(`${base}/oauth/authorize`);
   authorize.searchParams.set('client_id', 'cli');
   authorize.searchParams.set('redirect_uri', redirectUri);
@@ -130,11 +128,10 @@ const realClock: DeviceClock = {
 };
 
 /**
- * Headless device fallback (routes/web.php:122-123 → AgentOAuthController
- * deviceCode:84 / deviceStatus:97): the dashboard approves the shown
- * user code; the poll returns the token pair once, single-use. RFC 8628
- * §3.5: `slow_down`/429 grows the interval by 5s (capped) and the poll
- * keeps waiting until expiry — neither ever throws (B1).
+ * Headless device fallback: the dashboard approves the shown user code; the
+ * poll returns the token pair once, single-use. RFC 8628 §3.5:
+ * `slow_down`/429 grows the interval by 5s (capped) and the poll keeps
+ * waiting until expiry — neither ever throws.
  */
 export async function deviceLogin(api: DeveloperApi, io: FlowIO, clock: DeviceClock = realClock): Promise<'keychain' | 'file'> {
   const issued = await api.deviceCode();

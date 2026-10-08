@@ -26,7 +26,7 @@ describe('setupTheme', () => {
     expect(config.match(/description: 'Replace before publishing\./g)).toHaveLength(3);
   });
 
-  it('declares every design with its template key (R2.8): the main one by its business, never an id suffix', () => {
+  it('declares every design with its template key: the main one by its business, never an id suffix', () => {
     const config = readFileSync(join(dir, 'theme/theme.config.ts'), 'utf8');
     expect(config).toMatch(/default_demo: \{\n\s+template: 'laundry',\n\s+label: 'Laundry',/);
     expect(config).toContain("id: 'foods', template: 'foods'");
