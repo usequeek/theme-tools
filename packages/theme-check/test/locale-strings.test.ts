@@ -340,7 +340,7 @@ describe('locale helpers', () => {
     expect(localeCodeOfFile('fr.txt')).toBeNull();
   });
 
-  it('ships a tiny documented brand-name allowlist for G0-enforce', () => {
+  it('ships a tiny documented brand-name allowlist for the enforce rules', () => {
     expect(BRAND_NAMES.length).toBeGreaterThan(0);
     expect(BRAND_NAMES.length).toBeLessThanOrEqual(20);
     for (const token of ['Queek', 'WhatsApp', 'NGN', 'kg']) expect(BRAND_NAMES).toContain(token);

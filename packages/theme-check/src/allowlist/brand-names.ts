@@ -3,8 +3,8 @@ import data from './brand-names.json' with { type: 'json' };
 /**
  * Brand and unit tokens that may legitimately stay untranslated in theme UI
  * strings — product/brand names, payment rails, currency codes and units.
- * Shared helper for the locale rules; the G0-enforce slice (no hard-coded
- * strings in JSX) reuses this list so it never flags these tokens.
+ * Shared helper for the locale rules; the no-hard-coded-strings rule reuses
+ * this list so it never flags these tokens.
  */
 export const BRAND_NAMES: readonly string[] = [
   ...data.brands,

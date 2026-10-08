@@ -1,15 +1,14 @@
 /**
  * Image references inside a theme's `demo.json`.
  *
- * Three consumers must never disagree about what counts as an image: the
- * rehost command (what to upload and rewrite), `/api/theme-registry` (what to
- * publish as `variant_images`, and what to refuse to serve), and the CI
- * assertion that keeps foreign art out of the tree. They all read from here.
+ * Every consumer must agree on what counts as an image: the rehost step
+ * (what to upload and rewrite), the registry (what to publish as
+ * `variant_images`, and what to refuse to serve), and the check that keeps
+ * foreign art out of a theme. They all read from here.
  *
- * Collection walks VALUES, not field names — 26 references in
- * `themes/default/demo.json` are bare elements of `products[].media.gallery`
- * with no field name at all. But a value walk alone over-collects: `url`
- * carries section art (342 of them) AND social links
+ * Collection walks VALUES, not field names — some references are bare
+ * elements of `products[].media.gallery` with no field name at all. But a
+ * value walk alone over-collects: `url` carries section art AND social links
  * (`https://instagram.com/theglowedit`), so every value is classified rather
  * than assumed to be an image.
  */

@@ -54,7 +54,7 @@ describe('business vocabulary', () => {
   });
 });
 
-describe('theme/template-business order (R2.7)', () => {
+describe('theme/template-business order', () => {
   it('rejects a named business category behind a catalogue key; passes general and niche', async () => {
     const found = await templateBusinessRule.run(context({
       defaultFor: ['makeup', 'beauty-cosmetics'],
@@ -115,7 +115,7 @@ describe('theme/template-copy', () => {
       'Always in season: tomatoes and peppers', 'Open the box on Friday', 'Tape measures and rulers',
       '100 percent cotton', 'Twenty percent more in every jar',
     ]) {
-      // BE30b: a named service ("Made to measure", "Alterations…") is a claim even without a window.
+      // A named service ("Made to measure", "Alterations…") is a claim even without a window.
       expect(copyViolations(text, null), text).toEqual([]);
     }
   });
@@ -185,9 +185,8 @@ describe('theme/template-copy', () => {
     expect(copyViolations('Ships the same day', null)).toEqual([expect.stringMatching(/^makes a promise/)]);
   });
 
-  // Ported from the storefront's tests/theme-templates.test.ts describe('template copy'):
-  // its review of 24/9/26 ran these through the gate, and a pattern change
-  // that breaks either list must fail here instead of in the storefront.
+  // Real demo copy ran through the gate: a pattern change that breaks either
+  // list must fail here.
   it('finds places, naira amounts and promises; not the craft', () => {
     expect(copyViolations('Hot across Surulere and VI', null)).toEqual(['names places (VI, Surulere)']);
     expect(copyViolations('Free delivery over ₦25,000', null)).toEqual(['states a naira amount', 'makes a promise ("Free delivery")']);
@@ -208,8 +207,8 @@ describe('theme/template-copy', () => {
     }
   });
 
-  // The review of 24/9/26 ran these through the gate: each list is what it must catch
-  // and what it must leave alone. A pattern change that breaks either fails here.
+  // Each list is what a pattern must catch and what it must leave alone.
+  // A pattern change that breaks either fails here.
   it.each([
     'Save 20% with code RAINS20', 'code ADAORA10 takes 10% off', 'Up to 25% off duos and trios',
     'Half-Price Luxury', 'Half price Friday', 'Shop the sale', 'The clearance sale is on', 'Sale ends Sunday midnight',
@@ -237,7 +236,7 @@ describe('theme/template-copy', () => {
     'Free-range eggs', 'Hands-free cooking', 'Ready to wear', 'Always in season: tomatoes and peppers',
     'Open the box on Friday', 'Tape measures and rulers',
   ])('leaves %s alone', (text) => {
-    // BE30b: a named service ("Made to measure", "Alterations…") is a claim even without a window.
+    // A named service ("Made to measure", "Alterations…") is a claim even without a window.
     expect(copyViolations(text, null)).toEqual([]);
   });
 
@@ -371,7 +370,7 @@ describe('theme/template-copy', () => {
     expect(found[0].where?.startsWith(`${ctx.env.root}manifest.ts →`)).toBe(true);
   });
 
-  it('lets demo sections persuade — claims pass in section copy, the store\'s identity does not (BE32)', async () => {
+  it('lets demo sections persuade — claims pass in section copy, the store\'s identity does not', async () => {
     const found = await templateCopyRule.run(context({
       manifest: { slug: 'x', variants } as unknown as ThemeContext['manifest'],
       demos: [store([
@@ -387,7 +386,7 @@ describe('theme/template-copy', () => {
     expect(found[0].fix).not.toContain('certified or free from');
   });
 
-  it('reads section copy by the section scope and manifest text by every rule (BE32)', () => {
+  it('reads section copy by the section scope and manifest text by every rule', () => {
     for (const text of ['Cruelty-free, always', 'Book a *fitting*', 'Made in small *batches*', 'New sets added weekly', 'Twenty percent off every set', 'Off the peg, altered free']) {
       expect(copyViolations(text, null, 'section'), text).toEqual([]);
       expect(copyViolations(text, null), text).not.toEqual([]);
@@ -414,7 +413,7 @@ describe('theme/template-copy', () => {
     expect(await templateCopyRule.run(withManifest([announced('New arrivals are in', true)]))).toEqual([]);
   });
 
-  it('rejects production claims — how the store makes things (BE30)', () => {
+  it('rejects production claims — how the store makes things', () => {
     for (const text of [
       'Every jar is filled by hand in our studio',
       'Made in small batches', 'Small-batch roasting',
@@ -434,7 +433,7 @@ describe('theme/template-copy', () => {
     );
   });
 
-  it('does not mistake products and use for production claims (BE30)', () => {
+  it('does not mistake products and use for production claims', () => {
     for (const text of [
       'Hand cream and body lotion', 'Handbags and wallets', 'Second-hand phones', 'Hands-free cooking',
       'Studio lighting kits', 'Kitchen tools and pans', 'Lab coats and scrubs', 'Workshop tools',
@@ -444,7 +443,7 @@ describe('theme/template-copy', () => {
     }
   });
 
-  it('rejects turnarounds — how fast the store promises things (BE30)', () => {
+  it('rejects turnarounds — how fast the store promises things', () => {
     for (const text of [
       'One fitting, ten days', 'Ready in 3 days',
       'Made to order in two weeks',
@@ -460,7 +459,7 @@ describe('theme/template-copy', () => {
     }
   });
 
-  it('does not mistake process durations and product facts for turnarounds (BE30)', () => {
+  it('does not mistake process durations and product facts for turnarounds', () => {
     for (const text of [
       'Sourdough fermented for 36 hours', 'Dry-aged for 28 days', 'Aged 30 days in oak',
       'Steeped for two weeks', 'Marinated for 24 hours', 'The 30-day skin plan',
@@ -470,7 +469,7 @@ describe('theme/template-copy', () => {
     }
   });
 
-  it('rejects named services — bookings, consultations, bespoke, made to measure, fittings, alterations, in-house making (BE30b)', () => {
+  it('rejects named services — bookings, consultations, bespoke, made to measure, fittings, alterations, in-house making', () => {
     for (const text of [
       'Book a fitting', 'Book a *fitting*',
       'Book an appointment', 'Book An *Appointment*', 'Sunday by appointment',
@@ -485,7 +484,7 @@ describe('theme/template-copy', () => {
       'Fitted in-house', 'Cut *in-house*', 'Blended in-house, bottled in small runs',
       'Dew, bottled *in-house*', 'our in-house team', 'cut and styled in-house by our stylists',
       'Real wax prints tailored in-house',
-      // wider than the audit's own lines: other articles, one adjective, bare bespoke, made in-house
+      // other articles, one adjective, bare bespoke, made in-house
       'Book your fitting', 'Book an install', 'Try pieces on, or book a bespoke consultation',
       'After something *Bespoke*?', 'Made in-house', 'Every jacket gets two fittings',
       // emphasis asterisks inside a phrase: every pattern reads the words without them
@@ -503,7 +502,7 @@ describe('theme/template-copy', () => {
     }
   });
 
-  it('rejects restock days and working-day turnarounds (BE30b)', () => {
+  it('rejects restock days and working-day turnarounds', () => {
     for (const text of [
       'New sets added weekly', 'Restocked every Friday', 'Retros return *Friday*',
       'Ten working days, pressed and bagged', 'Units made to your head size in 5 working days',
@@ -515,7 +514,7 @@ describe('theme/template-copy', () => {
     }
   });
 
-  it('does not mistake hardware, products, verbs and ordinary words for services (BE30b)', () => {
+  it('does not mistake hardware, products, verbs and ordinary words for services', () => {
     for (const text of [
       'Solid brass fittings', 'Light fittings and fixtures', 'Pipe fittings and valves',
       'Fitted sheets and pillowcases', 'A close-fitting knit',
@@ -531,7 +530,7 @@ describe('theme/template-copy', () => {
     }
   });
 
-  it('reports an on-the-house fitting once, and a measured turnaround once (BE30b)', () => {
+  it('reports an on-the-house fitting once, and a measured turnaround once', () => {
     expect(copyViolations('A fitting, *on the house*', null)).toHaveLength(1);
     expect(copyViolations('Made to measure in ten days', null)).toHaveLength(1);
   });
@@ -568,7 +567,7 @@ describe('theme/template-business', () => {
 const home = (...slots: string[]) => ({ pages: { home: { content: slots.map((slot) => ({ type: slot.split('/')[0], variant: slot.split('/')[1] })) } } });
 
 describe('theme/template-versions', () => {
-  it("rejects two designs with the same home, and no longer reads an id's -2 (R2.8: theme/template-designs groups)", async () => {
+  it("rejects two designs with the same home, and no longer reads an id's -2 (theme/template-designs groups)", async () => {
     const found = await templateVersionsRule.run(context({
       demos: [
         { id: 'default', file: 'demo.json', data: home('gallery/slider', 'products/grid') },
@@ -583,10 +582,10 @@ describe('theme/template-versions', () => {
   });
 });
 
-/* ── R2.8: theme → template → design ─────────────────────────────────── */
+/* ── Theme → template → design ───────────────────────────────────────── */
 
 type Design = Record<string, unknown>;
-/** Medley-shaped (contract R2.8): a main template and a two-design Food template. */
+/** Medley-shaped: a main template and a two-design Food template. */
 const MAIN: Design = { template: 'beauty', label: 'Skincare & make-up', design_label: 'Photo collage', for: ['beauty-cosmetics', 'makeup'] };
 const FOOD: Design = { id: 'food', template: 'food', label: 'Restaurant & kitchen', design_label: 'Dining room', for: ['foods'] };
 const FOOD_2: Design = { id: 'food-2', template: 'food', design_label: 'Neighbourhood buka' };
@@ -671,7 +670,7 @@ describe('theme/template-designs', () => {
     ]);
   });
 
-  it('rejects a design_label that is not true of any store (R2.6 copy rules)', async () => {
+  it('rejects a design_label that is not true of any store (copy rules)', async () => {
     expect(await designFindings(MAIN, [FOOD, { ...FOOD_2, design_label: 'Lekki kitchen' }])).toEqual(['design "food-2" design_label: names a place (Lekki)']);
     expect(await designFindings(MAIN, [FOOD, { ...FOOD_2, design_label: "Mama Tee's buka" }], { 'food-2': "Mama Tee's" })).toEqual([
       'design "food-2" design_label: names the store ("Mama Tee\'s")',
@@ -679,7 +678,7 @@ describe('theme/template-designs', () => {
     expect(await designFindings(MAIN, [FOOD, { ...FOOD_2, design_label: '₦5,000 trays' }])).toEqual(['design "food-2" design_label: states a naira amount']);
   });
 
-  it('rejects a 4th design of one template (R2.2 allows three)', async () => {
+  it('rejects a 4th design of one template (three is the limit)', async () => {
     const third: Design = { id: 'food-3', template: 'food', design_label: 'Grill house' };
     const found = await templateDesignsRule.run(declaring(MAIN, [FOOD, FOOD_2, third, { id: 'food-4', template: 'food', design_label: 'Night market' }]));
     expect(found.map((f) => f.found)).toEqual(['template "food" has 4 designs; a template has at most 3']);
@@ -692,7 +691,7 @@ describe('theme/template-designs', () => {
   });
 });
 
-describe('theme/demo-stores (R2.8)', () => {
+describe('theme/demo-stores', () => {
   it("asks label and for of a template's design 1 only; a later design inherits them", async () => {
     const found = await demoStoresRule.run(declaring(MAIN, [without(FOOD, 'label'), FOOD_2]));
     expect(found.map((f) => f.found)).toEqual(['demos[] "food" has no label']);
@@ -705,7 +704,7 @@ describe('theme/demo-stores (R2.8)', () => {
   });
 });
 
-describe('theme/template-business (R2.8)', () => {
+describe('theme/template-business', () => {
   it("checks each template's for once, by its design 1", async () => {
     const found = await templateBusinessRule.run(declaring(MAIN, [{ ...FOOD, for: ['jewellery'] }, { ...FOOD_2, for: ['jewellery'] }]));
     expect(found.map((f) => [f.found, f.where])).toEqual([
@@ -714,7 +713,7 @@ describe('theme/template-business (R2.8)', () => {
   });
 });
 
-describe('theme/template-business shop advisory (R2.9)', () => {
+describe('theme/template-business shop advisory', () => {
   it('warns, never rejects, when a template names only shop; a specific for is quiet', async () => {
     const warned = await templateBusinessRule.run(context({ defaultFor: ['shop'] }));
     expect(warned).toHaveLength(1);
@@ -741,7 +740,7 @@ describe('theme/template-business shop advisory (R2.9)', () => {
   });
 });
 
-describe('theme/composition-variants (BE19)', () => {
+describe('theme/composition-variants', () => {
   const manifest = { slug: 'x', variants: { gallery: [{ id: 'mosaic' }, { id: 'slider' }], products: [{ id: 'grid' }] } } as unknown as ThemeContext['manifest'];
   const store = (id: string, file: string, content: unknown): DemoStore => ({ id, file, data: { pages: { home: { content } } } });
 
@@ -878,18 +877,18 @@ describe('theme/core-boundary: the framework stays behind the kit', () => {
 
   it("rejects an `@/` app-code import in every module form, even in .mjs", async () => {
     const dir = mkdtempSync(join(tmpdir(), 'boundary-alias-'));
-    writeFileSync(join(dir, 'a.ts'), "import { useClientState } from '@/lib/storefront/hooks/use-client-state';\n");
-    writeFileSync(join(dir, 'b.ts'), "export { useClientState } from '@/lib/storefront/hooks/use-client-state';\n");
-    writeFileSync(join(dir, 'c.ts'), "const mod = await import('@/lib/storefront/hooks/use-client-state');\n");
-    writeFileSync(join(dir, 'd.ts'), "const mod = require('@/lib/storefront/hooks/use-client-state');\n");
-    writeFileSync(join(dir, 'e.mjs'), "import '@/lib/storefront/hooks/use-client-state';\n");
+    writeFileSync(join(dir, 'a.ts'), "import { useClientState } from '@/lib/hooks/use-client-state';\n");
+    writeFileSync(join(dir, 'b.ts'), "export { useClientState } from '@/lib/hooks/use-client-state';\n");
+    writeFileSync(join(dir, 'c.ts'), "const mod = await import('@/lib/hooks/use-client-state');\n");
+    writeFileSync(join(dir, 'd.ts'), "const mod = require('@/lib/hooks/use-client-state');\n");
+    writeFileSync(join(dir, 'e.mjs'), "import '@/lib/hooks/use-client-state';\n");
 
     const findings = await sdkBoundaryRule.run({ ...context({}), dir });
 
     expect(findings).toHaveLength(5);
     for (const finding of findings) {
       expect(finding).toMatchObject({ rule: 'theme/core-boundary', severity: 'reject' });
-      expect(finding.found).toContain('@/lib/storefront/hooks/use-client-state');
+      expect(finding.found).toContain('@/lib/hooks/use-client-state');
       expect(finding.fix).toContain('@usequeek/theme-kit');
     }
     expect(findings.map((f) => f.where).sort()).toEqual(['a.ts', 'b.ts', 'c.ts', 'd.ts', 'e.mjs']);

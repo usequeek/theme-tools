@@ -12,9 +12,9 @@ import {
 } from '../utils/locale-files.js';
 
 /**
- * G0-enforce (warn-first, configurable like every other warn-capable rule):
- * closes the "forgotten key renders empty in production" hole and the "new
- * hard-coded text drift" hole.
+ * Locale enforcement (warn-first, configurable like every other warn-capable
+ * rule): closes the "forgotten key renders empty in production" hole and the
+ * "new hard-coded text drift" hole.
  *
  * - `theme/locale-key-exists`: every `t('literal.key')` call in TS/TSX must
  *   resolve to the theme's own `locales/en.default.json` or the kit core
@@ -30,14 +30,11 @@ import {
  *   references via `t('…')`.
  * - `theme/no-hardcoded-strings`: JSX text and copy-attribute string
  *   literals that are shopper-visible copy but not routed through `t()`.
- *   The shopper-copy-vs-noise judgement reuses the validated codemod's
- *   logic (`scripts/i18n-codemod.ts` in the storefront repo): the same NEVER
- *   list (routes, URLs, class tokens, currency codes, enum discriminators,
- *   brand/unit allowlist, merchant-data expressions) and the same audited
- *   copy-attribute set.
+ *   Strings that are not shopper copy are skipped: routes, URLs, class
+ *   tokens, currency codes, enum discriminators, the brand/unit allowlist and
+ *   merchant-data expressions. Only a fixed set of copy attributes is read.
  *
- * All three default to `warn` (founder: warn one release, then reject for
- * third parties); `off` drops them, `error` upgrades them.
+ * All three default to `warn`; `off` drops them, `error` upgrades them.
  */
 
 const DOCS = (context: ThemeContext): string => `${context.env.docs}#locales`;
@@ -249,9 +246,9 @@ function normalizeJsxText(s: string): string {
 }
 
 /**
- * Why a raw string is NOT shopper copy (null = may be copy). Mirrors the
- * validated codemod's `skipReasonForValue`: routes, URLs, currency/unit
- * codes, the brand allowlist, identifier/class tokens and CSS values.
+ * Why a raw string is NOT shopper copy (null = may be copy): routes, URLs,
+ * currency/unit codes, the brand allowlist, identifier/class tokens and CSS
+ * values.
  */
 function noiseReason(text: string): string | null {
   const t = text.trim();

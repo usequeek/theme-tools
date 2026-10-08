@@ -1,13 +1,12 @@
 import type { VocabularyView } from './utils/business-vocabulary.js';
 
 /**
- * One definition of "is this theme valid", shared by three consumers: the
- * author's `yarn theme:check`, this repo's CI, and (later) the pull/publish
- * command. The moment validity has two implementations they drift, and an
- * author gets a green locally and a rejection here.
+ * One definition of "is this theme valid", shared by every consumer: the
+ * author's `queek theme check`, CI, and Queek's own submission check. The
+ * moment validity has two implementations they drift, and an author gets a
+ * green locally and a rejection on submit.
  *
- * Rules therefore live in this library and the tests assert over it — not the
- * other way round, which is where five of these gates started.
+ * Rules therefore live in this library and the tests assert over it.
  */
 
 /**
@@ -63,7 +62,7 @@ export interface DemoStore {
 }
 
 /**
- * A `demos[]` entry in theme.config.ts: one design (contract R2.8). A theme is
+ * A `demos[]` entry in theme.config.ts: one design. A theme is
  * the look, a template is a business it is dressed as, and a design is one
  * concrete store of a template — one demo file.
  */

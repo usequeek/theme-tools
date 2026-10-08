@@ -1,5 +1,5 @@
 /**
- * Theme → template → design (queek_backend contract R2.8).
+ * Theme → template → design.
  *
  * A theme is the look. A template is a business the theme is dressed as
  * (medley's Food), and a design is one concrete store of it, one demo file:
@@ -25,14 +25,11 @@
  *
  * Tolerant where theme-check is strict: a design without a valid `template` is
  * a template of its own, keyed by its id, and a main design without one has no
- * key (so no gallery). A config written before R2.8 previews and publishes as
- * it did.
+ * key (so no gallery). A config that omits `template` previews and publishes
+ * as it always did.
  *
- * One resolver for every consumer: the registry, the design index the proxy
- * and the preview read, both copies of theme-check, and the CLI. So it
- * imports nothing. `yarn tools:sync-lists` copies this file byte for byte to
- * theme-tools (packages/theme-check/src/utils/theme-designs.ts), and a copy
- * that drifts fails `yarn tools:sync-lists --check`. Change it here, then sync.
+ * One resolver for every consumer: the registry, the preview, theme-check and
+ * the CLI. So it imports nothing.
  */
 
 /** The id `demo.json` goes by: the main template's first design. Equal to theme-demos.ts's PRIMARY_DEMO_ID. */
@@ -50,7 +47,7 @@ export interface DesignDeclaration {
   label?: string;
   /** What tells this design from its template's others: `Neighbourhood buka`. */
   design_label?: string;
-  /** The template's business, in lib/storefront/business-vocabulary.json. Declared on design 1. */
+  /** The template's business, from the business vocabulary. Declared on design 1. */
   for?: string[];
   /** What an AI reads to choose this design for a merchant (≤ 300 chars). */
   description?: string;
@@ -68,7 +65,7 @@ export interface ThemeDesignsConfig {
 export interface ThemeDesign {
   /** `default` for demo.json, else the name of its demos/<id>.json. Never renamed once shipped. */
   id: string;
-  /** Its template's key. Null only for a main design that declares none (a config written before R2.8). */
+  /** Its template's key. Null only for a main design that declares none (a config that omits `template`). */
   template: string | null;
   /** The template's label (design 1's `label`). */
   templateLabel: string;
@@ -90,7 +87,7 @@ export interface ThemeTemplate {
   designs: ThemeDesign[];
 }
 
-/** One theme in themes/design-index.json. */
+/** One theme in the design index. */
 export interface DesignIndexEntry {
   /** The main template's key: `/<slug>~<main>` is demo.json once the theme has a gallery. */
   main: string | null;
@@ -105,7 +102,7 @@ export interface DesignIndexTemplate {
   designs: Array<{ id: string; label: string }>;
 }
 
-/** themes/design-index.json: every active theme, by slug. */
+/** The design index: every active theme, by slug. */
 export type DesignIndex = Record<string, DesignIndexEntry>;
 
 interface Declared {
@@ -225,7 +222,7 @@ export function mainTemplateKey(config: ThemeDesignsConfig | null | undefined): 
   return templateKey(config?.default_demo?.template);
 }
 
-/** The theme's entry in themes/design-index.json. */
+/** The theme's entry in the design index. */
 export function designIndexEntry(config: ThemeDesignsConfig | null | undefined): DesignIndexEntry {
   return {
     main: mainTemplateKey(config),

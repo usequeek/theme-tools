@@ -2,10 +2,10 @@
  * The business vocabulary a template's `for` speaks (business-vocabulary.json):
  * the service slugs a vendor registers as, plus the marketplace catalogue's
  * roots and branches — what tells a wig seller from a makeup seller when both
- * register as beauty. Agreed with the backend; theme-check rejects any other key.
+ * register as beauty. theme-check rejects any other key.
  *
  * The module-level sets describe the bundled snapshot (what offline callers
- * and the storefront's offline tests check against). A resolved vocabulary —
+ * and offline tests check against). A resolved vocabulary —
  * live, cache or file, via `resolveVocabulary()` — travels as a
  * VocabularyView: `vocabularyViewOf(data)`, carried on the ThemeContext so
  * rules never read the module-level import.

@@ -5,15 +5,14 @@
  * and the registry's top-level compositions come from. `demos/<id>.json` are
  * alternatives (the same store shape, different business): roast previewed as
  * a restaurant instead of a coffee house. Each is declared in `theme.config.ts`
- * (`demos: [{ id, label, for }]`) so the registry can publish it and the
- * backend can offer a food vendor the food demo.
+ * (`demos: [{ id, label, for }]`) so the registry can publish it and
+ * Queek can offer a food vendor the food demo.
  *
  * The preview URL carries the demo in the theme segment — `roast~foods` —
  * because that is the one place every route, link and the proxy already
  * agree on. `~` is URL-unreserved and cannot appear in a slug, so the split
- * is unambiguous. Four consumers must never disagree about this: the preview
- * routes, theme-check, the registry generator and the rehost command. They
- * all read from here.
+ * is unambiguous. Every consumer must agree about this: the preview routes,
+ * theme-check, the registry and the rehost step. They all read from here.
  */
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';

@@ -10,7 +10,7 @@
  * notice); only an explicitly pinned `file` that cannot be read or validated
  * throws.
  *
- * Production weakens the ETag to `W/"<v>-br"` (backend 216e0df3 pending), so
+ * Production weakens the ETag to `W/"<v>-br"`, so
  * the conditional GET is built from the stored version, never the raw header:
  * `If-None-Match: "<version>"` (quoted, no `W/`, no suffix).
  */

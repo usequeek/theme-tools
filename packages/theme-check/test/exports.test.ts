@@ -41,7 +41,7 @@ describe('package entry exports the rule-level surface', () => {
     exported.forEach((rule, i) => expect(rule).toBe(pkg.ANALYSIS_RULES[i]));
   });
 
-  it('exports the design resolver (R2.8) the rules group by, and publishes it alone as ./designs', async () => {
+  it('exports the design resolver the rules group by, and publishes it alone as ./designs', async () => {
     const designs = await import('../src/utils/theme-designs.js');
     expect(pkg.designsOf).toBe(designs.designsOf);
     expect(pkg.groupTemplates).toBe(designs.groupTemplates);

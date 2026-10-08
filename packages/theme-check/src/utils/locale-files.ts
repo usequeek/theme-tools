@@ -3,11 +3,10 @@
  * `theme/locale-file-parity`). Pure functions over parsed JSON — no theme
  * context needed, so they unit-test without a fixture theme.
  *
- * The budgets mirror the platform contract: the backend overlay stores
- * `<theme-slug>.<key>` in a varchar(64) column with the slug capped at 23
- * chars, so the dotted key gets the remaining 40; values cap at 1000 chars
- * and files cap at 3400 keys per the Shopify locale docs
- * (https://shopify.dev/docs/themes/architecture/locales).
+ * The budgets follow the platform limits: Queek stores `<theme-slug>.<key>`
+ * in a varchar(64) column with the slug capped at 23 chars, so the dotted key
+ * gets the remaining 40; values cap at 1000 chars and files cap at 3400 keys
+ * (https://docs.usequeek.com/docs/themes/translations).
  */
 
 /** Dotted lowercase key grammar: `scope.thing.state`. No hyphens — see below. */
@@ -15,21 +14,21 @@ export const LOCALE_KEY_PATTERN = /^[a-z0-9]+(\.[a-z0-9]+)*$/;
 
 /**
  * Why no hyphens in key segments: the theme slug already uses hyphens
- * (`[a-z0-9-]`, up to 23 chars) and the backend stores `<slug>.<key>` as one
+ * (`[a-z0-9-]`, up to 23 chars) and Queek stores `<slug>.<key>` as one
  * varchar(64) value. Keeping key segments to `[a-z0-9]` keeps the slug half
  * and the key half visually and programmatically distinct (greppable,
  * splittable on dots), and matches the kit's own dictionary grammar.
  */
 export const LOCALE_KEY_MAX_LENGTH = 40;
 
-/** Translation values cap at 1000 chars (same Shopify limit as the key cap). */
+/** Translation values cap at 1000 chars. */
 export const LOCALE_VALUE_MAX_LENGTH = 1000;
 
-/** At most 3400 translation keys per file (Shopify's locale-file limit). */
+/** At most 3400 translation keys per file. */
 export const LOCALE_FILE_MAX_KEYS = 3400;
 
 /** Doc URL cited for the 3400-key and 1000-char limits. */
-export const LOCALE_LIMITS_DOC_URL = 'https://shopify.dev/docs/themes/architecture/locales';
+export const LOCALE_LIMITS_DOC_URL = 'https://docs.usequeek.com/docs/themes/translations';
 
 /** Theme slug budget: `<slug>.<key>` must fit varchar(64) → 23 + 1 + 40. */
 export const THEME_SLUG_MAX_LENGTH = 23;
@@ -172,7 +171,7 @@ export function leafInterpolationVars(value: unknown): string[] {
   return [];
 }
 
-/** The kit catalogue accepts `fr`, `pt-BR`, … (mirrors its parseLocaleCode). */
+/** The kit catalogue accepts `fr`, `pt-BR`, … (the same grammar as the kit's parseLocaleCode). */
 export const LOCALE_CODE_PATTERN = /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
 export const LOCALE_CODE_MAX_LENGTH = 12;
 

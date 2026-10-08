@@ -1,5 +1,5 @@
 {
-  "$comment": "The only keys a template's `for` may use (theme.config.ts default_demo.for / demos[].for). `services` are the slugs a vendor registers as; `catalogue` is the marketplace product taxonomy, root -> branches, and `subcategories` a branch -> its own children; each key is the Str::slug of the category name. The backend reads a vendor's business from what they actually sell and ranks a specific (branch) match above a broad one. Agreed with queek_backend (storefront-theme-templates-contract.md, R2.1; jewelry R2.5; production snapshot R2.9); change it only together with the backend.",
+  "$comment": "The business keys a template's `for` may use (theme.config.ts default_demo.for / demos[].for): `services` are the slugs a vendor registers as, `catalogue` is the marketplace product taxonomy (roots to branches), and `subcategories` maps a branch to its children, each key being the slug of the category name.",
   "version": "d1f9c8eefc91ed3b2c834345458c62343f465ce6",
   "services": [
     "baby-kids",

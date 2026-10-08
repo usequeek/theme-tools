@@ -5,11 +5,10 @@ import { flattenLocaleEntries } from './utils/locale-files.js';
 /**
  * Kit core dictionary keys the enforce rules accept without a theme entry.
  *
- * CHOICE (documented per the G0-enforce brief): theme-check learns the kit
- * core keys from this generated snapshot — NOT a new dependency. Depending
- * on the kit would drag its React/Next graph into a lint library; reading
- * the kit at install time would couple every check run to whatever kit the
- * theme happens to have installed. Instead `scripts/sync-kit-core-strings.mjs`
+ * theme-check learns the kit core keys from this generated snapshot rather
+ * than a new dependency. Depending on the kit would drag its React/Next graph
+ * into a lint library; reading the kit at install time would couple every
+ * check run to whatever kit the theme happens to have installed. Instead `scripts/sync-kit-core-strings.mjs`
  * regenerates this file from the kit's `locales/en.default.json`, and the
  * drift test in `test/locale-enforce.test.ts` fails when a resolvable kit
  * dictionary disagrees with it.

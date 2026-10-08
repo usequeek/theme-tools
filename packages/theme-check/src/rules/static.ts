@@ -48,7 +48,7 @@ export const structureRule: Rule = {
           docs: `${context.env.docs}#required-files`,
         }));
 
-    // A chrome-only theme (declares no page-block variants — themes/default)
+    // A chrome-only theme (declares no page-block variants)
     // renders one page and lets core supply the rest, so the page-based
     // structure is not its contract. Derived from the manifest, not a name.
     const findings = [
@@ -82,7 +82,7 @@ function storesOf(context: ThemeContext): DemoStore[] {
 }
 
 /**
- * theme.config.ts as the design resolver reads it (contract R2.8): its own
+ * theme.config.ts as the design resolver reads it: its own
  * fields, with `demos` as the context declares them. Never null, so a config
  * that did not load resolves to demo.json alone.
  */
@@ -255,7 +255,7 @@ export const demoArtRule: Rule = {
         finding(context, 'theme/demo-art-hosting', 'reject', {
           where: `${context.env.root}${store.file}`,
           found: `image served from elsewhere: ${ref}`,
-          fix: `Inside this repo, run \`yarn theme:check ${context.slug} --fix\` (or \`yarn theme:rehost-images --theme ${context.slug}\`) and commit the rewritten ${store.file}. Submitting from outside? Leave it — \`theme:pull\` rehosts your art at publish time. Your art reaches real stores through the registry, so it cannot ship on a host we do not control.`,
+          fix: `Rehost the image on Queek media and commit the rewritten ${store.file}. Queek also does this when you submit the theme. Your art reaches real stores through the registry, so it cannot ship on a host Queek does not control.`,
           fixable: true,
           docs: `${context.env.docs}#demo-art-hosting-mandatory`,
         })));
@@ -397,10 +397,10 @@ export const sdkBoundaryRule: Rule = {
       }
 
       // A theme is a self-contained folder: it imports packages and its own
-      // files, never the app around it. `@/` only resolves inside the
-      // storefront repo, and a relative import past the theme root only
-      // resolves there too — both break in a developer's `npm create`
-      // project and in `theme:pull`.
+      // files, never the app around it. `@/` only resolves inside the app that
+      // renders themes, and a relative import past the theme root only
+      // resolves there too — both break in a project made with
+      // `npm create @usequeek/theme`.
       const root = resolve(context.dir);
       for (const spec of moduleSpecifiers(source)) {
         if (spec.startsWith('@/')) {
@@ -489,18 +489,16 @@ export const moduleContractRule: Rule = {
 };
 
 
-/** Mirrors queek_backend `config/category_packs.php` (minus the `_default` fallback). */
+/** The buckets a variant's `best_for` may name. */
 const VALID_BUCKETS = ['food', 'supermarket', 'product', 'pharmacy', 'laundry', 'delivery', 'service', 'gas-refill', 'local_market'];
 /**
  * Chrome renders once per page, so it is never a composed SECTION and demo
  * completeness cannot apply — its best_for/auto_pick are still validated by
  * theme/selection-metadata.
  *
- * A DENYLIST on purpose. This started as an allowlist of four scopes, which
- * meant every scope a theme invented was exempt by default: `contact` was
- * declared by six of seven themes and verified on none, and `blog` likewise.
- * Inverted, a new scope is covered the day it lands and opting out costs a
- * deliberate line here.
+ * A DENYLIST on purpose: with an allowlist, every scope a theme invented
+ * would be exempt by default. As a denylist a new scope is covered the day it
+ * lands, and opting out costs a deliberate line here.
  */
 const CHROME_SCOPES = ['header', 'footer', 'subscribe'];
 
@@ -663,9 +661,9 @@ export const demoBlockTypesRule: Rule = {
 };
 
 /**
- * A composition's variants are ones the theme implements (backend BE19: every
- * beaurify store's blog named gallery/grid, which beaurify does not implement,
- * and the backend refused three templates over it). "Implemented" is the
+ * A composition's variants are ones the theme implements. A blog that names
+ * a variant the theme does not implement (for example gallery/grid) cannot be
+ * published. "Implemented" is the
  * registry's `implemented_variants`: the manifest's declared variants per
  * scope — theme/variant-parity enforces they match the theme's
  * `variantImplementations` map 1:1, so the manifest list is the implemented
@@ -751,7 +749,7 @@ export const identityRule: Rule = {
       finding(context, 'theme/identity', 'reject', {
         where: `${context.env.root}`,
         found: `${where} is "${value}", but the theme directory is "${context.slug}"`,
-        fix: `Set it to "${context.slug}". Your whole stylesheet is scoped to \`.theme-${context.slug}\`, the registry keys entries on manifest.slug (and only WARNS on a mismatch, so a disagreement ships two entries claiming one slug), and the backend syncs by slug. These four have to be one name.`,
+        fix: `Set it to "${context.slug}". Your whole stylesheet is scoped to \`.theme-${context.slug}\`, the registry keys entries on manifest.slug (and only WARNS on a mismatch, so a disagreement ships two entries claiming one slug), and Queek syncs themes by slug. These four have to be one name.`,
         docs: `${context.env.docs}#registration`,
       }));
   },
@@ -763,7 +761,7 @@ export const productMetafieldsRule: Rule = {
   kind: 'static',
   run(context) {
     const source = context.read('pages/product.tsx');
-    // No product page (themes/default renders product details through its
+    // No product page (a chrome-only theme renders product details through its
     // product modal) — there is nowhere to place the section.
     if (source === null) return [];
     if (/<ProductMetafields[\s>]/.test(stripComments(source))) return [];
@@ -855,11 +853,11 @@ function localFooterImports(code: string, file: string): string[] {
   return out;
 }
 
-/* ── Templates: the registry contract the backend builds a store from ─────
-   (queek_backend .agent/TASKS/frontend/storefront-theme-templates-contract.md)
+/* ── Templates: what Queek builds a store from ───────────────────────────
+   (https://docs.usequeek.com/docs/themes/templates-and-designs)
    Every demo store is a template a merchant — or the AI on their behalf — can
-   pick. The backend builds from the one picked, so what it publishes has to
-   be complete and true. */
+   pick. Queek builds the store from the one picked, so what it publishes has
+   to be complete and true. */
 
 /** Every published template, the primary first, with the description it declares. */
 function templatesOf(context: ThemeContext): Array<{ id: string; description: string | null; where: string }> {
@@ -894,7 +892,7 @@ export const templateDescriptionRule: Rule = {
 
 export const templateScreenshotRule: Rule = {
   id: 'theme/template-screenshot',
-  summary: 'Every template has a 1280×800 screenshot, uploaded to R2',
+  summary: 'Every template has a 1280×800 screenshot, uploaded to Queek media',
   kind: 'static',
   run(context) {
     if (context.retired || context.declaredDemos === null) return [];
@@ -918,8 +916,8 @@ export const templateScreenshotRule: Rule = {
       if (lock[file] === url) return [];
       return [finding(context, 'theme/template-screenshot', 'reject', {
         where,
-        found: lock[file] ? 'screenshot changed since it was uploaded — the registry would publish a URL that does not exist yet' : 'screenshot has never been uploaded to R2',
-        fix: `Run \`yarn theme:rehost-images --theme ${context.slug}\` (or \`yarn theme:check ${context.slug} --fix\`) and commit ${SCREENSHOT_LOCK}. The registry publishes the screenshot as an absolute media.usequeek.com URL derived from its bytes.`,
+        found: lock[file] ? 'screenshot changed since it was uploaded — the registry would publish a URL that does not exist yet' : 'screenshot has never been uploaded',
+        fix: `Upload the screenshot to Queek media and commit the updated ${SCREENSHOT_LOCK}, which records the upload. The registry publishes the screenshot as an absolute media.usequeek.com URL derived from its bytes.`,
         fixable: true,
         docs: `${context.env.docs}#templates`,
       })];
@@ -1002,7 +1000,7 @@ export const templateStyleRule: Rule = {
   },
 };
 
-/* ── Round 2 (queek_backend contract R2.1–R2.3, 24/9/26) ───────────────── */
+/* ── Template pages, business keys and design limits ───────────────────── */
 
 type TemplatePage = { content?: Array<{ type?: string; variant?: string | null }> };
 
@@ -1044,7 +1042,7 @@ export const templateBusinessRule: Rule = {
       }
       const unknown = keys.filter((key) => typeof key !== 'string' || !vocabulary.isBusinessKey(key));
       if (unknown.length === 0) {
-        // R2.7: the backend matches the business category a merchant picked at setup
+        // Queek matches the business category a merchant picked at setup
         // first. A general template leads with its category; a niche one (hair, shoes,
         // jewellery) names none, or it competes as a general template.
         const named = (keys as string[]).filter((key) => vocabulary.services.includes(key));
@@ -1057,7 +1055,7 @@ export const templateBusinessRule: Rule = {
             docs: `${context.env.docs}#templates`,
           }));
         }
-        // R2.9: `shop` is for a general store only. A template dressed as a
+        // `shop` is for a general store only. A template dressed as a
         // specific business that names only `shop` matches every general store
         // and no one in particular — advisory (warn), never a reject, so the
         // starter and existing general themes keep passing.
@@ -1084,8 +1082,8 @@ export const templateBusinessRule: Rule = {
 
 /**
  * A page slug's kind: `about-2` → `about`; null for a slug with no `-N`
- * suffix. Only page slugs are numbered (R2.3). Designs are grouped by their
- * explicit `template` (R2.8), never by an id's suffix.
+ * suffix. Only page slugs are numbered. Designs are grouped by their
+ * explicit `template`, never by an id's suffix.
  */
 function pageBase(slug: string): string | null {
   const match = /^(.+)-([2-9])$/.exec(slug);
@@ -1093,7 +1091,7 @@ function pageBase(slug: string): string | null {
 }
 
 // Keeps its id (`theme/template-versions` is API: tools and to-do lists name
-// it); the R2.8 grouping checks are theme/template-designs'.
+// it); the grouping checks are theme/template-designs'.
 export const templateVersionsRule: Rule = {
   id: 'theme/template-versions',
   summary: 'Every design has its own home: no two list the same sections in the same order',
@@ -1126,14 +1124,14 @@ export const templateVersionsRule: Rule = {
   },
 };
 
-/** A template has at most this many designs (contract R2.2). */
+/** A template has at most this many designs. */
 export const TEMPLATE_DESIGNS_MAX = 3;
 
 /**
- * Theme → template → design (contract R2.8). Designs are grouped by the
- * `template` key each one declares, exactly as the registry and the preview
- * group them (utils/theme-designs.ts). The resolver is lenient, so a config
- * written before R2.8 still previews; this rule is where it is strict.
+ * Theme → template → design. Designs are grouped by the `template` key each
+ * one declares, exactly as the registry and the preview group them
+ * (utils/theme-designs.ts). The resolver is lenient, so a config that omits
+ * `template` still previews; this rule is where it is strict.
  */
 export const templateDesignsRule: Rule = {
   id: 'theme/template-designs',
@@ -1183,7 +1181,7 @@ export const templateDesignsRule: Rule = {
         add(where(first.id, 'template'), `template "${key}" has no design 1 (a design whose id is "${key}")`, `Design 1 of a template is the design whose id is its key, so \`/<slug>~${key}\` opens the template. Declare \`{ id: '${key}', template: '${key}', label, for, description }\` with demos/${key}.json, or give "${first.id}" its own id as its \`template\`.`);
       }
       if (count > TEMPLATE_DESIGNS_MAX) {
-        add(where(template.designs[TEMPLATE_DESIGNS_MAX].id, 'template'), `template "${key}" has ${count} designs; a template has at most ${TEMPLATE_DESIGNS_MAX}`, `Keep ${TEMPLATE_DESIGNS_MAX} designs of "${key}" (contract R2.2): drop the rest, or make one a template of another business.`);
+        add(where(template.designs[TEMPLATE_DESIGNS_MAX].id, 'template'), `template "${key}" has ${count} designs; a template has at most ${TEMPLATE_DESIGNS_MAX}`, `Keep ${TEMPLATE_DESIGNS_MAX} designs of "${key}": drop the rest, or make one a template of another business.`);
       }
 
       // `label` and `for` are the template's, declared once on design 1. A later
@@ -1216,7 +1214,7 @@ export const templateDesignsRule: Rule = {
       }
     }
 
-    // A design_label is shown on every store built from the design (R2.6).
+    // A design_label is shown on every store built from the design.
     for (const design of designs) {
       if (design.designLabel === null) continue;
       const name = (context.demos.find((store) => store.id === design.id)?.data?.profile as { name?: unknown } | undefined)?.name;
@@ -1229,7 +1227,7 @@ export const templateDesignsRule: Rule = {
   },
 };
 
-/** The designed pages every template ships (contract R2.3); page versions `-2`… count. */
+/** The designed pages every template ships; page versions `-2`… count. */
 export const TEMPLATE_PAGES = ['about', 'sales', 'landing'] as const;
 
 export const templatePagesRule: Rule = {
@@ -1249,8 +1247,8 @@ export const templatePagesRule: Rule = {
           where,
           found: `template "${store.id}" has no \`${slug}\` page`,
           fix: slug === 'about'
-            ? 'Ship an `about` page whose every section a vendor can fill from real facts or photos (founder story, team, values, timeline, press). Qee clones it for the vendor.'
-            : `Ship a \`${slug}\` page designed for 1–3 products: a products section near the top (a spotlight/featured section takes one product each, a list takes them all), the first hero dressed with their photos, closing on a contact card. Qee clones it and binds the merchant's products.`,
+            ? 'Ship an `about` page whose every section a vendor can fill from real facts or photos (story, team, values, timeline, press). Queek copies it into each new store for the vendor to fill in.'
+            : `Ship a \`${slug}\` page designed for 1–3 products: a products section near the top (a spotlight/featured section takes one product each, a list takes them all), the first hero dressed with their photos, closing on a contact card. Queek copies it into each new store and binds the merchant's own products to it.`,
           docs: `${context.env.docs}#templates`,
         }));
       }
@@ -1263,7 +1261,7 @@ export const templatePagesRule: Rule = {
           findings.push(finding(context, 'theme/template-pages', 'reject', {
             where: `${context.env.root}${store.file} → pages.${key}`,
             found: `the ${kind} page has no products section`,
-            fix: `The backend binds the merchant's named products to every products section on a ${kind} page; with none, the page sells nothing. Put one near the top.`,
+            fix: `Queek binds the merchant's named products to every products section on a ${kind} page; with none, the page sells nothing. Put one near the top.`,
             docs: `${context.env.docs}#templates`,
           }));
           continue;
@@ -1290,7 +1288,7 @@ export const templatePagesRule: Rule = {
   },
 };
 
-/* ── Round 2.6: copy a real store can publish unchanged ───────────────── */
+/* ── Copy a real store can publish unchanged ───────────────────────────── */
 
 /** Every string in a section's copy, with where it sits (`items[2].text`). */
 function copyStrings(value: unknown, path = ''): Array<[string, string]> {
@@ -1305,7 +1303,7 @@ function copyStrings(value: unknown, path = ''): Array<[string, string]> {
  * unchanged — shared by the page-copy, announcement and manifest findings.
  */
 /**
- * Demo section copy (BE32): hidden from a real store's shoppers until the
+ * Demo section copy: hidden from a real store's shoppers until the
  * store rewrites it, so it may persuade — claims, services and how things are
  * made are the demo's to tell. Only the demo store's identity must not carry.
  */
@@ -1315,7 +1313,7 @@ const TEMPLATE_COPY_FIX = 'The setup wizard publishes this copy onto real stores
 
 /**
  * A manifest's template copy: every variant's `purpose` and every field's
- * `note` — the backend's builder fills fields from them, so their words are
+ * `note` — Queek's store builder fills fields from them, so their words are
  * template copy too. A field is `{ type, note }` or the string form
  * (`sticker: 'string (words…, e.g. "Cruelty free")'`: the whole string).
  * Each string reads through `manifestViolations`: claims and schedules count
@@ -1407,7 +1405,7 @@ export const templateCopyRule: Rule = {
   },
 };
 
-/* ── BE8: a vendor's facts never fall back to the theme author's words ── */
+/* ── A vendor's facts never fall back to the theme author's words ──────── */
 
 const VENDOR_FACTS = ['tagline', 'address', 'phone', 'email', 'description'];
 /** `vendor.tagline`, `store?.address`, `profile.phone`… */
@@ -1462,7 +1460,7 @@ export function vendorFactFallbacks(source: string): Array<{ fact: string; words
     const other = TERNARY.test(rest) ? ELSE_WORDS.exec(rest) : null;
     const hit = or ?? other;
     if (!hit) return;
-    // `… ?? vendor.name ?? 'Our story'` never shows: every vendor has a name (backend, BE9).
+    // `… ?? vendor.name ?? 'Our story'` never shows: every vendor has a name.
     if (/\b(?:vendor|store|profile)\??\.name\b/.test(rest.slice(0, hit.index))) return;
     const words = (hit[2] ?? hit[3] ?? '').trim();
     if (words) found.set(`${fact}:${words}`, { fact, words });
@@ -1511,7 +1509,7 @@ export const vendorFactsRule: Rule = {
   },
 };
 
-/* ── Fonts ship as files in the theme (storefront 0d66ed0) ─────────────── */
+/* ── Fonts ship as files in the theme ──────────────────────────────────── */
 
 function themeCssFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -1547,7 +1545,7 @@ export const fontsSelfHostedRule: Rule = {
         findings.push(finding(context, 'theme/fonts-self-hosted', 'reject', {
           where: themePath(context, path),
           found: 'loads a font with @import from fonts.googleapis.com',
-          fix: `Either the bundler drops it (it only survives as the very first rule of the compiled stylesheet), so the font never loads — atelier, deluxr and lumiere shipped that way until 24/9/26 — or it survives and every page load waits on an extra render-blocking request to Google before the text can paint. ${fix}`,
+          fix: `Either the bundler drops it (it only survives as the very first rule of the compiled stylesheet), so the font never loads — or it survives and every page load waits on an extra render-blocking request to Google before the text can paint. ${fix}`,
           docs: `${context.env.docs}#fonts`,
         }));
       }

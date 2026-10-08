@@ -20,10 +20,9 @@ import {
 } from '../utils/locale-files.js';
 
 /**
- * Theme string files (`locales/en.default.json` + `locales/{lang}.json`,
- * Shopify-shaped). Both rules default to `warn` for this first release
- * (founder decision: warn one release, then reject) and are configurable
- * like every other warn-capable rule (`off` drops them, `error` upgrades).
+ * Theme string files (`locales/en.default.json` + `locales/{lang}.json`).
+ * Both rules default to `warn` and are configurable like every other
+ * warn-capable rule (`off` drops them, `error` upgrades).
  */
 
 const LOCALES_DOCS = (context: ThemeContext): string => `${context.env.docs}#locales`;
@@ -87,7 +86,8 @@ function checkStringValue(context: ThemeContext, findings: Finding[], where: str
  * lowercase `scope.thing.state` (`[a-z0-9]+(\.[a-z0-9]+)*`, no hyphens —
  * the slug already uses hyphens, so keys stay hyphen-free to keep
  * `<slug>.<key>` unambiguous), at most 40 chars so `<theme-slug>.<key>`
- * fits the backend overlay's varchar(64) with a ≤23-char slug.
+ * fits the 64-character column Queek stores translations in, with a
+ * ≤23-char slug.
  */
 export const localeKeyNamingRule: Rule = {
   id: 'theme/locale-key-naming',

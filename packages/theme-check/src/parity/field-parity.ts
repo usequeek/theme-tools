@@ -11,17 +11,16 @@ const FRAMEWORK_PROVIDED_FIELDS = new Set([
 /** `fields` is merchant-authored page-block data, written per section. */
 const PAGE_BLOCK_SCOPES = new Set(['content', 'products', 'categories', 'gallery', 'contact', 'faq', 'table', 'blog']);
 /**
- * Theme chrome — set once per store through `manage_theme`, not per page block.
- * A different write path, but the same contract: a chrome variant declares
- * exactly what its component renders, so ManageThemeTool's per-variant gate
- * (`chromeSupports()`, queek_backend) refuses an edit that would render nothing
- * instead of confirming a silent no-op.
+ * Theme chrome — set once per store, not per page block. A different write
+ * path, but the same contract: a chrome variant declares exactly what its
+ * component renders, so Queek refuses an edit to a field the variant does not
+ * render instead of confirming a silent no-op.
  */
 const CHROME_SCOPES = new Set(['header', 'footer', 'subscribe']);
 /**
  * Variants whose configured values never arrive as component props, so a
  * props-read scan cannot see them. Each set is the field list read from the
- * real source, verified against the renderer named beside it — never a guess.
+ * real source of the renderer named beside it.
  */
 const NON_PROP_VARIANT_READS: Record<string, string[]> = {
   // PageRenderer routes the default content block to CoreContentDefaultBlock.
@@ -32,7 +31,7 @@ const NON_PROP_VARIANT_READS: Record<string, string[]> = {
   'subscribe.modal': ['heading', 'tagline', 'cta', 'trigger'],
   // Theme-bespoke subscribe panels live INSIDE the theme's own footer component
   // and read the same `config.apps.subscribe` off context rather than props —
-  // see themes/allure/footers/atelier.tsx and themes/glow/footers/columns.tsx.
+  // the allure `atelier` and glow `columns` footers do exactly this.
   'subscribe.atelier-hero': ['heading', 'tagline', 'cta'],
   'subscribe.glow-benefits': ['heading', 'tagline', 'cta'],
 };
@@ -41,7 +40,7 @@ const NON_PROP_VARIANT_READS: Record<string, string[]> = {
  * Manifest fields are snake_case everywhere (they name the stored config/block
  * key), and `HeaderProps` (@usequeek/theme-kit/types/theme) re-exposes
  * `config.header.show_*` as camelCase React props — so every theme header reads
- * `showCart` for the field the merchant and the backend both call `show_cart`.
+ * `showCart` for the field the merchant and the Queek API both call `show_cart`.
  *
  * The `cta*` pair is migration debt, not a boundary: allure's
  * `gallery/tab-collage` stored `ctaLabel`/`ctaLink` before the snake_case

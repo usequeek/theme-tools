@@ -21,7 +21,7 @@ export type { CheckEnv, Finding, Rule, Severity, ThemeContext, DemoStore, Declar
 export { BUSINESS_KEYS, SERVICE_SLUGS, CATALOGUE, SUBCATEGORIES, ROOT_SERVICE, BUNDLED_VERSION, bundledVocabularyView, vocabularyViewOf, isBusinessKey, businessRoot, type VocabularyView } from './utils/business-vocabulary.js';
 export { TEMPLATE_COPY_PLACES, TEMPLATE_COPY_CLAIMS, TEMPLATE_COPY_SCHEDULES, copyViolations, isTestimonialSection, storeNameForms, type CopyScope } from './utils/template-copy.js';
 export { PRIMARY_DEMO_ID, DEMO_ID_FORMAT, demoFilesOf } from './utils/theme-demos.js';
-// Theme → template → design (contract R2.8): the resolver the registry, the
+// Theme → template → design: the resolver the registry, the
 // preview and these rules share. Also published alone as `@usequeek/theme-check/designs`.
 export {
   designsOf,
@@ -74,8 +74,8 @@ export {
   STARTER_PLACEHOLDER_IMAGES,
 } from './rules/static.js';
 export { ANALYSIS_RULES, variantParityRule, fieldParityRule, designTokensRule } from './rules/analysis.js';
-// Theme string files (G0-naming): naming/shape and file-parity rules, plus
-// the shared helpers (locale budgets, brand allowlist) G0-enforce reuses.
+// Theme string files: naming/shape and file-parity rules, plus the shared
+// helpers (locale budgets, brand allowlist) the enforcement rules reuse.
 export { localeKeyNamingRule, localeFileParityRule, localeInterpolationVars } from './rules/locale-strings.js';
 export { LOCALE_ENFORCE_RULES, localeKeyExistsRule, localeKeyUnusedRule, noHardcodedStringsRule } from './rules/locale-enforce.js';
 export { KIT_CORE_KEYS, KIT_CORE_SOURCE, kitCoreKeysFor } from './kit-core-strings.js';

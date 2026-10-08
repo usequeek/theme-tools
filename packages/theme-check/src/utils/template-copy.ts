@@ -1,5 +1,5 @@
 /**
- * What a template's `copy` may not say (queek_backend contract R2.6).
+ * What a template's `copy` may not say.
  *
  * The merchant setup wizard publishes a template's homepage onto a real store
  * without rewriting it, so its copy must be true of ANY store in that business:
@@ -11,17 +11,17 @@
  * claim only the vendor can make
  * (certifications, testing, free-from and ingredient claims, dietary and faith
  * labels, eco labels and medical effects), no founding date or store age, and
- * no email or phone number. Testimonials and reviews are exempt; the backend
+ * no email or phone number. Testimonials and reviews are exempt; Queek
  * never places their copy on a real store.
  *
- * Each pattern is shaped by what it must NOT catch as much as what it must: a
- * review ran real demo lines through it (24/9/26) — "Cold brewed for 12–24
- * hours" is process, "Delivered in 2 hours" is a promise; "London Dry gin" is a
- * style, "Made in Lagos" is a place. tests/theme-templates.test.ts holds both lists.
+ * Each pattern is shaped by what it must NOT catch as much as what it must:
+ * "Cold brewed for 12–24 hours" is process, "Delivered in 2 hours" is a
+ * promise; "London Dry gin" is a style, "Made in Lagos" is a place.
+ * tests/theme-templates.test.ts holds both lists.
  */
 
 /**
- * Places the demo copy named when it was measured (24/9/26), plus the rest of
+ * Places the sample demo copy names, plus the rest of
  * the country's big cities and Lagos and Abuja districts a new template is
  * likely to reach for. Matched case-sensitively as whole words, so "the island"
  * or "delta" in a sentence are not places. Left out on purpose: "Ankara" (in
@@ -114,7 +114,7 @@ const OFFER = [
   /\b(?<!for )sale\b(?! by the kilo)/i,
   /\b(?:coupon|discount)s?\b/i,
 ];
-/** Manifest notes only (BE32): the same offer spelled out. */
+/** Manifest notes only: the same offer spelled out. */
 const OFFER_SPELLED = [
   // the same offer spelled out: "Twenty percent off", "save fifteen per cent" ("100 percent cotton" is no offer)
   /\b(?:\d{1,3}|five|ten|fifteen|twenty(?:[- ]five)?|thirty|forty|fifty|sixty|seventy)\s?per\s?cent\s?(?:off|discount)\b|\bsave\s+(?:up to\s+)?(?:\d{1,3}|five|ten|fifteen|twenty(?:[- ]five)?|thirty|forty|fifty|sixty|seventy)\s?per\s?cent\b/i,
@@ -151,9 +151,9 @@ const PROMISE = [
   /\b(?:answer\w*|repl(?:y|ies|ied)|respond\w*)\s+(?:fast|quickly|promptly|right away)\b|\b(?:fast|quick|prompt)\s+(?:repl(?:y|ies)|answers?|responses?)\b/i,
   /\b(?:guarantee[ds]?|money[- ]back|warrant(?:y|ies)|no questions asked)\b/i,
 ];
-/** Manifest notes only (BE32). */
+/** Manifest notes only. */
 const PROMISE_FREE_AFTER = [
-  // a service on the house, or handwork thrown in free (BE30b): "A fitting,
+  // a service on the house, or handwork thrown in free: "A fitting,
   // *on the house*", "Off the peg, altered free", "Every trouser is hemmed
   // free". The free word follows the work, so the free-before pattern above
   // never sees it; "Hemming tape and sewing kits" names no free work.
@@ -174,10 +174,9 @@ const STORE_HISTORY = [
 const CONTACT = /[\w.+-]+@[\w-]+\.[a-z]{2,}|\+234[\s\d-]{6,}|\b0[789][01]\d(?:[\s-]?\d){7}\b|\bwa\.me\/\d+/i;
 
 /**
- * Claims only the vendor can make (BE24): a certification, a test, an
- * ingredient or free-from promise, a dietary or faith label, an eco or ethics
- * label, a medical effect. Verbatim from the claim-words list the storefront
- * sweep shares — match case-insensitively (`i`), with the `u` flag.
+ * Claims only the vendor can make: a certification, a test, an ingredient
+ * or free-from promise, a dietary or faith label, an eco or ethics label, a
+ * medical effect. Match case-insensitively (`i`), with the `u` flag.
  *
  * Each pattern is shaped by what it must NOT catch: `\bcures?\b` is "cure" or
  * "cures", never "cured" (bacon is cured in-house) or "manicure"; `\bheals?\b`
@@ -236,7 +235,7 @@ export const TEMPLATE_COPY_CLAIMS: readonly RegExp[] = [
   // medical
   /\bcures?\b/iu,
   /\bheals?\b/iu,
-  // production: how the store makes things (BE30) — "by hand", "in our
+  // production: how the store makes things — "by hand", "in our
   // studio/kitchen/workshop/lab", "small batches", "we test…". Each needs a
   // making word, so products and use stay out: "hand cream", "handbags",
   // "second-hand", "hands-free", "studio lighting", "kitchen tools",
@@ -246,7 +245,7 @@ export const TEMPLATE_COPY_CLAIMS: readonly RegExp[] = [
   /\bhand[- ]?(?:poured|made|stitched)\b/iu,
   /\bin our (?:own )?(?:kitchen|workshop|lab|studio)\b/iu,
   /\btest(?:s|ed|ing)?\b[^.!?\n]{0,25}?\b(?:every shade|real skin|deep skin)\b/iu,
-  // services a template may not offer (BE30b): naming the service is itself
+  // services a template may not offer: naming the service is itself
   // the claim, no time window needed. Each needs its booking or making word,
   // so the neighbours stay out: "Book a *table*" (the reservation section's
   // own copy), "Book club picks", "Books and stationery", "Appointment
@@ -262,7 +261,7 @@ export const TEMPLATE_COPY_CLAIMS: readonly RegExp[] = [
   /\bmade[- ]to[- ]measure\b|\bcut\s+to\s+measure\b|\bmeasure\s+and\s+off\s+the\s+rail\b/iu,
   /\bfirst\s+\*?fittings?\*?\b|\b(?:one|two|three|four|\d+)\s+fittings?\b|\bfittings?\b[^.!?\n]{0,30}?\batelier\b/iu,
   /\balterations?\s+on\s+every\b|\bask\b[^.!?\n]{0,30}?\balterations?\b|\balterations?\b[^.!?\n]{0,30}?\bask\b/iu,
-  // in-house making (BE30b): a making word must sit before "in-house", so
+  // in-house making: a making word must sit before "in-house", so
   // "Cured in-house" (a finish, not a service) stays out; "our in-house
   // team" names the makers instead. Asterisks pass through: "Cut
   // *in-house*", "bottled *in-house*".
@@ -277,7 +276,7 @@ export const TEMPLATE_COPY_CLAIMS: readonly RegExp[] = [
 const SCHEDULE_CARRIER = String.raw`(?:deliver\w*|dispatch\w*|ship\w*|pick[- ]?up|collection|courier)`;
 
 /**
- * Schedules only the vendor can keep (BE25): a response or delivery window,
+ * Schedules only the vendor can keep: a response or delivery window,
  * a weekday drop, daily freshness, 24/7. Match case-insensitively (`i`),
  * with the `u` flag.
  *
@@ -315,9 +314,9 @@ const SCHEDULES_BASE: readonly RegExp[] = [
   /\bwe (?:reply|answer|respond)\b[^.!?\n]{0,30}\b(?:within|in under)\b/iu,
 ];
 
-/** Turnarounds, restock days and working-day promises (BE30, BE30b) — manifest notes only since BE32. */
+/** Turnarounds, restock days and working-day promises — manifest notes only. */
 const SCHEDULES_TURNAROUND: readonly RegExp[] = [
-  // a turnaround only the vendor can keep (BE30): ready, fitted, altered or
+  // a turnaround only the vendor can keep: ready, fitted, altered or
   // made to order in days or weeks; a dispatch or delivery range; an N-week
   // turnaround. Each needs a service word, so process durations stay out:
   // "fermented for 36 hours", "dry-aged for 28 days", "aged 30 days in oak",
@@ -328,7 +327,7 @@ const SCHEDULES_TURNAROUND: readonly RegExp[] = [
   /\b(?:deliver\w*|dispatch\w*|ship\w*)\b[^.!?\n]{0,30}?\b(?:within\s+)?\d+\s*(?:–|-|to)\s*\d+[\s-]*(?:working\s+|business\s+)?(?:hours?|days?|weeks?)\b/iu,
   /\b(?:deliver\w*|dispatch\w*|ship\w*)\b[^.!?\n]{0,30}?\bin\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fourteen|fifteen|twenty|thirty|forty[- ]eight)[\s-]*(?:hours?|hrs?|days?|weeks?)\b/iu,
   /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fourteen|fifteen|twenty|thirty)[\s-]*(?:hours?|days?|weeks?)\s+turnaround\b|\bturnaround\b[^.!?\n]{0,20}?\b(?:in\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)[\s-]*(?:hours?|days?|weeks?)\b/iu,
-  // restock cadences and working-day turnarounds (BE30b): "New sets added
+  // restock cadences and working-day turnarounds: "New sets added
   // weekly", "Retros return *Friday*", "Ten working days, pressed and
   // bagged", "Units made to your head size in 5 working days", "Feasts need
   // two hours notice". Each needs its cadence word, so "Weekend bags",
@@ -363,7 +362,7 @@ const firstSpan = (patterns: RegExp[], text: string): { match: string; start: nu
 
 /** Why one copy string could not go live on another store unchanged; empty when it can. */
 /**
- * Where copy is read (BE32). A demo section's copy — and the header
+ * Where copy is read. A demo section's copy — and the header
  * announcement, and a design label — is hidden from a real store's shoppers
  * until the store rewrites it, so it only has to keep the demo store's
  * identity out: its name, places, prices, offers, hours, promises, dates,
@@ -442,7 +441,7 @@ const TESTIMONIAL_NAME = /(?:^|[\s_-])(?:testimonials?|reviews?)(?:$|[\s_-])/i;
 const TESTIMONIAL_KEYS = /\b(quote|author|rating)\b/;
 
 /**
- * Testimonials and reviews, as the backend reads them (R2.6.3): a variant
+ * Testimonials and reviews, as Queek reads them: a variant
  * whose id or section type names them, or whose items declare quote, author or
  * rating. Their copy is never placed on a real store, so the demo keeps it.
  */

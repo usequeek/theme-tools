@@ -1,14 +1,13 @@
 /**
- * Theme templates — the registry contract the backend builds from
- * (queek_backend `.agent/TASKS/frontend/storefront-theme-templates-contract.md`).
+ * Theme templates: how Queek reads a theme's demo stores
+ * (https://docs.usequeek.com/docs/themes/templates-and-designs).
  *
  * A template is a demo store: `demo.json` (id `default`) or `demos/<id>.json`.
- * The backend builds a vendor's store from ONE template's layout, keeps its
+ * Queek builds a vendor's store from ONE template's layout, keeps its
  * declared variants, applies its chrome, dials and per-section `style`, and
  * fills every content slot with the vendor's own material. Everything here is
- * the shared reading of that contract — the registry generator, the registry
- * API route, the rehost script, theme-check and the tests all call it, so the
- * five of them cannot disagree about what a template publishes.
+ * the shared reading of that template: theme-check and the registry tooling
+ * both call it, so they cannot disagree about what a template publishes.
  */
 
 import { createHash } from 'node:crypto';
@@ -16,10 +15,10 @@ import { PRIMARY_DEMO_ID } from './theme-demos.js';
 
 /** Longest `description` a template may carry — written for a model choosing on a merchant's behalf. */
 export const TEMPLATE_DESCRIPTION_MAX = 300;
-/** How `themes/_bare`'s description starts — a new theme must replace it before it publishes. */
+/** How the bare starter theme's description starts — a new theme must replace it before it publishes. */
 export const TEMPLATE_DESCRIPTION_PLACEHOLDER = 'Replace before publishing.';
 
-/** Where rehosted theme imagery is served — the host the backend passes through untouched. */
+/** Where rehosted theme imagery is served — the host Queek passes through untouched. */
 export const THEME_ASSET_BASE = 'https://media.usequeek.com/theme-assets';
 
 /** Per-theme record of the screenshots the rehost script has uploaded. */
@@ -67,7 +66,7 @@ const FONT_VAR = /var\(\s*--font-(?:heading|body)\b/;
 /**
  * Which token groups a theme actually renders from. A theme that hard-codes
  * its palette (roast, glow, carat) publishes tokens without `color`, so the
- * backend never promises a merchant a colour change the theme will ignore.
+ * Queek never promises a merchant a colour change the theme will ignore.
  * Comments are stripped first — glow mentions `--brand-text` only in one.
  */
 export function tokenReach(css: string): TokenReach {
@@ -76,7 +75,7 @@ export function tokenReach(css: string): TokenReach {
 }
 
 /**
- * A template's tokens as the backend should apply them: the dials always
+ * A template's tokens as Queek applies them: the dials always
  * (sizes, weights, spacing, radius, motion, image treatment), the palette and
  * the faces only when the theme reads them. Undefined when nothing is left.
  */
@@ -176,7 +175,7 @@ export function sectionStyle(
   return Object.keys(style).length > 0 ? style : undefined;
 }
 
-/* ── per-section copy (contract R2.4) ──────────────────────────────────── */
+/* ── per-section copy ──────────────────────────────────────────────────── */
 
 /** Field types whose value is words a vendor could keep or rewrite. */
 const TEXT_TYPES = new Set(['string', 'text', 'markdown']);
@@ -255,9 +254,9 @@ function fieldCopy(name: string, spec: unknown, value: unknown): unknown {
  * A section's `copy`: the words the template set in the fields its variant
  * declares as text — headings, body, markdown, button labels, and the text
  * keys of its list entries (steps, slides, FAQ items). Never images, links,
- * ids, prices or product and collection references. The backend builds a
- * section with no vendor facts behind it (a how-to, a statement) from this,
- * and qee rewrites it for the vendor. Undefined when there are none.
+ * ids, prices or product and collection references. Queek builds a section
+ * with no vendor facts behind it (a how-to, a statement) from this, and
+ * rewrites it for the vendor. Undefined when there are none.
  */
 export function sectionCopy(
   section: { type?: unknown; variant?: unknown; data?: unknown },
