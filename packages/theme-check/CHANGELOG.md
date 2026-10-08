@@ -4,7 +4,7 @@
 
 ### Minor Changes
 
-- Demo section copy may persuade again (BE32): claims, services, in-house making, founding stories and turnarounds pass in a demo's sections and header announcement, which stay hidden from real shoppers until the store rewrites them. The demo store's identity still fails there: its name, places, naira amounts, offers, promises, hours, founding dates, contact details and schedules. Manifest notes and their quoted examples keep every rule, read without emphasis asterisks. `copyViolations` takes a scope (`'manifest'`, the default, or `'section'`).
+- Demo section copy may persuade again: claims, services, in-house making, founding stories and turnarounds pass in a demo's sections and header announcement, which stay hidden from real shoppers until the store rewrites them. The demo store's identity still fails there: its name, places, naira amounts, offers, promises, hours, founding dates, contact details and schedules. Manifest notes and their quoted examples keep every rule, read without emphasis asterisks. `copyViolations` takes a scope (`'manifest'`, the default, or `'section'`).
 
 ## 0.12.1
 
@@ -74,13 +74,13 @@
 
 ### Patch Changes
 
-- theme/core-boundary also rejects app-code imports and folder escapes: any `@/`-aliased specifier, and any relative import resolving outside the theme's own folder. Both only ever resolved inside the storefront repo and broke everywhere else a theme runs.
+- theme/core-boundary also rejects app-code imports and folder escapes: any `@/`-aliased specifier, and any relative import resolving outside the theme's own folder. Both only ever resolved inside Queek's own app and broke everywhere else a theme runs.
 
 ## 0.5.0
 
 ### Minor Changes
 
-- Live business vocabulary (R2.9): one resolver in theme-check (`resolveVocabulary`, OS cache dir, conditional GET with `If-None-Match: "<version>"`, cache-then-bundled fallback with a notice), `checkTheme(dir, { vocabulary })` with `check --json` reporting `vocabulary: { source, version }`, a warn-only `theme/template-business` advisory when a template names only `shop`, and `--vocabulary <file>` / `--offline` on `queek-theme check`, `dev`, `package` and `init` plus `npm create @usequeek/theme`. create-theme prompts from the cached-or-bundled copy, refreshes live in the background, revalidates the final `for` against the fresh copy, and lists `shop` last as "General store". Bundled snapshot synced to the R2.9 production vocabulary (version `d1f9c8ee`). Also adds `theme/composition-variants` (reject): every section in every design's pages must name a variant the theme implements (the manifest's declared variants — the registry's `implemented_variants`).
+- Live business vocabulary: one resolver in theme-check (`resolveVocabulary`, OS cache dir, conditional GET with `If-None-Match: "<version>"`, cache-then-bundled fallback with a notice), `checkTheme(dir, { vocabulary })` with `check --json` reporting `vocabulary: { source, version }`, a warn-only `theme/template-business` advisory when a template names only `shop`, and `--vocabulary <file>` / `--offline` on `queek-theme check`, `dev`, `package` and `init` plus `npm create @usequeek/theme`. create-theme prompts from the cached-or-bundled copy, refreshes live in the background, revalidates the final `for` against the fresh copy, and lists `shop` last as "General store". Bundled snapshot updated to the current live vocabulary (version `d1f9c8ee`). Also adds `theme/composition-variants` (reject): every section in every design's pages must name a variant the theme implements (the manifest's declared variants — the registry's `implemented_variants`).
 
 ## 0.4.1
 
@@ -92,7 +92,7 @@
 
 ### Minor Changes
 
-- Theme → template → design (contract R2.8). A theme is the look, a template is a business it is dressed as, and a design is one concrete store of a template (one demo file).
+- Theme → template → design. A theme is the look, a template is a business it is dressed as, and a design is one concrete store of a template (one demo file).
   
   - New rule `theme/template-designs` (reject). It groups designs by the `template` key each one declares in theme.config.ts, never by an id's `-2` suffix, and checks that:
     - every design names its template with a slug key, never `default`;

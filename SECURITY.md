@@ -22,6 +22,6 @@ the release notes.
 
 We support the **latest minor release of the current major version** of each
 package (`@usequeek/cli`, `@usequeek/theme-check`,
-`@usequeek/create-theme`). Older versions may receive fixes at the
+`@usequeek/create-theme`, `@usequeek/create-app`). Older versions may receive fixes at the
 maintainers' discretion, but if you are on an older version, please upgrade to
 the latest release first and check whether the issue still reproduces.

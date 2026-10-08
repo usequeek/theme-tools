@@ -5,7 +5,7 @@ make changes, and what we expect in a pull request.
 
 ## Prerequisites
 
-- Node.js `>=22.12.0` (see `.nvmrc`; `engines.node` is enforced per package)
+- Node.js 22.14 or later (see `.nvmrc`; each package's `engines.node` states its own minimum)
 - Corepack (ships with Node) and pnpm `12.6.0` (via the `packageManager` field)
 
 ## Setup
@@ -118,13 +118,9 @@ that used to pass — e.g. "`check` now errors on …".
 
 ## Releases
 
-Before releasing a new `@usequeek/create-theme` version, publish the matching
-starter. In the storefront, set `packages/theme-starter/package.json`'s
-`@usequeek/cli` range to include the new version, then:
-
-```sh
-yarn starter:publish --tag v<new version>
-```
+Before releasing a new `@usequeek/create-theme` version, tag the matching
+[starter](https://github.com/usequeek/theme-starter) as `v<new version>`, after
+setting its `package.json` `@usequeek/cli` range to include the new CLI version.
 
 `create` downloads `github:usequeek/theme-starter#v<version>` and fails if the tag
 is missing, and a created project installs whatever `@usequeek/cli` its
@@ -135,13 +131,12 @@ create-theme's version, or when that tag's `@usequeek/cli` range does not take
 the CLI being released. Run it yourself after tagging
 (`node scripts/check-starter-tag.mjs`) to find out before CI does.
 
-### Release notes during active development
+### Release notes
 
-Until the packages go live, every release is published **without public notes**:
-`.changeset/config.json` has `"changelog": false` and `release.yml` sets
-`create-github-releases: false`. Keep both as they are. A merged "Version Packages"
-PR publishes the new version to npm with no changelog entry and no GitHub Release.
-Re-enable both together at launch, not before.
+Releases are currently published without public notes: `.changeset/config.json`
+has `"changelog": false` and `release.yml` sets `create-github-releases: false`.
+A merged "Version Packages" PR publishes the new version to npm with no
+changelog entry and no GitHub Release. Change both together to turn notes on.
 
 ## AI-assisted contributions
 

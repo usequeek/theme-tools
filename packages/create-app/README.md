@@ -29,8 +29,8 @@ with test data when you have none).
 
 Every scaffolded app also ships the AI setup verbatim from the starter:
 `AGENTS.md` (capacity check via the Queek AI toolkit first, SDK entries,
-`queek.app.toml`, dev loop, the live Merchant spec, `queek app codegen`;
-"do not add tooling to this repo") and `CLAUDE.md` (`@AGENTS.md`) — the
-starter is the single source of truth, the scaffolder never rewrites them —
-plus `.mcp.json` + `.cursor/mcp.json`, the wiring location for the Queek
-MCP, empty until it publishes. The success banner names it.
+`queek.app.toml`, dev loop, the live Merchant spec, `queek app codegen`)
+and `CLAUDE.md` (`@AGENTS.md`) — the starter is the single source of truth, the
+scaffolder never rewrites them — plus `.mcp.json` + `.cursor/mcp.json`, the
+files where the Queek MCP is configured (an empty `mcpServers` to start). The
+success banner names it.

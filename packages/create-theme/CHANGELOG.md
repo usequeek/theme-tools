@@ -91,7 +91,7 @@
 
 ### Minor Changes
 
-- Live business vocabulary (R2.9): one resolver in theme-check (`resolveVocabulary`, OS cache dir, conditional GET with `If-None-Match: "<version>"`, cache-then-bundled fallback with a notice), `checkTheme(dir, { vocabulary })` with `check --json` reporting `vocabulary: { source, version }`, a warn-only `theme/template-business` advisory when a template names only `shop`, and `--vocabulary <file>` / `--offline` on `queek-theme check`, `dev`, `package` and `init` plus `npm create @usequeek/theme`. create-theme prompts from the cached-or-bundled copy, refreshes live in the background, revalidates the final `for` against the fresh copy, and lists `shop` last as "General store". Bundled snapshot synced to the R2.9 production vocabulary (version `d1f9c8ee`). Also adds `theme/composition-variants` (reject): every section in every design's pages must name a variant the theme implements (the manifest's declared variants — the registry's `implemented_variants`).
+- Live business vocabulary: one resolver in theme-check (`resolveVocabulary`, OS cache dir, conditional GET with `If-None-Match: "<version>"`, cache-then-bundled fallback with a notice), `checkTheme(dir, { vocabulary })` with `check --json` reporting `vocabulary: { source, version }`, a warn-only `theme/template-business` advisory when a template names only `shop`, and `--vocabulary <file>` / `--offline` on `queek-theme check`, `dev`, `package` and `init` plus `npm create @usequeek/theme`. create-theme prompts from the cached-or-bundled copy, refreshes live in the background, revalidates the final `for` against the fresh copy, and lists `shop` last as "General store". Bundled snapshot updated to the current live vocabulary (version `d1f9c8ee`). Also adds `theme/composition-variants` (reject): every section in every design's pages must name a variant the theme implements (the manifest's declared variants — the registry's `implemented_variants`).
 
 ### Patch Changes
 
@@ -108,7 +108,7 @@
 
 ### Minor Changes
 
-- Creates themes as theme → template → design (contract R2.8). Each business picked becomes a template with one design, and `theme.config.ts` declares `template` on every design: the business key picked, on `default_demo` for the main template (`--primary`) and on each `demos[]` entry, whose id is its key. So the new `theme/template-designs` check passes on a fresh theme. A template is never inferred from an id, and no `<key>-2` ids are written. `TemplatePlan` gains `template`. The prompt asks "Which template is the main one?"; the flag stays `--primary`.
+- Creates themes as theme → template → design. Each business picked becomes a template with one design, and `theme.config.ts` declares `template` on every design: the business key picked, on `default_demo` for the main template (`--primary`) and on each `demos[]` entry, whose id is its key. So the new `theme/template-designs` check passes on a fresh theme. A template is never inferred from an id, and no `<key>-2` ids are written. `TemplatePlan` gains `template`. The prompt asks "Which template is the main one?"; the flag stays `--primary`.
 
 ## 0.3.7
 
