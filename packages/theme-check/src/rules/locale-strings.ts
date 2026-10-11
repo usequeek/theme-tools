@@ -98,20 +98,20 @@ export const localeKeyNamingRule: Rule = {
     if (files.length === 0) return [];
     const findings: Finding[] = [];
 
-    // The overlay stores `<theme-slug>.<key>` in one varchar(64): the key
-    // gets 40 chars, the slug 23. Check the slug when locale files exist.
+    // Queek stores each string as `<theme-slug>.<key>` in one 64-character
+    // field: the key gets 40 characters, the slug 23. Check the slug when locale files exist.
     if (!THEME_SLUG_PATTERN.test(context.slug)) {
       findings.push(finding(context, 'theme/locale-key-naming', 'warn', {
         where: `${context.env.root}theme.config.ts`,
-        found: `theme slug "${context.slug}" uses characters outside [a-z0-9-] — overlay keys are "<slug>.<key>", so the slug keeps to lowercase letters, digits and hyphens`,
+        found: `theme slug "${context.slug}" uses characters outside [a-z0-9-]. Queek names each string "<slug>.<key>", so the slug may hold only lowercase letters, digits and hyphens`,
         fix: 'Rename the theme slug to lowercase letters, digits and hyphens only.',
         docs: LOCALES_DOCS(context),
       }));
     } else if (context.slug.length > THEME_SLUG_MAX_LENGTH) {
       findings.push(finding(context, 'theme/locale-key-naming', 'warn', {
         where: `${context.env.root}theme.config.ts`,
-        found: `theme slug "${context.slug}" is ${context.slug.length} chars (max ${THEME_SLUG_MAX_LENGTH}) — "<slug>.<key>" must fit varchar(64) with a ≤40-char key`,
-        fix: `Shorten the theme slug to ${THEME_SLUG_MAX_LENGTH} chars or fewer.`,
+        found: `theme slug "${context.slug}" is ${context.slug.length} chars (max ${THEME_SLUG_MAX_LENGTH}). Queek names each string "<slug>.<key>" and allows 64 characters in all, with up to 40 for the key`,
+        fix: `Shorten the theme slug to ${THEME_SLUG_MAX_LENGTH} chars or fewer, and rename the theme directory, manifest.ts and theme.config.ts to match.`,
         docs: LOCALES_DOCS(context),
       }));
     }
@@ -161,7 +161,7 @@ export const localeKeyNamingRule: Rule = {
         if (key.length > LOCALE_KEY_MAX_LENGTH) {
           findings.push(finding(context, 'theme/locale-key-naming', 'warn', {
             where: at,
-            found: `key "${key}" is ${key.length} chars (max ${LOCALE_KEY_MAX_LENGTH}) — "<slug>.<key>" must fit varchar(64)`,
+            found: `key "${key}" is ${key.length} chars (max ${LOCALE_KEY_MAX_LENGTH}). Queek names each string "<slug>.<key>" and allows 64 characters in all`,
             fix: `Shorten the key to ${LOCALE_KEY_MAX_LENGTH} chars or fewer.`,
             docs: LOCALES_DOCS(context),
           }));
@@ -260,7 +260,7 @@ export const localeFileParityRule: Rule = {
       if (localeCodeOfFile(name) === null) {
         findings.push(finding(context, 'theme/locale-file-parity', 'warn', {
           where,
-          found: `locales/${name} is not a valid locale file name — name translation files <code>.json with a BCP-47-ish code (fr, pt-BR, …, max ${LOCALE_CODE_MAX_LENGTH} chars); English lives in ${DEFAULT_LOCALE_FILE} only`,
+          found: `locales/${name} is not a valid locale file name — name translation files <code>.json with a language code such as fr or pt-BR (max ${LOCALE_CODE_MAX_LENGTH} chars); English lives in ${DEFAULT_LOCALE_FILE} only`,
           fix: `Rename the file to <code>.json (e.g. locales/fr.json), or delete it.`,
           docs: LOCALES_DOCS(context),
         }));

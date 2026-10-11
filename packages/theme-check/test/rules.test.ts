@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUSINESS_KEYS, businessRoot, isBusinessKey, vocabularyViewOf } from '../src/utils/business-vocabulary.js';
-import { demoStoresRule, fontsSelfHostedRule, frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templateDesignsRule, templatePagesRule, templateVersionsRule, compositionVariantsRule } from '../src/rules/static.js';
+import { codeQualityRule, demoStoresRule, fontsSelfHostedRule, frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templateDesignsRule, templatePagesRule, templateVersionsRule, compositionVariantsRule } from '../src/rules/static.js';
 import { copyViolations, manifestViolations } from '../src/utils/template-copy.js';
 import { checkTheme } from '../src/run.js';
 import type { DeclaredDemo, DemoStore, ThemeContext } from '../src/types.js';
@@ -924,6 +924,47 @@ describe('theme/core-boundary: the framework stays behind the kit', () => {
     const { findings } = await checkTheme(resolve(import.meta.dirname, '../../../fixtures/starter/theme'), { only: ['theme/core-boundary'] });
     expect(findings).toEqual([]);
   }, 60_000);
+});
+
+describe('theme/core-boundary: the SDK stays behind the kit', () => {
+  it('rejects an SDK import in either quote style and names the kit hooks as the fix', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'boundary-sdk-'));
+    writeFileSync(join(dir, 'a.ts'), "import { createClient } from '@queekai/client-sdk';\n");
+    writeFileSync(join(dir, 'b.ts'), 'import { createClient } from "@queekai/client-sdk";\n');
+
+    const findings = await sdkBoundaryRule.run({ ...context({}), dir });
+
+    expect(findings.map((f) => f.where).sort()).toEqual(['a.ts', 'b.ts']);
+    for (const finding of findings) {
+      expect(finding.found).toBe('imports the SDK directly');
+      expect(finding.fix).toContain('useProducts');
+    }
+  });
+});
+
+describe('theme/code-quality: client directive', () => {
+  const run = (files: Record<string, string>) => codeQualityRule.run({
+    ...context({}),
+    dir: mkdtempSync(join(tmpdir(), 'quality-')),
+    read: (path) => files[path] ?? null,
+    exists: () => false,
+  });
+  const header = "import { menuItemToHref } from '@usequeek/theme-kit/utils/menu-link';\n";
+
+  it('accepts the directive in either quote style, after a comment or a byte-order mark', async () => {
+    for (const first of ["'use client';\n", '"use client";\n', '// header\n"use client";\n', '/* header */\n\'use client\'\n', '\uFEFF"use client";\n']) {
+      const findings = await run({ 'header.tsx': first + header });
+      expect(findings.filter((f) => f.found.includes('use client'))).toEqual([]);
+    }
+  });
+
+  it('rejects a header whose directive comes after an import, naming the file', async () => {
+    const findings = await run({ 'header.tsx': `${header}'use client';\n` });
+    const hit = findings.find((f) => f.found.includes('use client'));
+    expect(hit).toMatchObject({ rule: 'theme/code-quality', severity: 'reject', where: 'theme/header.tsx' });
+    expect(hit?.found).toBe("header.tsx does not start with a 'use client' directive");
+    expect(hit?.fix).toContain('before any import');
+  });
 });
 
 describe('theme/fonts-self-hosted', () => {

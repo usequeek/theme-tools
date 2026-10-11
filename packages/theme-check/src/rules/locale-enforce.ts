@@ -317,8 +317,8 @@ export const localeKeyExistsRule: Rule = {
       if (ref.key === null) {
         findings.push(finding(context, 'theme/locale-key-exists', 'warn', {
           where,
-          found: 't(…) uses a dynamic key here — the check cannot resolve it statically (info: confirm the key exists in locales/en.default.json)',
-          fix: 'Prefer a literal key so the check (and the next reader) can see it; when the key must stay dynamic, confirm every value it can take exists in locales/en.default.json.',
+          found: `t(…) uses a dynamic key, so the check cannot confirm it exists in locales/${DEFAULT_LOCALE_FILE}`,
+          fix: `Use a literal key such as t('cart.empty') so the check can verify it. If the key must stay dynamic, confirm by hand that every value it can take exists in locales/${DEFAULT_LOCALE_FILE}.`,
           docs: DOCS(context),
         }));
         continue;

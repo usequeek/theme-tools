@@ -157,7 +157,7 @@ export const demoStoreRule: Rule = {
       ];
       for (const [key, actual, required] of minimums) {
         if (actual < required) {
-          add(`${key}: ${actual}`, `Needs at least ${required}. A sparse demo store does not sell the theme, and the builder composes from it.`);
+          add(`${key}: ${actual}`, `Add at least ${required}. Queek builds new stores from this demo, and a sparse one makes the theme look unfinished.`);
         }
       }
     }
@@ -243,7 +243,7 @@ export const demoStoresRule: Rule = {
 
 export const demoArtRule: Rule = {
   id: 'theme/demo-art-hosting',
-  summary: 'Every demo image, in every store, is served from Queek — not a foreign host or a local file',
+  summary: 'At submission, every demo image in every store is on Queek media, not a foreign host or a local file (Queek moves them for you)',
   kind: 'static',
   run(context) {
     // Queek moves demo art onto its CDN when a theme is submitted, so a
@@ -261,6 +261,11 @@ export const demoArtRule: Rule = {
         })));
   },
 };
+
+/** True when 'use client' (either quote) is the file's first statement; comments before it are fine. */
+function hasClientDirective(source: string): boolean {
+  return /^\uFEFF?(?:\s|\/\/[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)*(['"])use client\1/.test(source);
+}
 
 export const codeQualityRule: Rule = {
   id: 'theme/code-quality',
@@ -297,11 +302,11 @@ export const codeQualityRule: Rule = {
 
     for (const file of ['header.tsx', 'blocks/products.tsx', 'blocks/categories.tsx', 'blocks/gallery.tsx']) {
       const source = context.read(file);
-      if (source && !source.startsWith("'use client'")) {
+      if (source && !hasClientDirective(source)) {
         findings.push(finding(context, 'theme/code-quality', 'reject', {
           where: `${context.env.root}${file}`,
-          found: 'uses hooks without a client directive',
-          fix: "Add 'use client' as the first line.",
+          found: `${file} does not start with a 'use client' directive`,
+          fix: `Add 'use client' as the first statement of ${file}, before any import. This file uses hooks and runs in the browser; a directive placed after an import is ignored and the page fails to render.`,
           docs: `${context.env.docs}#component-rules`,
         }));
       }
@@ -377,11 +382,11 @@ export const sdkBoundaryRule: Rule = {
       const source = readFileSync(path, 'utf8');
       const where = themePath(context, path);
 
-      if (/from '@queekai\/client-sdk'|from '@\/lib\/core\/sdk\//.test(source)) {
+      if (/from\s+['"](?:@queekai\/client-sdk|@\/lib\/core\/sdk\/)/.test(source)) {
         findings.push(finding(context, 'theme/core-boundary', 'reject', {
           where,
           found: 'imports the SDK directly',
-          fix: 'Themes are presentation. Go through a core hook (useProducts, useCategories, useCart) — core owns transport, auth and retries.',
+          fix: 'Read data through a hook from @usequeek/theme-kit (useProducts, useCategories, useCart). The kit handles requests, sign-in and retries, so a theme that calls the SDK itself skips all three.',
           docs: `${context.env.docs}#what-themes-must-not-do`,
         }));
       }
@@ -580,7 +585,7 @@ export const demoCompletenessRule: Rule = {
         fix: primary
           ? 'Add a section using each to demo.json. The demo is what a vendor previews AND what the capture pipeline turns into section-library thumbnails — an undemonstrated variant is one a vendor is offered but has never seen.'
           : `Add a section using each to ${store.file}, so a store built from it gets this store's art for every variant instead of the primary's.`,
-        docs: `${context.env.docs}#homepage-requirement-mandatory`,
+        docs: `${context.env.docs}#homepage-requirement`,
       }));
     }
 
@@ -649,7 +654,7 @@ export const demoBlockTypesRule: Rule = {
           findings.push(finding(context, 'theme/demo-block-types', 'reject', {
             where: `${context.env.root}${store.file} → pages.${page.slug ?? '?'}`,
             found: `section type "${type}" is not a block core renders`,
-            fix: `PageRenderer returns null for an unknown type, so the section is invisible in the preview AND in every store built from this page — page_compositions publishes the type verbatim. Use one of: ${VALID_BLOCK_TYPES.join(', ')}.`,
+            fix: `Queek draws nothing for a type it does not know, so this section is invisible in the preview and in every store built from this page. Use one of: ${VALID_BLOCK_TYPES.join(', ')}.`,
             docs: `${context.env.docs}#framework-owned-blocks`,
           }));
         }
@@ -749,7 +754,7 @@ export const identityRule: Rule = {
       finding(context, 'theme/identity', 'reject', {
         where: `${context.env.root}`,
         found: `${where} is "${value}", but the theme directory is "${context.slug}"`,
-        fix: `Set it to "${context.slug}". Your whole stylesheet is scoped to \`.theme-${context.slug}\`, the registry keys entries on manifest.slug (and only WARNS on a mismatch, so a disagreement ships two entries claiming one slug), and Queek syncs themes by slug. These four have to be one name.`,
+        fix: `Set it to "${context.slug}". The slug is the theme's one name: the stylesheet is scoped to \`.theme-${context.slug}\`, the registry lists the theme under manifest.slug, and Queek syncs themes by slug. If they differ, two registry entries can claim one slug.`,
         docs: `${context.env.docs}#registration`,
       }));
   },
@@ -1035,7 +1040,7 @@ export const templateBusinessRule: Rule = {
         findings.push(finding(context, 'theme/template-business', 'reject', {
           where,
           found: 'the primary template names no business',
-          fix: "Add `for` to `default_demo`, naming the business demo.json is dressed as (medley's beauty store: makeup, skincare, fragrance, beauty-personal-care, beauty-cosmetics). Without it the primary claimed every business the theme serves, so a food vendor was offered a beauty store.",
+          fix: "Add `for` to `default_demo`, naming the business demo.json is dressed as (a beauty store lists: makeup, skincare, fragrance, beauty-personal-care, beauty-cosmetics). Without it the primary template matches every business, so a food vendor can be offered a beauty store.",
           docs: `${context.env.docs}#templates`,
         }));
         continue;
@@ -1299,17 +1304,15 @@ function copyStrings(value: unknown, path = ''): Array<[string, string]> {
 }
 
 /**
- * What to do about template copy any store in the business cannot publish
- * unchanged — shared by the page-copy, announcement and manifest findings.
- */
-/**
+ * What to do about demo copy any store in the business cannot publish
+ * unchanged: shared by the page-copy and announcement findings.
  * Demo section copy: hidden from a real store's shoppers until the
  * store rewrites it, so it may persuade — claims, services and how things are
  * made are the demo's to tell. Only the demo store's identity must not carry.
  */
-const SECTION_COPY_FIX = 'A real store rewrites this copy in its own words before shoppers see it, but the demo store\'s identity must not carry over: the store\'s name becomes a role ("our kitchen", "the studio"), a place becomes generic ("across the city") or goes, and prices, offers, delivery windows, guarantees, opening hours, contact details, founding dates and schedules go — they are the vendor’s to state. Name the section, not when the store does things — "Freshly baked bread" is the vendor\'s to time; say "Bread and pastries". Testimonials and reviews are exempt.';
+const SECTION_COPY_FIX = 'A real store rewrites this copy in its own words before shoppers see it, but the demo store\'s identity must not carry over: the store\'s name becomes a role ("our kitchen", "the studio"), a place becomes generic ("across the city") or goes, and prices, offers, delivery windows, guarantees, opening hours, contact details, founding dates and schedules go — they are the vendor\'s to state. Name the section, not when the store does things — "Freshly baked bread" is the vendor\'s to time; say "Bread and pastries". Testimonials and reviews are exempt.';
 
-const TEMPLATE_COPY_FIX = 'The setup wizard publishes this copy onto real stores unchanged. Write it for any store in the business: the store\'s name becomes a role ("our kitchen", "the studio"), a place becomes generic ("across the city") or goes, and prices, delivery windows, guarantees, claims only the vendor can make and founding dates go — they are the vendor’s to state. Say what the section is, not what the product is certified or free from — e.g. "Every skin type welcome" instead of "Dermatologist-tested". Name the section, not when the store does things — "Freshly baked bread" is the vendor\'s to time; say "Bread and pastries". Testimonials and reviews are exempt.';
+const TEMPLATE_COPY_FIX = 'The setup wizard publishes this copy onto real stores unchanged. Write it for any store in the business: the store\'s name becomes a role ("our kitchen", "the studio"), a place becomes generic ("across the city") or goes, and prices, delivery windows, guarantees, claims only the vendor can make and founding dates go — they are the vendor\'s to state. Say what the section is, not what the product is certified or free from — e.g. "Every skin type welcome" instead of "Dermatologist-tested". Name the section, not when the store does things — "Freshly baked bread" is the vendor\'s to time; say "Bread and pastries". Testimonials and reviews are exempt.';
 
 /**
  * A manifest's template copy: every variant's `purpose` and every field's

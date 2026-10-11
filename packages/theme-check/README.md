@@ -4,6 +4,8 @@ The rules a [Queek](https://usequeek.com) storefront theme is checked against, a
 Most people want the command line instead: `npx queek theme check` from
 [`@usequeek/cli`](https://www.npmjs.com/package/@usequeek/cli).
 
+Requires Node.js 22.12 or later and `@usequeek/theme-kit` in the theme's project.
+
 ```bash
 npm install --save-dev @usequeek/theme-check
 ```
@@ -31,7 +33,7 @@ HTML string, so passing it to `dangerouslySetInnerHTML` renders "[object Object]
 Theme string rules (warnings by default, configurable like any warning):
 
 - `theme/locale-key-naming` — every key in `locales/*.json` is dotted lowercase
-  `scope.thing.state` (≤40 chars so `<slug>.<key>` fits varchar(64), no hyphens), values are
+  `scope.thing.state` (at most 40 chars so `<slug>.<key>` stays within 64, no hyphens), values are
   strings or plural maps (≤1000 chars, no raw HTML, no empties), at most 3400 keys per file.
 - `theme/locale-file-parity` — every `locales/{lang}.json` key exists in `en.default.json`
   (English is the fallback authority) and its `{variables}` stay a subset of the English ones.

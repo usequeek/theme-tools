@@ -74,6 +74,9 @@ export const fieldParityRule: Rule = {
   },
 };
 
+/** A stylesheet must read the design tokens more often than this to count as built on them. */
+const TOKEN_REFERENCES_MIN = 50;
+
 export const designTokensRule: Rule = {
   id: 'theme/design-tokens',
   summary: 'Declares a complete token set, and its CSS actually consumes it',
@@ -102,7 +105,7 @@ export const designTokensRule: Rule = {
     ].filter(([, value]) => !value).map(([name]) => name as string);
 
     if (missing.length > 0) {
-      findings.push(add(`tokens missing: ${missing.join(', ')}`, 'Every dimension must be declared — each one is a dial in the vendor’s theme editor.'));
+      findings.push(add(`tokens missing: ${missing.join(', ')}`, "Declare every dimension in manifest.ts tokens. Each one is a control in the vendor's theme editor, and a missing one leaves that control out."));
     }
 
     const { expandDesignTokens } = await importKit<{ expandDesignTokens: (tokens: DesignTokens) => Record<string, string> }>(context.dir, '@usequeek/theme-kit/utils/brand');
@@ -110,15 +113,15 @@ export const designTokensRule: Rule = {
     const unexpanded = ['--brand-primary', '--brand-bg', '--brand-text', '--fs-base', '--fs-3xl', '--space-4', '--radius-md', '--shadow-2', '--duration-base', '--font-heading', '--font-body']
       .filter((key) => !vars[key]);
     if (unexpanded.length > 0) {
-      findings.push(add(`tokens do not expand to: ${unexpanded.join(', ')}`, 'Usually a malformed token value. Check it against the starter’s manifest.'));
+      findings.push(add(`tokens do not expand to: ${unexpanded.join(', ')}`, "Usually a malformed token value. Compare tokens in manifest.ts with the starter's manifest.ts."));
     }
 
     const css = context.read('theme.css') ?? '';
     const references = (css.match(/var\(--(fs|space|radius|shadow|duration|fw|tracking|leading|case)-/g) ?? []).length;
-    if (references <= 50) {
+    if (references <= TOKEN_REFERENCES_MIN) {
       findings.push(add(
-        `theme.css references design tokens only ${references} time(s)`,
-        'Hardcoded sizes and colours mean the vendor’s edits never reach the page. Style from var(--fs-*), var(--space-*), var(--radius-*) and friends.',
+        `theme.css references design tokens only ${references} time(s); it needs more than ${TOKEN_REFERENCES_MIN}`,
+        "Hardcoded sizes and colours mean the vendor's edits never reach the page. Style from var(--fs-*), var(--space-*), var(--radius-*) and the other token families so the theme editor controls the page.",
         `${context.env.root}theme.css`,
       ));
     }
