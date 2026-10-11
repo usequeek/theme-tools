@@ -1525,7 +1525,7 @@ export const fontsSelfHostedRule: Rule = {
   kind: 'static',
   run(context) {
     const findings: Finding[] = [];
-    const fix = `Put the font's .woff2 files in ${context.env.root}fonts/ and declare them in fonts/fonts.css with @font-face (font-display: swap), imported from layout.tsx — or use next/font/local, which reads a file in the repo. next/font/google downloads fonts DURING THE BUILD, and Google intermittently serves URLs Turbopack cannot parse, failing the build ("next/font/google queries have exactly one entry", vercel/next.js#99114).`;
+    const fix = `Put the font's .woff2 files in ${context.env.root}fonts/ and declare them in fonts/fonts.css with @font-face (font-display: swap), imported from layout.tsx, or use next/font/local, which reads a file in the repo. next/font/google downloads fonts during the build, and a build fails when Google answers with a font URL the bundler cannot parse (the error reads "next/font/google queries have exactly one entry"). Files in the theme build the same way every time.`;
 
     for (const path of themeSourceFiles(context.dir)) {
       const source = stripComments(readFileSync(path, 'utf8'));
