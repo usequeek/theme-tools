@@ -1159,7 +1159,7 @@ export const templateDesignsRule: Rule = {
       const key: unknown = declarationOf(context, id).template;
       if (key === undefined || key === null || key === '') {
         if (id === PRIMARY_DEMO_ID) {
-          add(where(id, 'template'), 'the main template has no key (default_demo.template)', "Add `template` to `default_demo`: a lowercase slug naming its business (medley's main template is `beauty`). On a theme with two or more templates the main store moves to `/<slug>~<key>`, and `/<slug>` becomes the template gallery.");
+          add(where(id, 'template'), 'the main template has no key (default_demo.template)', "Add `template` to `default_demo`: a lowercase slug naming its business (a beauty theme's main template is `beauty`). On a theme with two or more templates the main store moves to `/<slug>~<key>`, and `/<slug>` becomes the template gallery.");
         } else {
           add(where(id, 'template'), `design "${id}" names no template`, `Add \`template\` to it: \`template: '${id}'\` when it is the first design of its business, or the key of the template it is another design of. Designs are grouped by this key, never by an id's \`-2\`.`);
         }
@@ -1528,7 +1528,7 @@ export const fontsSelfHostedRule: Rule = {
   kind: 'static',
   run(context) {
     const findings: Finding[] = [];
-    const fix = `Put the font's .woff2 files in ${context.env.root}fonts/ and declare them in fonts/fonts.css with @font-face (font-display: swap), imported from layout.tsx, or use next/font/local, which reads a file in the repo. next/font/google downloads fonts during the build, and a build fails when Google answers with a font URL the bundler cannot parse (the error reads "next/font/google queries have exactly one entry"). Files in the theme build the same way every time.`;
+    const fix = `Put the font's .woff2 files in ${context.env.root}fonts/ and declare them in fonts/fonts.css with @font-face (font-display: swap), imported from layout.tsx. Do not use next/font/local: a theme may not import next/* at all (theme/core-boundary). next/font/google downloads fonts during the build, and a build fails when Google answers with a font URL the bundler cannot parse (the error reads "next/font/google queries have exactly one entry"). Files in the theme build the same way every time.`;
 
     for (const path of themeSourceFiles(context.dir)) {
       const source = stripComments(readFileSync(path, 'utf8'));

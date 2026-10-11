@@ -605,7 +605,7 @@ const designFindings = async (main: Design, demos: Design[], names?: Record<stri
 const without = (design: Design, key: string): Design => Object.fromEntries(Object.entries(design).filter(([name]) => name !== key));
 
 describe('theme/template-designs', () => {
-  it('passes a medley-shaped theme, whose later design leaves out label and for', async () => {
+  it('passes a theme with a main template and a food template, whose later design leaves out label and for', async () => {
     expect(await designFindings(MAIN, [FOOD, FOOD_2])).toEqual([]);
   });
 
@@ -620,6 +620,7 @@ describe('theme/template-designs', () => {
   it('rejects a main template with no key', async () => {
     const found = await templateDesignsRule.run(declaring(without(MAIN, 'template'), [FOOD, FOOD_2]));
     expect(found.map((f) => f.found)).toEqual(['the main template has no key (default_demo.template)']);
+    expect(found[0].fix).not.toMatch(/medley/i);
     expect(found[0]).toMatchObject({ rule: 'theme/template-designs', severity: 'reject', where: 'theme/theme.config.ts → default_demo.template', docs: 'https://example.test/THEME.md#templates' });
   });
 
@@ -968,6 +969,18 @@ describe('theme/code-quality: client directive', () => {
 });
 
 describe('theme/fonts-self-hosted', () => {
+  it('never advises an import that theme/core-boundary rejects', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fonts-advice-'));
+    writeFileSync(join(dir, 'layout.tsx'), "import { Jost } from 'next/font/google';\n");
+
+    const [hit] = await fontsSelfHostedRule.run({ ...context({}), dir });
+
+    expect(hit.fix).toContain('@font-face');
+    expect(hit.fix).not.toMatch(/use next\/font\/local, which/);
+    expect(hit.fix).toContain('Do not use next/font/local');
+    expect(frameworkImport("import localFont from 'next/font/local';")).toBe('next/font/local');
+  });
+
   it('rejects a Google Fonts @import in a theme stylesheet, same as next/font/google', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'fonts-rule-'));
     mkdirSync(join(dir, 'styles'), { recursive: true });

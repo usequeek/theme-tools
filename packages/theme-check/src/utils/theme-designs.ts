@@ -2,7 +2,7 @@
  * Theme → template → design.
  *
  * A theme is the look. A template is a business the theme is dressed as
- * (medley's Food), and a design is one concrete store of it, one demo file:
+ * (the Food template), and a design is one concrete store of it, one demo file:
  * `food` and `food-2` are the Food template's two designs. theme.config.ts
  * declares every design. `default_demo` is the main template's first design
  * (demo.json, id `default`); each `demos[]` entry is one more (demos/<id>.json).
@@ -17,7 +17,7 @@
  *   (never inferred from an id's `-2`): a slug, never `default`, never renamed
  *   once shipped. Template keys and design ids share one namespace.
  * - Design 1 of a template is the design whose id IS its key (`default` in the
- *   main template), so `/medley~food` opens the Food template. The others
+ *   main template), so `/<slug>~food` opens the Food template. The others
  *   follow in `demos[]` order. The index is derived, never declared.
  * - `label` (the business) and `for` belong to the template and are declared
  *   on design 1. A later design may omit them; it inherits design 1's.
@@ -34,7 +34,7 @@
 
 /** The id `demo.json` goes by: the main template's first design. Equal to theme-demos.ts's PRIMARY_DEMO_ID. */
 export const PRIMARY_DESIGN_ID = 'default';
-/** Between the theme and the design in a preview segment: `medley~food-2`. Equal to DEMO_SEPARATOR. */
+/** Between the theme and the design in a preview segment: `<slug>~food-2`. Equal to DEMO_SEPARATOR. */
 export const DESIGN_SEPARATOR = '~';
 /** A design id or a template key: both land in a URL segment and a filename. Equal to DEMO_ID_FORMAT. */
 export const DESIGN_ID_FORMAT = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -244,7 +244,7 @@ export function hasGallery(theme: { main: string | null; templates: readonly unk
 }
 
 /**
- * The preview segment of a design: `medley~food-2`. demo.json's is the bare
+ * The preview segment of a design: `<slug>~food-2`. demo.json's is the bare
  * slug, unless the theme has a gallery there: then it is `<slug>~<main key>`.
  */
 export function designParam(slug: string, id: string, main: string | null, gallery: boolean): string {
