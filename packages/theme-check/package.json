@@ -3,6 +3,7 @@
   "version": "0.15.2",
   "description": "The rules a Queek storefront theme is checked against, as a library.",
   "license": "MIT",
+  "author": "Queekx Technology LTD",
   "type": "module",
   "exports": {
     ".": {

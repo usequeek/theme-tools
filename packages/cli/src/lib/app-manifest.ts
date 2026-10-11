@@ -248,7 +248,7 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
     if (problems.length > 0) throw new TomlError(problems.join('\n'));
     const table = doc.dev;
     if (typeof table.command !== 'string' || table.command.trim() === '') {
-      throw fail('The dev.command field is required (how `queek app dev` starts the app, e.g. "tsx watch src/index.ts").');
+      throw fail('The dev.command field is required (how `queek app dev` starts the app, e.g. "node ./server.js").');
     }
     let port = DEFAULT_DEV_PORT;
     if (table.port !== undefined) {

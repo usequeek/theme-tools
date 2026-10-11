@@ -566,7 +566,16 @@ export default class AppDev extends BaseCommand {
 
   static override summary = 'Develop an app end to end: tunnel + dev install + your app running with injected env.';
 
-  static override description = `Brings up a tunnel, registers the toml as a development build (same-semver unreleased rides the in-place rule — no version spam), installs it on an owned DEV store with scopes auto-granted (no consent screen), then starts the app from the toml's CLI-only \`[dev]\` table (\`command\`, e.g. "tsx watch src/index.ts") with the dev env injected (APP_BASE_URL=<tunnel origin>, PORT, NODE_ENV=development, QUEEK_API_BASE, plus the signing secret / keypair / encryption key from .queek/.env.local, minted on first run). With no dev store, the command asks once to create one named after the app with test data (--create-dev-store in CI). The ready block prints the tunnel URL and the Preview URL (the app open inside the dev store's dashboard); every install and app line logs with time + source. Saves to queek.app.toml re-register; \`[dev]\` changes need a restart. Automation tokens cannot run dev (dev-store reads are outside their grant) — sign in as a developer. Ctrl+C stops the app and the tunnel.`;
+  static override description = `Runs your app against a dev store, end to end:
+
+1. Starts a tunnel so Queek can reach your machine (or uses --url).
+2. Registers queek.app.toml as a development build. Re-running with the same version updates that build in place, so it does not create a new version each time.
+3. Installs the app on a dev store you own, with every scope granted and no consent screen.
+4. Starts your app with the command in the [dev] table of queek.app.toml (for example "node ./server.js"). It receives APP_BASE_URL (the tunnel origin), PORT, NODE_ENV=development, QUEEK_API_BASE, and the signing secret, keypair and encryption key from .queek/.env.local (created on first run).
+
+With no dev store, the command offers to create one named after the app, with test data (--create-dev-store does it without asking, for CI). When everything is ready it prints the tunnel URL and a Preview URL that opens the app inside the dev store's dashboard. Saving queek.app.toml registers the build again; changes to [dev] need a restart.
+
+You must be signed in as a developer (queek auth login). Automation tokens cannot read dev stores, so they cannot run this command. Ctrl+C stops the app and the tunnel.`;
 
   static override examples = [
     '<%= config.bin %> <%= command.id %>',
@@ -580,7 +589,7 @@ export default class AppDev extends BaseCommand {
     store: Flags.string({ summary: 'The owned dev store (numeric p_id, slug or name). The only store when you own exactly one. Merchant and test stores are refused.', env: 'QUEEK_APP_STORE' }),
     'create-dev-store': Flags.boolean({ summary: 'With no dev store, create one named after the app with test data instead of asking (CI).', default: false }),
     'dev-store-name': Flags.string({ summary: 'Name for a first-run created dev store (default: "<app name> dev").', env: 'QUEEK_APP_DEV_STORE_NAME' }),
-    'dev-store-address': Flags.string({ summary: 'Slug (address) for a first-run created dev store (default: derived from the name). Taken slugs 422 with a suggestion.', env: 'QUEEK_APP_DEV_STORE_SLUG' }),
+    'dev-store-address': Flags.string({ summary: 'Slug (address) for a first-run created dev store (default: derived from the name). If the slug is taken, Queek suggests another.', env: 'QUEEK_APP_DEV_STORE_SLUG' }),
     port: Flags.integer({ summary: 'Your local app server port the tunnel forwards to (default: [dev].port, else 3000).', min: 1, max: 65535 }),
     url: Flags.string({ summary: 'Your own tunnel URL (https). Skips starting cloudflared.' }),
   };
@@ -602,7 +611,7 @@ export default class AppDev extends BaseCommand {
     for (const warning of first.warnings) this.logToStderr(`Warning: ${warning}`);
     const dev: DevTable | undefined = first.dev;
     if (!dev) {
-      this.error('`queek app dev` starts the app from the toml’s [dev] table — add `[dev]` with `command = "tsx watch src/index.ts"` (and optionally `port = 3000`) to queek.app.toml.', { exit: 2 });
+      this.error('`queek app dev` starts the app from the toml’s [dev] table — add `[dev]` with `command = "node ./server.js"` (and optionally `port = 3000`) to queek.app.toml.', { exit: 2 });
     }
     const port = flags.port ?? dev.port ?? DEFAULT_DEV_PORT;
 

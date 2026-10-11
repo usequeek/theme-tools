@@ -24,7 +24,7 @@ export default class Check extends BaseCommand {
 
   static override description = `Runs the same rules Queek runs when you submit, except the few that need Queek's side (they are listed at the end of the report). Errors block submission; warnings are advice.
 
-Exit codes: 0 — no errors (or no findings at --fail-level warning); 1 — findings at or above the fail level; 2 — the check could not run.
+Exit codes: 0 when nothing is at or above the fail level (errors by default, or warnings too with --fail-level warning); 1 when something is; 2 when the check could not run (bad path, bad flag, unreadable config).
 
 With --init, writes a starter ${CONFIG_FILE_NAME} in the project instead of checking.`;
 

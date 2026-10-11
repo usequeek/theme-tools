@@ -258,7 +258,7 @@ describe('server parity', () => {
     const bare = loadTomlFile(stageFile(`${BASE}\n[dev]\ncommand = "npm run dev"\n`));
     expect(toManifest(bare.doc).dev).toEqual({ command: 'npm run dev', port: 3000 });
     expect(() => toManifest(loadTomlFile(stageFile(`${BASE}\n[dev]\nport = 3000\n`)).doc)).toThrow(
-      'The dev.command field is required (how `queek app dev` starts the app, e.g. "tsx watch src/index.ts").',
+      'The dev.command field is required (how `queek app dev` starts the app, e.g. "node ./server.js").',
     );
     expect(() => toManifest(loadTomlFile(stageFile(`${BASE}\n[dev]\ncommand = "x"\nport = 99999\n`)).doc)).toThrow(
       'The dev.port must be a port number (1-65535).',

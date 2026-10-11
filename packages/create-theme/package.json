@@ -3,6 +3,7 @@
   "version": "0.15.0",
   "description": "npm create @usequeek/theme — start a Queek storefront theme from the official starter.",
   "license": "MIT",
+  "author": "Queekx Technology LTD",
   "type": "module",
   "bin": {
     "create-theme": "./dist/cli.js"

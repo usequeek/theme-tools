@@ -3,6 +3,7 @@
   "version": "0.15.0",
   "description": "npm create @usequeek/app — start a Queek installable app from the official starter.",
   "license": "MIT",
+  "author": "Queekx Technology LTD",
   "type": "module",
   "bin": {
     "create-app": "./dist/cli.js"

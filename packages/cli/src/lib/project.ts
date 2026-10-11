@@ -17,7 +17,7 @@ const isTheme = (dir: string): boolean => existsSync(join(dir, 'manifest.ts'));
  */
 export function resolveProject(path: string): Project {
   const start = resolve(path);
-  if (!existsSync(start)) throw new Error(`${path} does not exist.`);
+  if (!existsSync(start)) throw new Error(`${path} does not exist. Run this from inside your theme project, or pass --path with the project folder.`);
   const themeDir = isTheme(start) ? start : isTheme(join(start, 'theme')) ? join(start, 'theme') : null;
   if (!themeDir) {
     throw new Error(`No theme found at ${path}: expected a manifest.ts there or in ${join(path, 'theme')}. Run this in a theme project (npm create @usequeek/theme), or pass --path.`);
