@@ -188,8 +188,8 @@ importers:
         specifier: ^0.4.0
         version: 0.4.0
       '@usequeek/theme-kit':
-        specifier: ^0.1.12
-        version: 0.1.12(@queekai/client-sdk@0.3.1)(@types/react@19.3.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
+        specifier: ^0.1.25
+        version: 0.1.25(@types/react@19.3.0)(@usequeek/client-sdk@0.4.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
       eslint:
         specifier: ^10.11.0
         version: 10.11.0(jiti@2.7.0)(supports-color@7.2.0)
@@ -243,7 +243,7 @@ importers:
         version: link:../theme-check
       '@usequeek/theme-kit':
         specifier: '>=0.1.8'
-        version: 0.1.12(@queekai/client-sdk@0.3.1)(@types/react@19.3.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)
+        version: 0.1.25(@types/react@19.3.0)(@usequeek/client-sdk@0.4.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)
       next:
         specifier: ^16.0.0
         version: 16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -302,7 +302,7 @@ importers:
     dependencies:
       '@usequeek/theme-kit':
         specifier: '>=0.1.8'
-        version: 0.1.8(@queekai/client-sdk@0.3.1)(@types/react@19.3.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
+        version: 0.1.25(@types/react@19.3.0)(@usequeek/client-sdk@0.4.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
       jiti:
         specifier: ^2.7.0
         version: 2.7.0
@@ -762,9 +762,6 @@ packages:
     resolution: {integrity: sha512-4EDEmvxWtgsCnnVeBvtFIFZtUhPPt1+bA9JrSwU4Sa//6oKtzCSlGGXYJr44OD9aGISymbieJ4mCKHUygUDU+g==}
     engines: {node: '>=18'}
 
-  '@queekai/client-sdk@0.3.1':
-    resolution: {integrity: sha512-7mshEA18Dos+IbGH3u3Epm6ZXN7zSysOC5wR0Qml7gtASTin4TE5xP2uz6aS/mAVoawNUjbnWXvQynmW08aCHw==}
-
   '@redocly/ajv@8.11.2':
     resolution: {integrity: sha512-io1JpnwtIcvojV7QKDUSIuMN/ikdOUd1ReEnUnMKGfDVridQZ31J0MmIuqwuRjWDZfmvr+Q0MqCcfHM2gTivOg==}
 
@@ -996,18 +993,11 @@ packages:
     resolution: {integrity: sha512-qYZ7JU6hbd5Mj6J570XIOquZicsdWXnJrZ2JG8mjKAqrJ1z/kE5Tw/M4RwjwljGRqnrCt0VwZOKKISHLPeC+yg==}
     engines: {node: '>=18'}
 
-  '@usequeek/theme-kit@0.1.12':
-    resolution: {integrity: sha512-ZjZNYADavFoYdPRx2ZAv/lwesYneZ6/NJaJ2Kaa40m7jp0DCvn7FvL9V8TWMBm5UjDnvUijMq8RpdK1/peMvLg==}
+  '@usequeek/theme-kit@0.1.25':
+    resolution: {integrity: sha512-PMy/Sn9wn1zA2cMMhJyyhAVPKl2JEp33fm+w3hyTjS4Suwpa1glZ/6fcnDN1VWiQAZ9lKwNqGzdrZzLeVAnq1Q==}
+    engines: {node: '>=22'}
     peerDependencies:
-      '@queekai/client-sdk': '*'
-      next: '>=15'
-      react: '>=19'
-      react-dom: '>=19'
-
-  '@usequeek/theme-kit@0.1.8':
-    resolution: {integrity: sha512-HcokEKLn2ZL7NVZM7BIV9VM9pxbRUviTY3Pi65tWo4H5MyZwa79Ec01DaEMx88cSFTEAQrd7fMbq9k9cij1Z/Q==}
-    peerDependencies:
-      '@queekai/client-sdk': '*'
+      '@usequeek/client-sdk': ^0.4.0
       next: '>=15'
       react: '>=19'
       react-dom: '>=19'
@@ -2670,8 +2660,6 @@ snapshots:
     dependencies:
       tinyexec: 1.3.1
 
-  '@queekai/client-sdk@0.3.1': {}
-
   '@redocly/ajv@8.11.2':
     dependencies:
       fast-deep-equal: 3.1.3
@@ -2894,9 +2882,9 @@ snapshots:
 
   '@usequeek/client-sdk@0.4.0': {}
 
-  '@usequeek/theme-kit@0.1.12(@queekai/client-sdk@0.3.1)(@types/react@19.3.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)':
+  '@usequeek/theme-kit@0.1.25(@types/react@19.3.0)(@usequeek/client-sdk@0.4.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)':
     dependencies:
-      '@queekai/client-sdk': 0.3.1
+      '@usequeek/client-sdk': 0.4.0
       html-to-image: 1.11.13
       next: 16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react: 19.3.0
@@ -2910,25 +2898,9 @@ snapshots:
       - supports-color
       - use-sync-external-store
 
-  '@usequeek/theme-kit@0.1.12(@queekai/client-sdk@0.3.1)(@types/react@19.3.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
+  '@usequeek/theme-kit@0.1.25(@types/react@19.3.0)(@usequeek/client-sdk@0.4.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
     dependencies:
-      '@queekai/client-sdk': 0.3.1
-      html-to-image: 1.11.13
-      next: 16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
-      react-markdown: 10.1.0(@types/react@19.3.0)(react@19.3.0)(supports-color@7.2.0)
-      remark-gfm: 4.0.1(supports-color@7.2.0)
-      zustand: 5.0.15(@types/react@19.3.0)(react@19.3.0)
-    transitivePeerDependencies:
-      - '@types/react'
-      - immer
-      - supports-color
-      - use-sync-external-store
-
-  '@usequeek/theme-kit@0.1.8(@queekai/client-sdk@0.3.1)(@types/react@19.3.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
-    dependencies:
-      '@queekai/client-sdk': 0.3.1
+      '@usequeek/client-sdk': 0.4.0
       html-to-image: 1.11.13
       next: 16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react: 19.3.0

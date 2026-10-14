@@ -2,4 +2,4 @@ packages:
   - packages/*
 minimumReleaseAgeExclude:
   - '@usequeek/client-sdk@0.4.0'
-  - '@usequeek/theme-kit@0.1.10 || 0.1.12'
+  - '@usequeek/theme-kit@0.1.10 || 0.1.12 || 0.1.25'
