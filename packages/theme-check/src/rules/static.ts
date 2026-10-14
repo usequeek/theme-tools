@@ -382,7 +382,7 @@ export const sdkBoundaryRule: Rule = {
       const source = readFileSync(path, 'utf8');
       const where = themePath(context, path);
 
-      if (/from\s+['"](?:@queekai\/client-sdk|@\/lib\/core\/sdk\/)/.test(source)) {
+      if (/from\s+['"](?:@(?:usequeek|queekai)\/client-sdk|@\/lib\/core\/sdk\/)/.test(source)) {
         findings.push(finding(context, 'theme/core-boundary', 'reject', {
           where,
           found: 'imports the SDK directly',

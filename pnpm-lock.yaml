@@ -175,9 +175,6 @@ importers:
       '@eslint/js':
         specifier: ^9.0.0
         version: 9.39.5
-      '@queekai/client-sdk':
-        specifier: ^0.3.1
-        version: 0.3.1
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.4
@@ -187,6 +184,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.0
         version: 19.3.0(@types/react@19.3.0)
+      '@usequeek/client-sdk':
+        specifier: ^0.4.0
+        version: 0.4.0
       '@usequeek/theme-kit':
         specifier: ^0.1.12
         version: 0.1.12(@queekai/client-sdk@0.3.1)(@types/react@19.3.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
@@ -991,6 +991,10 @@ packages:
 
   '@ungap/structured-clone@1.4.0':
     resolution: {integrity: sha512-1mEZtMKPM09vDmQt5y7YvmN2+DFTP7Tg0EWXdic8/C6VRnpb33e4ghisCIE3WZjsE2N8mf+QV1Zqh7ZFYLWInQ==}
+
+  '@usequeek/client-sdk@0.4.0':
+    resolution: {integrity: sha512-qYZ7JU6hbd5Mj6J570XIOquZicsdWXnJrZ2JG8mjKAqrJ1z/kE5Tw/M4RwjwljGRqnrCt0VwZOKKISHLPeC+yg==}
+    engines: {node: '>=18'}
 
   '@usequeek/theme-kit@0.1.12':
     resolution: {integrity: sha512-ZjZNYADavFoYdPRx2ZAv/lwesYneZ6/NJaJ2Kaa40m7jp0DCvn7FvL9V8TWMBm5UjDnvUijMq8RpdK1/peMvLg==}
@@ -2887,6 +2891,8 @@ snapshots:
       eslint-visitor-keys: 5.0.1
 
   '@ungap/structured-clone@1.4.0': {}
+
+  '@usequeek/client-sdk@0.4.0': {}
 
   '@usequeek/theme-kit@0.1.12(@queekai/client-sdk@0.3.1)(@types/react@19.3.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)':
     dependencies:

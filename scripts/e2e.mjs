@@ -82,7 +82,7 @@ try {
   sh(process.execPath, [join(tools, 'node_modules/@usequeek/create-theme/dist/cli.js'), project, '--yes', '--template', starter, '--name', 'My Theme', '--templates', 'laundry,foods', '--primary', 'laundry', '--tags', 'minimal', '--pages', 'contact', '--ai', 'claude', '--no-install', '--no-git'], work);
   console.log('e2e: create ✓');
 
-  sh(npm, ['install', '--no-audit', '--no-fund', '@usequeek/theme-kit@^0.1.8', '@queekai/client-sdk@^0.3.1', 'next@^16', 'react@^19', 'react-dom@^19', 'typescript@^5', ...tarballs], project);
+  sh(npm, ['install', '--no-audit', '--no-fund', '@usequeek/theme-kit@^0.1.8', '@usequeek/client-sdk@^0.4.0', 'next@^16', 'react@^19', 'react-dom@^19', 'typescript@^5', ...tarballs], project);
   console.log('e2e: installed from the tarballs');
 
   // A freshly created theme is not clean — it still carries the starter's

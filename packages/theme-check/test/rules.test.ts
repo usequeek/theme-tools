@@ -932,10 +932,11 @@ describe('theme/core-boundary: the SDK stays behind the kit', () => {
     const dir = mkdtempSync(join(tmpdir(), 'boundary-sdk-'));
     writeFileSync(join(dir, 'a.ts'), "import { createClient } from '@queekai/client-sdk';\n");
     writeFileSync(join(dir, 'b.ts'), 'import { createClient } from "@queekai/client-sdk";\n');
+    writeFileSync(join(dir, 'c.ts'), "import { createQueekClient } from '@usequeek/client-sdk';\n");
 
     const findings = await sdkBoundaryRule.run({ ...context({}), dir });
 
-    expect(findings.map((f) => f.where).sort()).toEqual(['a.ts', 'b.ts']);
+    expect(findings.map((f) => f.where).sort()).toEqual(['a.ts', 'b.ts', 'c.ts']);
     for (const finding of findings) {
       expect(finding.found).toBe('imports the SDK directly');
       expect(finding.fix).toContain('useProducts');
