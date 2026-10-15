@@ -457,7 +457,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
   if (extensions.proxy !== undefined) {
     if (!isRecord(extensions.proxy)) throw fail('The extensions.proxy section must be a table.');
     for (const key of Object.keys(extensions.proxy)) {
-      if (!['url', 'subpath', 'share_customer_id'].includes(key)) problems.push(unknownField(key, 'manifest.extensions.proxy'));
+      if (!['url', 'subpath', 'share_customer_id', 'allow_post'].includes(key)) problems.push(unknownField(key, 'manifest.extensions.proxy'));
     }
     if (problems.length > 0) throw new TomlError(problems.join('\n'));
     const proxy = extensions.proxy;
@@ -466,7 +466,16 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     if (typeof proxy.subpath !== 'string' || !/^[a-z0-9][a-z0-9-]{1,39}$/.test(proxy.subpath)) {
       throw fail('The proxy subpath must be 2-40 lowercase letters, digits or dashes.');
     }
-    out.proxy = { url: proxy.url, subpath: proxy.subpath, ...(proxy.share_customer_id !== undefined ? { share_customer_id: proxy.share_customer_id } : {}) };
+    if (proxy.allow_post !== undefined && typeof proxy.allow_post !== 'boolean') {
+      throw fail('The extensions.proxy.allow_post field must be true or false.');
+    }
+    out.proxy = {
+      url: proxy.url,
+      subpath: proxy.subpath,
+      ...(proxy.share_customer_id !== undefined ? { share_customer_id: proxy.share_customer_id } : {}),
+      // Absent when false: the backend stores allow_post only when true.
+      ...(proxy.allow_post === true ? { allow_post: true } : {}),
+    };
   }
   if (extensions.merchant_page_url !== undefined) {
     checkCappedUrl(extensions.merchant_page_url, 'extensions.merchant_page_url', fail);

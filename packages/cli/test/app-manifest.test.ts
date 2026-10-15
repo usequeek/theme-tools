@@ -231,6 +231,38 @@ describe('server parity', () => {
     expect(bad(`${BASE}\n[dashboard]\n[[dashboard.print]]\nkey = "p"\ntitle = "P"\ntarget = "order-print"\n[[dashboard.print.fields]]\nkey = "f"\nlabel = "F"\nstray = 1\n`)).toContain("Unknown field 'stray' in manifest.dashboard.print[0].fields[0].");
   });
 
+  it('accepts extensions.proxy.allow_post = true and sends it', () => {
+    const { doc } = loadTomlFile(stageFile(`${BASE}\n[extensions.proxy]\nurl = "https://x.example.com/p"\nsubpath = "hello"\nallow_post = true\n`));
+    const { manifest } = toManifest(doc);
+    expect((manifest.extensions as { proxy: unknown }).proxy).toEqual({ url: 'https://x.example.com/p', subpath: 'hello', allow_post: true });
+  });
+
+  it('accepts extensions.proxy.allow_post = false and does not send it', () => {
+    const { doc } = loadTomlFile(stageFile(`${BASE}\n[extensions.proxy]\nurl = "https://x.example.com/p"\nsubpath = "hello"\nallow_post = false\n`));
+    const { manifest } = toManifest(doc);
+    expect((manifest.extensions as { proxy: unknown }).proxy).toEqual({ url: 'https://x.example.com/p', subpath: 'hello' });
+  });
+
+  it('rejects a non-boolean extensions.proxy.allow_post', () => {
+    const bad = (toml: string): string => {
+      try {
+        toManifest(loadTomlFile(stageFile(toml)).doc);
+        return 'no error';
+      } catch (error) {
+        return (error as Error).message;
+      }
+    };
+    expect(bad(`${BASE}\n[extensions.proxy]\nurl = "https://x.example.com/p"\nsubpath = "hello"\nallow_post = "yes"\n`)).toContain(
+      'The extensions.proxy.allow_post field must be true or false.',
+    );
+  });
+
+  it('leaves the proxy payload byte-identical when allow_post is absent', () => {
+    const { doc } = loadTomlFile(stageFile(`${BASE}\n[extensions.proxy]\nurl = "https://x.example.com/p"\nsubpath = "hello"\n`));
+    const { manifest } = toManifest(doc);
+    expect(JSON.stringify((manifest.extensions as { proxy: unknown }).proxy)).toBe('{"url":"https://x.example.com/p","subpath":"hello"}');
+  });
+
   it('requires https on link/image/notify URLs like the other app URLs', () => {
     const bad = (toml: string): string => {
       try {
