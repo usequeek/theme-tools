@@ -64,6 +64,8 @@ const DASHBOARD_WHEN_FIELDS = ['order.has_appointment', 'order.is_paid', 'produc
 const BLOCK_AVAILABLE_IF = ['declared_products'];
 const EXTENSION_BLOCK_TARGETS = ['product'];
 const EXTENSION_PRIMITIVES = ['date', 'time', 'select'];
+/** The block's write action: needs extensions.proxy.allow_post, one per block. */
+const EXTENSION_SUBMIT_PRIMITIVE = 'submit';
 const EXTENSION_BLOCK_TYPES = ['app_block', 'app_embed'];
 
 /** Key/value shapes that smell like a secret and are refused in the toml. */
@@ -546,7 +548,14 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     if (block.available_if !== undefined && !BLOCK_AVAILABLE_IF.includes(block.available_if as string)) {
       throw fail(`The block visibility condition must be one of: ${BLOCK_AVAILABLE_IF.join(', ')}.`);
     }
-    if (block.schema !== undefined) checkSchemaFields(block.schema, where, EXTENSION_PRIMITIVES, problems);
+    if (block.schema !== undefined) {
+      checkSchemaFields(block.schema, where, [...EXTENSION_PRIMITIVES, EXTENSION_SUBMIT_PRIMITIVE], problems);
+      const submits = Array.isArray(block.schema) ? block.schema.filter((field) => isRecord(field) && field.type === EXTENSION_SUBMIT_PRIMITIVE) : [];
+      if (submits.length > 0 && !(isRecord(extensions.proxy) && extensions.proxy.allow_post === true)) {
+        throw fail(`The ${where}.schema declares a submit primitive, which needs extensions.proxy.allow_post: true.`);
+      }
+      if (submits.length > 1) throw fail(`The ${where}.schema may declare at most one submit primitive.`);
+    }
     if (block.link_url !== undefined && block.link_url !== null) checkCappedUrl(block.link_url, `${where}.link_url`, fail);
     checkImage(block.image, where, problems, fail);
     checked.push(block);

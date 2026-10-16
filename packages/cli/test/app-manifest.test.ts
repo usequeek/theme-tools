@@ -263,6 +263,43 @@ describe('server parity', () => {
     expect(JSON.stringify((manifest.extensions as { proxy: unknown }).proxy)).toBe('{"url":"https://x.example.com/p","subpath":"hello"}');
   });
 
+  describe('submit primitive', () => {
+    const PROXY = '\n[extensions.proxy]\nurl = "https://x.example.com/p"\nsubpath = "hello"\n';
+    const SUBMIT = '\n[[extensions.blocks.schema]]\nkey = "send"\nlabel = "Send"\ntype = "submit"\n';
+    const build = (proxy: string, schema: string): string => `${BASE}${BLOCK}${schema}${proxy}`;
+    const message = (toml: string): string => {
+      try {
+        toManifest(loadTomlFile(stageFile(toml)).doc);
+        return 'no error';
+      } catch (error) {
+        return (error as Error).message;
+      }
+    };
+
+    it('accepts and retains it, in order, when the proxy opts in to POST', () => {
+      const toml = build(`${PROXY}allow_post = true\n`, `\n[[extensions.blocks.schema]]\nkey = "when"\nlabel = "When"\ntype = "date"\n${SUBMIT}`);
+      const { manifest } = toManifest(loadTomlFile(stageFile(toml)).doc);
+      const schema = (manifest.extensions as { blocks: { schema: { type: string; key: string; label: string }[] }[] }).blocks[0].schema;
+      expect(schema.map((field) => field.type)).toEqual(['date', 'submit']);
+      expect(schema[1]).toMatchObject({ key: 'send', label: 'Send', type: 'submit' });
+    });
+
+    it('refuses it without allow_post (absent, false, or no proxy at all) with the backend wording', () => {
+      const wording = 'The manifest.extensions.blocks[0].schema declares a submit primitive, which needs extensions.proxy.allow_post: true.';
+      expect(message(build(PROXY, SUBMIT))).toContain(wording);
+      expect(message(build(`${PROXY}allow_post = false\n`, SUBMIT))).toContain(wording);
+      expect(message(build('', SUBMIT))).toContain(wording);
+    });
+
+    it('allows one per block only, and keeps the input primitive list unchanged', () => {
+      expect(message(build(`${PROXY}allow_post = true\n`, `${SUBMIT}${SUBMIT.replace('"send"', '"again"')}`))).toContain(
+        'may declare at most one submit primitive.',
+      );
+      const bad = build(`${PROXY}allow_post = true\n`, '\n[[extensions.blocks.schema]]\nkey = "x"\nlabel = "X"\ntype = "text"\n');
+      expect(message(bad)).toContain('The schema primitive must be one of: date, time, select, submit.');
+    });
+  });
+
   it('requires https on link/image/notify URLs like the other app URLs', () => {
     const bad = (toml: string): string => {
       try {
