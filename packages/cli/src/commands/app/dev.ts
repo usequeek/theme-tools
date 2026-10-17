@@ -1,9 +1,9 @@
-import { randomUUID } from 'node:crypto';
 import { mkdirSync, watch } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
 import * as p from '@clack/prompts';
 import { Flags } from '@oclif/core';
 import { apiFailureOf, DASHBOARD_URL, LoginNeededError, type ApiFailure, type DeveloperApi, type DevStore } from '../../lib/app-api.js';
+import { DevStoreError, readSavedStore, saveStore, selectDevStore, type DevStorePrompts } from '../../lib/app-dev-store.js';
 import { apiBase } from '../../lib/app-auth.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
@@ -71,18 +71,6 @@ export function handoffLine(source: string, line: string, at: Date = new Date())
 export function previewUrl(adminUrl: string | null, appSlug: string): string | null {
   if (!adminUrl) return null;
   return `${adminUrl}&app=${appSlug}`;
-}
-
-export function formatDevStores(stores: DevStore[]): string {
-  return stores.map((store) => `${store.p_id} (${store.name})`).join(', ');
-}
-
-/**
- * A --store that names no dev store never reads as "not found", it reads as
- * "wrong kind of store".
- */
-export function devStoreRefusal(wanted: string, stores: DevStore[]): string {
-  return `Could not find dev store '${wanted}'. Yours: ${formatDevStores(stores)}. Ensure the store is a dev store (dashboard → Developers → Dev stores) — merchant and test stores cannot run \`queek app dev\`.`;
 }
 
 /**
@@ -570,26 +558,26 @@ export default class AppDev extends BaseCommand {
 
 1. Starts a tunnel so Queek can reach your machine (or uses --url).
 2. Registers queek.app.toml as a development build; an app whose slug is not registered yet is registered first, the way \`queek app deploy --no-release\` does (a development version, nothing served), so the first run needs no other command. Re-running with the same version updates that build in place, so it does not create a new version each time.
-3. Installs the app on a dev store you own, with every scope granted and no consent screen.
+3. Installs the app on a dev store you own, with every scope granted and no consent screen. The store is the one you pass with --store, else the one picked last time (remembered in .queek/dev.json), else your only dev store; with several you choose on a terminal (or pass --store in CI).
 4. Starts your app with the command in the [dev] table of queek.app.toml (for example "node ./server.js"). It receives APP_BASE_URL (the tunnel origin), PORT, NODE_ENV=development, QUEEK_API_BASE, and the signing secret, keypair and encryption key from .queek/.env.local (created on first run).
 
-With no dev store, the command offers to create one named after the app, with test data (--create-dev-store does it without asking, for CI). When everything is ready it prints the tunnel URL and a Preview URL that opens the app inside the dev store's dashboard. Saving queek.app.toml registers the build again; changes to [dev] need a restart.
+With no dev store, the command offers to create one named after the app, with test data. --create-dev-store always creates a new dev store (also when you own others) and runs on it; the storefront password is printed once, when the store is created, and never again. When everything is ready it prints the tunnel URL and a Preview URL that opens the app inside the dev store's dashboard. Saving queek.app.toml registers the build again; changes to [dev] need a restart.
 
 You must be signed in as a developer (queek auth login). Automation tokens cannot read dev stores, so they cannot run this command. Ctrl+C stops the app and the tunnel.`;
 
   static override examples = [
     '<%= config.bin %> <%= command.id %>',
     '<%= config.bin %> <%= command.id %> --store 12',
-    '<%= config.bin %> <%= command.id %> --create-dev-store',
+    '<%= config.bin %> <%= command.id %> --create-dev-store --dev-store-name "Checkout tests"',
     '<%= config.bin %> <%= command.id %> --url https://my-tunnel.trycloudflare.com',
   ];
 
   static override flags = {
     ...appFlags,
-    store: Flags.string({ summary: 'The owned dev store (numeric p_id, slug or name). The only store when you own exactly one. Merchant and test stores are refused.', env: 'QUEEK_APP_STORE' }),
-    'create-dev-store': Flags.boolean({ summary: 'With no dev store, create one named after the app with test data instead of asking (CI).', default: false }),
-    'dev-store-name': Flags.string({ summary: 'Name for a first-run created dev store (default: "<app name> dev").', env: 'QUEEK_APP_DEV_STORE_NAME' }),
-    'dev-store-address': Flags.string({ summary: 'Slug (address) for a first-run created dev store (default: derived from the name). If the slug is taken, Queek suggests another.', env: 'QUEEK_APP_DEV_STORE_SLUG' }),
+    store: Flags.string({ summary: 'The owned dev store (numeric p_id, slug or name). Without it: the store picked last time, the only one you own, or a choice on a terminal. Merchant and test stores are refused.', env: 'QUEEK_APP_STORE' }),
+    'create-dev-store': Flags.boolean({ summary: 'Create a NEW dev store with test data and run on it, even when you already own others. Without it, a first dev store is offered on a terminal.', default: false }),
+    'dev-store-name': Flags.string({ summary: 'Name for the created dev store (default: "<app name> dev").', env: 'QUEEK_APP_DEV_STORE_NAME' }),
+    'dev-store-address': Flags.string({ summary: 'Slug (address) for the created dev store (default: derived from the name). If the slug is taken, Queek suggests another.', env: 'QUEEK_APP_DEV_STORE_SLUG' }),
     port: Flags.integer({ summary: 'Your local app server port the tunnel forwards to (default: [dev].port, else 3000).', min: 1, max: 65535 }),
     url: Flags.string({ summary: 'Your own tunnel URL (https). Skips starting cloudflared.' }),
   };
@@ -632,6 +620,26 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
       (error: Error) => this.error(error.message, { exit: error instanceof MissingSecretError ? 2 : 1 }),
     );
 
+    // The dev store is chosen once, before anything starts: a prompt or a
+    // refusal never lands in the middle of the tunnel and app output, and a
+    // created store is never created again by a later re-register.
+    const savedStore = readSavedStore(queek);
+    const { store } = await selectDevStore(
+      api,
+      {
+        appName: first.manifest.name,
+        wanted: flags.store,
+        create: flags['create-dev-store'],
+        storeName: flags['dev-store-name'],
+        storeSlug: flags['dev-store-address'],
+        saved: savedStore,
+        interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
+      },
+      this.devStorePrompts(),
+      (line) => this.log(line),
+    ).catch((error: Error) => this.error(error.message, { exit: error instanceof DevStoreError ? error.exit : 1 }));
+    if (store.p_id !== savedStore) saveStore(queek, store.p_id);
+
     const tomlPath = resolveTomlPath(flags.path, flags.config);
     // let: a dead cloudflared tunnel restarts in place (superviseTunnel
     // below); the stopper always reads the current one, so no orphan.
@@ -659,7 +667,7 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
       // The tunnel URL is a parameter (not the closure): the toml watcher
       // re-registers the current tunnel, the restart path the new one —
       // both run this same cycle.
-      const cycle = async (tunnelUrl: string): Promise<{ store: DevStore; preview: string | null; appPid: string }> => {
+      const cycle = async (tunnelUrl: string): Promise<{ preview: string | null; appPid: string }> => {
         const { manifest } = loadApp(flags.path, flags.config);
         const devManifest = withDevUrls(manifest, tunnelUrl);
         const result = await api.deploy(devManifest).catch((error: Error) => this.error(error.message, { exit: 1 }));
@@ -672,13 +680,6 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
             { exit: 1 },
           );
         }
-        const store = await this.pickDevStore(api, flags.store, {
-          appName: first.manifest.name,
-          create: flags['create-dev-store'],
-          storeName: flags['dev-store-name'],
-          storeSlug: flags['dev-store-address'],
-          interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
-        });
         // Queek delivers the install handoff to the app THROUGH the
         // tunnel, so a fresh quick-tunnel host that is not resolvable yet
         // answers 424 app_handoff_failed (502 before the Cloudflare fix):
@@ -709,7 +710,7 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
         this.log(handoffLine('queek', `Dev install: ${result.slug} ${result.version} on dev store '${store.name}' ← ${tunnelUrl} (install ${installed.status})`));
         // The served preview wins; admin_url+slug rebuilds only as fallback.
         const preview = resolvePreview(installed.preview_url, store.admin_url, result.slug);
-        return { store, preview, appPid: result.p_id };
+        return { preview, appPid: result.p_id };
       };
 
       // Install only once the app answers locally AND through the tunnel —
@@ -724,7 +725,7 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
         this.logToStderr(`The tunnel ${tunnel.url} did not answer /health within 60s — installing anyway; the install retries if Queek cannot reach it yet.`);
       }
       let current = await cycle(tunnel.url);
-      this.readyBlock(tunnel.url, current.preview, current.store, current.appPid);
+      this.readyBlock(tunnel.url, current.preview, store, current.appPid);
       this.log(`Watching ${tomlPath} — save it to re-register ([dev] changes need a restart). Ctrl+C to stop.`);
       // Deploys serialize across toml saves and restart re-registers: a
       // save landing mid-restart queues behind instead of racing it. One
@@ -734,7 +735,7 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
       watch(tomlPath, { persistent: true }, async () => {
         try {
           current = await deployQueue(() => cycle(tunnel.url));
-          this.readyBlock(tunnel.url, current.preview, current.store, current.appPid);
+          this.readyBlock(tunnel.url, current.preview, store, current.appPid);
         } catch (error) {
           this.logToStderr(`Re-register failed: ${(error as Error).message}`);
         }
@@ -856,50 +857,28 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
     return startCloudflared(port, join(queek, 'cloudflared.log')).catch((error: Error) => this.error(error.message, { exit: 2 }));
   }
 
-  /**
-   * The dev-store selector. `--store` takes a p_id, slug or name and only
-   * ever matches a dev store (anything else reads as wrong-kind). With no dev
-   * store at all: --create-dev-store (CI) or one
-   * TTY question creates it with test data — named "<app name> dev"
-   * unless --dev-store-name says otherwise, slug server-derived unless
-   * --dev-store-address names one; a non-interactive run without the flag
-   * errors with the dashboard path. The 201's storefront password prints
-   * once on stdout (never logs/debug) — the API will not resend it.
-   */
-  private async pickDevStore(
-    api: DeveloperApi,
-    wanted: string | undefined,
-    options: { appName: string; create: boolean; storeName?: string; storeSlug?: string; interactive: boolean },
-  ): Promise<DevStore> {
-    const { data: stores } = await api.devStores().catch((error: Error) => this.error(error.message, { exit: 1 }));
-    if (stores.length === 0) {
-      const name = options.storeName ?? defaultDevStoreName(options.appName);
-      const ask = options.create || (options.interactive && this.answer<boolean>(await p.confirm({
-        message: `No dev stores yet — create one named '${name}' with test data?`,
-      })));
-      if (ask) {
-        const created = await api.createDevStore(name, true, randomUUID(), options.storeSlug).catch((error: Error) => this.error(error.message, { exit: 1 }));
-        this.log(`Created dev store '${created.name}' with test data.`);
-        if (typeof created.storefront_password === 'string' && created.storefront_password !== '') {
-          this.log(`Storefront password: ${created.storefront_password}`);
-        }
-        return created;
-      }
-      this.error('No dev stores — create one on the dashboard (Developers → Dev stores), or pass --create-dev-store to make one named after this app with test data.', { exit: 2 });
-    }
-    if (wanted) {
-      const found = stores.find((store) => String(store.p_id) === wanted || store.name === wanted || store.slug === wanted);
-      if (!found) this.error(devStoreRefusal(wanted, stores), { exit: 2 });
-      return found;
-    }
-    const only = stores.length === 1 ? stores[0] : undefined;
-    if (only) return only;
-    this.error(`You own ${stores.length} dev stores — pass --store. Yours: ${formatDevStores(stores)}.`, { exit: 2 });
-  }
-
   private answer<T>(value: T | symbol): T {
     if (p.isCancel(value)) this.error('Cancelled.', { exit: 130 });
     return value as T;
+  }
+
+  /** The terminal questions `selectDevStore` may ask (it never prompts without a TTY). */
+  private devStorePrompts(): DevStorePrompts {
+    return {
+      confirmCreate: async (name) => this.answer<boolean>(await p.confirm({ message: `No dev stores yet — create one named '${name}' with test data?` })),
+      choose: async (stores) =>
+        this.answer<number | 'new'>(
+          await p.select<number | 'new'>({
+            message: 'Which dev store should this app run on?',
+            options: [
+              ...stores.map((store) => ({ value: store.p_id, label: `${store.name} (${store.p_id})`, hint: store.slug })),
+              { value: 'new' as const, label: 'Create a new dev store' },
+            ],
+          }),
+        ),
+      askName: async (initial) =>
+        this.answer<string>(await p.text({ message: 'Name for the new dev store', initialValue: initial, validate: (value) => ((value ?? '').trim() === '' ? 'A dev store needs a name.' : undefined) })),
+    };
   }
 }
 
@@ -917,15 +896,6 @@ export function devLinks(store: { name: string; storefront_url: string | null },
  */
 export function resolvePreview(served: string | undefined, adminUrl: string | null, appSlug: string): string | null {
   return served ?? previewUrl(adminUrl, appSlug);
-}
-
-/**
- * First-run default dev-store name: "<app name> dev" — the API derives the
- * slug (slugified name + "-dev") unless --dev-store-address
- * names one explicitly.
- */
-export function defaultDevStoreName(appName: string): string {
-  return `${appName} dev`;
 }
 
 /**

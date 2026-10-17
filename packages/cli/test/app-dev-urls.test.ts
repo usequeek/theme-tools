@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { defaultDevStoreName, devLinks, devStoreRefusal, handoffLine, isRetryableHandoffFailure, previewUrl, readyLines, resolvePreview, withDevResources, withDevUrls } from '../src/commands/app/dev.js';
+import { devLinks, handoffLine, isRetryableHandoffFailure, previewUrl, readyLines, resolvePreview, withDevResources, withDevUrls } from '../src/commands/app/dev.js';
 import { ApiError, apiFailureOf, type DevStore } from '../src/lib/app-api.js';
+import { defaultDevStoreName, devStoreRefusal } from '../src/lib/app-dev-store.js';
 import type { AppManifest } from '../src/lib/app-manifest.js';
 
 const STORE: DevStore = { id: 7, p_id: 12, name: 'Hello dev', slug: 'hello-dev', storefront_url: null, admin_url: 'https://admin.example.com/store/hello-dev', created_at: null };

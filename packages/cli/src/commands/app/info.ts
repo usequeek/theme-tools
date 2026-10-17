@@ -3,7 +3,7 @@ import { AutomationTokenError, LoginNeededError } from '../../lib/app-api.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { loadApp, resolveTomlPath } from '../../lib/app-manifest.js';
 import { BaseCommand } from '../../lib/base-command.js';
-import { devStoreRefusal } from './dev.js';
+import { devStoreRefusal } from '../../lib/app-dev-store.js';
 
 export interface InfoFacts {
   file: string;
