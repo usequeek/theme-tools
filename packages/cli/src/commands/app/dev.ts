@@ -3,7 +3,7 @@ import { delimiter, join, resolve } from 'node:path';
 import * as p from '@clack/prompts';
 import { Flags } from '@oclif/core';
 import { apiFailureOf, DASHBOARD_URL, LoginNeededError, type ApiFailure, type DeveloperApi, type DevStore } from '../../lib/app-api.js';
-import { DevStoreError, readSavedStore, saveStore, selectDevStore, type DevStorePrompts } from '../../lib/app-dev-store.js';
+import { DevStoreError, readSavedStore, saveStore, selectDevStore, terminalDevStorePrompts, type DevStorePrompts } from '../../lib/app-dev-store.js';
 import { apiBase } from '../../lib/app-auth.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
@@ -862,21 +862,7 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
 
   /** The terminal questions `selectDevStore` may ask (it never prompts without a TTY). */
   private devStorePrompts(): DevStorePrompts {
-    return {
-      confirmCreate: async (name) => this.answer<boolean>(await p.confirm({ message: `No dev stores yet — create one named '${name}' with test data?` })),
-      choose: async (stores) =>
-        this.answer<number | 'new'>(
-          await p.select<number | 'new'>({
-            message: 'Which dev store should this app run on?',
-            options: [
-              ...stores.map((store) => ({ value: store.p_id, label: `${store.name} (${store.p_id})`, hint: store.slug })),
-              { value: 'new' as const, label: 'Create a new dev store' },
-            ],
-          }),
-        ),
-      askName: async (initial) =>
-        this.answer<string>(await p.text({ message: 'Name for the new dev store', initialValue: initial, validate: (value) => ((value ?? '').trim() === '' ? 'A dev store needs a name.' : undefined) })),
-    };
+    return terminalDevStorePrompts((value) => this.answer(value));
   }
 }
 

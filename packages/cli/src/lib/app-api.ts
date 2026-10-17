@@ -610,6 +610,22 @@ export class DeveloperApi {
     return data;
   }
 
+  /**
+   * Remove an app's dev install from an owned dev store:
+   * DELETE /apps/{app}/dev-installs/{test_store_p_id}, the counterpart of
+   * `devInstall`. 2xx means it is gone; a 404 reaches the caller as an
+   * ApiError (no such install, or an API that cannot remove one yet).
+   */
+  async removeDevInstall(app: string, testStorePId: number): Promise<void> {
+    await this.vendor<unknown>(
+      'DELETE',
+      `/apps/${encodeURIComponent(app)}/dev-installs/${testStorePId}`,
+      `removing the dev install of '${app}'`,
+      undefined,
+      app,
+    );
+  }
+
   /** Server → toml. */
   async appConfig(app: string): Promise<AppConfig> {
     const { data } = await this.vendor<AppConfig>('GET', `/apps/${encodeURIComponent(app)}/config`, `linking config of '${app}'`, undefined, app);

@@ -67,7 +67,7 @@ describe('selectDevStore', () => {
     vi.mocked(f.prompts.choose).mockResolvedValueOnce(1184);
     const picked = await selectDevStore(f.api, request({ interactive: true }), f.prompts, f.log);
     expect(picked.store).toEqual(B);
-    expect(f.prompts.choose).toHaveBeenCalledWith([A, B]);
+    expect(f.prompts.choose).toHaveBeenCalledWith([A, B], true);
   });
 
   it("the choice menu's 'create a new dev store' asks a name and creates", async () => {

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import * as p from '@clack/prompts';
 import { apiFailureOf, type CreatedDevStore, type DeveloperApi, type DevStore } from './app-api.js';
 
 /**
@@ -27,8 +28,8 @@ export class DevStoreError extends Error {
 export interface DevStorePrompts {
   /** No dev store yet: create one with this name? */
   confirmCreate: (name: string) => Promise<boolean>;
-  /** Several dev stores: the chosen store's p_id, or `'new'` to create one. */
-  choose: (stores: DevStore[]) => Promise<number | 'new'>;
+  /** Several dev stores: the chosen store's p_id, or `'new'` to create one (offered only when `allowNew`). */
+  choose: (stores: DevStore[], allowNew: boolean) => Promise<number | 'new'>;
   /** The name for a store created from the choice menu. */
   askName: (initial: string) => Promise<string>;
 }
@@ -45,6 +46,8 @@ export interface DevStoreRequest {
   saved?: number | null;
   /** A terminal is attached: prompts are allowed. */
   interactive: boolean;
+  /** False for commands that only work on an existing store (`app dev clean`): never offer or create one. */
+  allowCreate?: boolean;
 }
 
 export interface DevStoreSelection {
@@ -135,7 +138,9 @@ export async function selectDevStore(
     return { store: found, created: false };
   }
 
+  const allowCreate = request.allowCreate !== false;
   if (stores.length === 0) {
+    if (!allowCreate) throw new DevStoreError('You have no dev stores — there is nothing to work on.', 2);
     if (request.interactive && (await prompts.confirmCreate(name))) return make(name);
     throw new DevStoreError(
       'No dev stores — create one on the dashboard (Developers → Dev stores), or pass --create-dev-store to make one named after this app with test data.',
@@ -151,15 +156,37 @@ export async function selectDevStore(
 
   if (!request.interactive) {
     throw new DevStoreError(
-      `You own ${stores.length} dev stores — pass --store <p_id|slug|name> (for example --store ${stores[0]?.p_id}), or --create-dev-store to make a new one. Yours: ${formatDevStores(stores)}.`,
+      `You own ${stores.length} dev stores — pass --store <p_id|slug|name> (for example --store ${stores[0]?.p_id})${allowCreate ? ', or --create-dev-store to make a new one' : ''}. Yours: ${formatDevStores(stores)}.`,
       2,
     );
   }
-  const choice = await prompts.choose(stores);
+  const choice = await prompts.choose(stores, allowCreate);
   if (choice === 'new') return make(await prompts.askName(name));
   const picked = stores.find((store) => store.p_id === choice);
   if (!picked) throw new DevStoreError(`Dev store ${choice} is not one of yours. Yours: ${formatDevStores(stores)}.`, 2);
   return { store: picked, created: false };
+}
+
+/**
+ * The terminal questions for a command: `answer` turns a cancelled prompt
+ * (Ctrl+C) into that command's own exit.
+ */
+export function terminalDevStorePrompts(answer: <T>(value: T | symbol) => T): DevStorePrompts {
+  return {
+    confirmCreate: async (name) => answer<boolean>(await p.confirm({ message: `No dev stores yet — create one named '${name}' with test data?` })),
+    choose: async (stores, allowNew) =>
+      answer<number | 'new'>(
+        await p.select<number | 'new'>({
+          message: 'Which dev store should this app run on?',
+          options: [
+            ...stores.map((store) => ({ value: store.p_id, label: `${store.name} (${store.p_id})`, hint: store.slug })),
+            ...(allowNew ? [{ value: 'new' as const, label: 'Create a new dev store' }] : []),
+          ],
+        }),
+      ),
+    askName: async (initial) =>
+      answer<string>(await p.text({ message: 'Name for the new dev store', initialValue: initial, validate: (value) => ((value ?? '').trim() === '' ? 'A dev store needs a name.' : undefined) })),
+  };
 }
 
 const SELECTION_FILE = 'dev.json';
