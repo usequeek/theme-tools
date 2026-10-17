@@ -595,15 +595,20 @@ export class DeveloperApi {
     return { data: all, total: first.total };
   }
 
-  /** Install an unreviewed dev build on an owned test store. */
-  async devInstall(app: string, testStorePId: number, settings?: Record<string, unknown>): Promise<DevInstallResult> {
+  /**
+   * Install an unreviewed dev build on an owned dev store. `localPageUrl`
+   * (`--use-localhost`) is sent as `local_page_url`: a loopback address the
+   * dashboard embeds the app from instead of the tunnel.
+   */
+  async devInstall(app: string, testStorePId: number, options: { settings?: Record<string, unknown>; localPageUrl?: string } = {}): Promise<DevInstallResult> {
     const { data } = await this.vendor<DevInstallResult>(
       'POST',
       `/apps/${encodeURIComponent(app)}/dev-installs`,
       `installing a dev build of '${app}'`,
       {
         test_store_p_id: testStorePId,
-        ...(settings !== undefined ? { settings } : {}),
+        ...(options.settings !== undefined ? { settings: options.settings } : {}),
+        ...(options.localPageUrl !== undefined ? { local_page_url: options.localPageUrl } : {}),
       },
       app,
     );

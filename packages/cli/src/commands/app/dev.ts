@@ -580,6 +580,7 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
     'dev-store-address': Flags.string({ summary: 'Slug (address) for the created dev store (default: derived from the name). If the slug is taken, Queek suggests another.', env: 'QUEEK_APP_DEV_STORE_SLUG' }),
     port: Flags.integer({ summary: 'Your local app server port the tunnel forwards to (default: [dev].port, else 3000).', min: 1, max: 65535 }),
     url: Flags.string({ summary: 'Your own tunnel URL (https). Skips starting cloudflared.' }),
+    'use-localhost': Flags.boolean({ summary: 'Embed your app in the dashboard straight from http://localhost:<port> (so hot reload works there). The tunnel still serves what Queek itself calls: install, uninstall and webhooks.', default: false }),
   };
 
   async run(): Promise<void> {
@@ -602,6 +603,9 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
       this.error('`queek app dev` starts the app from the toml’s [dev] table — add `[dev]` with `command = "node ./server.js"` (and optionally `port = 3000`) to queek.app.toml.', { exit: 2 });
     }
     const port = flags.port ?? dev.port ?? DEFAULT_DEV_PORT;
+    // --use-localhost: the dashboard embeds the app from this address; the
+    // tunnel stays for everything Queek's servers call.
+    const localUrl = flags['use-localhost'] ? localPageUrl(port) : null;
 
     // The signing secret is never minted or rotated here — dev and
     // production share one app record, so rotating would break every live
@@ -684,7 +688,7 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
         // tunnel, so a fresh quick-tunnel host that is not resolvable yet
         // answers 424 app_handoff_failed (502 before the Cloudflare fix):
         // retry a few times before giving up.
-        const installOnce = () => api.devInstall(result.slug, store.p_id);
+        const installOnce = () => api.devInstall(result.slug, store.p_id, localUrl === null ? {} : { localPageUrl: localUrl });
         let installed: Awaited<ReturnType<typeof installOnce>> | undefined;
         for (let attempt = 1; installed === undefined; attempt++) {
           try {
@@ -723,7 +727,7 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
       const reachable = await waitForTunnel(tunnel.url, { onWait: (line) => this.logToStderr(line) });
       if (!reachable.ready) this.error(tunnelNotReadyMessage(tunnel.url, reachable.detail), { exit: 1 });
       let current = await cycle(tunnel.url);
-      this.readyBlock(tunnel.url, current.preview, store, current.appPid);
+      this.readyBlock(tunnel.url, current.preview, store, current.appPid, localUrl);
       this.log(`Watching ${tomlPath} — save it to re-register ([dev] changes need a restart). Ctrl+C to stop.`);
       // Deploys serialize across toml saves and restart re-registers: a
       // save landing mid-restart queues behind instead of racing it. One
@@ -733,7 +737,7 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
       watch(tomlPath, { persistent: true }, async () => {
         try {
           current = await deployQueue(() => cycle(tunnel.url));
-          this.readyBlock(tunnel.url, current.preview, store, current.appPid);
+          this.readyBlock(tunnel.url, current.preview, store, current.appPid, localUrl);
         } catch (error) {
           this.logToStderr(`Re-register failed: ${(error as Error).message}`);
         }
@@ -843,8 +847,8 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
    * dashboard links stand in — the storefront comes from the API, never
    * constructed here.
    */
-  private readyBlock(tunnelUrl: string, preview: string | null, store: DevStore, appPid: string): void {
-    for (const line of readyLines(tunnelUrl, preview, store, appPid)) this.log(line);
+  private readyBlock(tunnelUrl: string, preview: string | null, store: DevStore, appPid: string, localUrl: string | null): void {
+    for (const line of readyLines(tunnelUrl, preview, store, appPid, localUrl)) this.log(line);
   }
 
   private async tunnel(dir: string, url: string | undefined, port: number): Promise<Tunnel> {
@@ -882,13 +886,24 @@ export function resolvePreview(served: string | undefined, adminUrl: string | nu
   return served ?? previewUrl(adminUrl, appSlug);
 }
 
+/** The loopback address `--use-localhost` hands the dashboard to embed (the API accepts loopback only). */
+export function localPageUrl(port: number): string {
+  return `http://localhost:${port}`;
+}
+
 /**
- * The ready block lines, pure for tests. Secrets never appear here: the dev
- * store's storefront password is printed once, when the store is created.
+ * The ready block lines, pure for tests: the link to open and the address the
+ * embedded app loads from. Secrets never appear here: the dev store's
+ * storefront password is printed once, when the store is created.
  */
-export function readyLines(tunnelUrl: string, preview: string | null, store: DevStore, appPid: string): string[] {
+export function readyLines(tunnelUrl: string, preview: string | null, store: DevStore, appPid: string, localUrl: string | null = null): string[] {
   const lines = ['✅ Ready, watching for changes', `Tunnel: ${tunnelUrl}`];
   if (preview) lines.push(`Preview URL: ${preview}`);
   else lines.push(...devLinks(store, appPid));
+  lines.push(
+    localUrl === null
+      ? `Embed address: ${tunnelUrl}`
+      : `Embed address: ${localUrl} (--use-localhost; the tunnel above still serves install, uninstall and webhook calls)`,
+  );
   return lines;
 }

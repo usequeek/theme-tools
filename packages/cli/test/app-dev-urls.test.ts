@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { devLinks, handoffLine, isRetryableHandoffFailure, previewUrl, readyLines, resolvePreview, withDevResources, withDevUrls } from '../src/commands/app/dev.js';
+import { devLinks, handoffLine, isRetryableHandoffFailure, localPageUrl, previewUrl, readyLines, resolvePreview, withDevResources, withDevUrls } from '../src/commands/app/dev.js';
 import { ApiError, apiFailureOf, type DevStore } from '../src/lib/app-api.js';
 import { defaultDevStoreName, devStoreRefusal } from '../src/lib/app-dev-store.js';
 import type { AppManifest } from '../src/lib/app-manifest.js';
@@ -37,12 +37,24 @@ describe('dev ready block helpers', () => {
       '✅ Ready, watching for changes',
       'Tunnel: https://abc.trycloudflare.com',
       'Preview URL: https://dash/open-store?store=12&app=hello',
+      'Embed address: https://abc.trycloudflare.com',
     ]);
     expect(readyLines('https://abc.trycloudflare.com', null, STORE, 'app_1')).toEqual([
       '✅ Ready, watching for changes',
       'Tunnel: https://abc.trycloudflare.com',
       'Store admin: https://dashboard.usequeek.com/developers?section=test&app=app_1',
       "Storefront: the dashboard → test store 'Hello dev'",
+      'Embed address: https://abc.trycloudflare.com',
+    ]);
+  });
+
+  it('--use-localhost: prints the link to open and says the embed loads from localhost while the tunnel keeps the server calls', () => {
+    expect(localPageUrl(3000)).toBe('http://localhost:3000');
+    expect(readyLines('https://abc.trycloudflare.com', 'https://dash/open-store?store=12&app=hello', STORE, 'app_1', localPageUrl(5173))).toEqual([
+      '✅ Ready, watching for changes',
+      'Tunnel: https://abc.trycloudflare.com',
+      'Preview URL: https://dash/open-store?store=12&app=hello',
+      'Embed address: http://localhost:5173 (--use-localhost; the tunnel above still serves install, uninstall and webhook calls)',
     ]);
   });
 

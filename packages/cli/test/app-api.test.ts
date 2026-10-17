@@ -341,6 +341,17 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     expect(submitCall?.body).toEqual(SUBMIT_BODY);
   });
 
+  it('dev-install sends local_page_url only when asked (--use-localhost), nothing else changes', async () => {
+    const { fetchImpl, calls } = mockFetch({
+      'POST /api/v1/biz/vendor/developer/apps/hello/dev-installs': [201, { status: 'success', message: 'ok', data: { installation_p_id: 'ins_1', store_p_id: 12, app_p_id: 'app_1', status: 'active', installed_version: '1.0.1' } }],
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    await api.devInstall('hello', 12);
+    await api.devInstall('hello', 12, { localPageUrl: 'http://localhost:3000' });
+    const bodies = calls.filter((call) => call.url.endsWith('/dev-installs')).map((call) => call.body);
+    expect(bodies).toEqual([{ test_store_p_id: 12 }, { test_store_p_id: 12, local_page_url: 'http://localhost:3000' }]);
+  });
+
   it('surfaces a 424 dev-install handoff failure with its error_type (backend 502 → 424)', async () => {
     const api = new DeveloperApi('https://api.test', {
       fetchImpl: mockFetch({
