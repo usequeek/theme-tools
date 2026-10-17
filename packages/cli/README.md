@@ -152,7 +152,8 @@ queek theme init my-theme --templates laundry,foods --primary laundry --tags min
 ```bash
 queek app init my-app       # from usequeek/queek-app-starter (== npm create @usequeek/app)
 queek app codegen           # live Merchant spec → types/merchant.ts + spec hash (.queek/codegen.json)
-queek app dev               # tunnel + owned dev-store install, re-registers on save
+queek app dev               # one command: registers a new app, tunnel + dev-store install, re-registers on save
+queek app dev clean         # remove the dev install from the dev store (--reset forgets the saved store)
 queek app info              # config file, app, app ID, scopes, dev store, user
 queek app deploy            # queek.app.toml → version N+1, released (secret shown once)
 queek app deploy --version 1.2.0 --message "Greeting"   # name the version + note
@@ -182,19 +183,43 @@ Test instructions take test-store credentials only, never production
 credentials. Success prints `Submitted v{version} — review usually within 3
 business days.`
 
-`dev` only installs on a dev store (`--store` takes a p_id, slug or name;
-merchant and test stores are refused with the wrong-kind copy). With no dev
-store it asks once to create one named "<app name> dev" with test data
-(`--create-dev-store` in CI; `--dev-store-name` / `--dev-store-address`
-override the name/slug). The ready block prints the tunnel URL, the Preview
-URL (admin_url + `&app={slug}`) and the storefront password (a shareable dev
-password, stdout only — never logs); every install and app line logs with
-time + source. Device sign-in backs off on `slow_down`/429 (server interval
-when sent, else +5s, capped) and keeps polling until the code expires,
-waiting out transient 5xx. Every `dev` error path stops the tunnel —
-cloudflared is never left running. `info` prints the CURRENT APP
-CONFIGURATION box (config file, app, app ID, scopes, dev store, storefront
-password, user). `deploy` prints `New version released — <slug>-N ·
+`queek app dev` is the whole loop in one command. A slug that is not registered
+yet is registered first, the way `queek app deploy --no-release` does (a
+development version, nothing served; the signing secret goes to
+`.queek/.env.local` and is never printed). It then waits for the tunnel (up to
+30s: the hostname must resolve and `/health` must answer; it stops before
+installing, saying why, if not), installs on a dev store and starts your app.
+`dev` only installs on a dev store; merchant and test stores are refused with
+the wrong-kind copy.
+
+| Flag | What it does |
+|---|---|
+| `--store <p_id\|slug\|name>` | The dev store to use. Without it: the store picked last time (kept in `.queek/dev.json`), else your only dev store; with several, a choice on a terminal (it includes "Create a new dev store"), and in CI an error that lists them and names this flag. |
+| `--create-dev-store` | Create a NEW dev store with test data and run on it, even when you already own others. Refused with the server's reason (plan or limit) when it cannot be created. Cannot be combined with `--store`. |
+| `--dev-store-name <name>` | Name of the created store (default `"<app name> dev"`). |
+| `--dev-store-address <slug>` | Address (slug) of the created store; if it is taken, Queek suggests another. |
+| `--port <n>` | Your local server port (default: `[dev].port`, else 3000). |
+| `--url <https-url>` | Your own tunnel; skips starting cloudflared. |
+| `--use-localhost` | The dashboard embeds your app from `http://localhost:<port>` (the dev install sends `local_page_url`), so hot reload works there. The tunnel still starts for what Queek's servers call: install, uninstall and webhooks. |
+
+With no dev store at all, `dev` offers once to create one (`--create-dev-store`
+in CI). The dev store's storefront password is printed exactly once, labelled,
+when the CLI creates the store; no later run, `--verbose` output or `app info`
+prints it. The ready block prints the tunnel URL, the Preview URL (the link to
+open) and the address the embedded app loads from; every install and app line
+logs with time + source. Dev credentials are written to `.queek/.env.local` and
+never printed.
+
+`queek app dev clean` removes the dev install from the dev store (the store
+chosen like `dev`, never created), prints what was removed, and does nothing if
+there is no install. `--reset` also forgets the saved store. Data your app keeps
+in its own database is not touched.
+
+Device sign-in backs off on `slow_down`/429 (server interval when sent, else
++5s, capped) and keeps polling until the code expires, waiting out transient
+5xx. Every `dev` error path stops the tunnel — cloudflared is never left
+running. `info` prints the CURRENT APP CONFIGURATION box (config file, app, app
+ID, scopes, dev store, user). `deploy` prints `New version released — <slug>-N ·
 <message> · <version page link>`; server validation errors surface verbatim.
 
 `queek.app.toml` is the local source of truth (same names as the server manifest,

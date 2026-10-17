@@ -556,20 +556,21 @@ export default class AppDev extends BaseCommand {
 
   static override description = `Runs your app against a dev store, end to end:
 
-1. Starts a tunnel so Queek can reach your machine (or uses --url).
+1. Starts a tunnel so Queek can reach your machine (or uses --url), and waits up to 30s for it to resolve and answer /health. If it never does, the command stops before installing anything and says why.
 2. Registers queek.app.toml as a development build; an app whose slug is not registered yet is registered first, the way \`queek app deploy --no-release\` does (a development version, nothing served), so the first run needs no other command. Re-running with the same version updates that build in place, so it does not create a new version each time.
 3. Installs the app on a dev store you own, with every scope granted and no consent screen. The store is the one you pass with --store, else the one picked last time (remembered in .queek/dev.json), else your only dev store; with several you choose on a terminal (or pass --store in CI).
 4. Starts your app with the command in the [dev] table of queek.app.toml (for example "node ./server.js"). It receives APP_BASE_URL (the tunnel origin), PORT, NODE_ENV=development, QUEEK_API_BASE, and the signing secret, keypair and encryption key from .queek/.env.local (created on first run).
 
-With no dev store, the command offers to create one named after the app, with test data. --create-dev-store always creates a new dev store (also when you own others) and runs on it; the storefront password is printed once, when the store is created, and never again. When everything is ready it prints the tunnel URL and a Preview URL that opens the app inside the dev store's dashboard. Saving queek.app.toml registers the build again; changes to [dev] need a restart.
+With no dev store, the command offers to create one named after the app, with test data. --create-dev-store always creates a new dev store (also when you own others) and runs on it; the storefront password is printed once, when the store is created, and never again. When everything is ready it prints the tunnel URL, the Preview URL that opens the app inside the dev store's dashboard, and the address the embedded app loads from (the tunnel, or http://localhost:<port> with --use-localhost). Saving queek.app.toml registers the build again; changes to [dev] need a restart.
 
-You must be signed in as a developer (queek auth login). Automation tokens cannot read dev stores, so they cannot run this command. Ctrl+C stops the app and the tunnel.`;
+\`queek app dev clean\` removes the dev install from the dev store again. You must be signed in as a developer (queek auth login). Automation tokens cannot read dev stores, so they cannot run this command. Ctrl+C stops the app and the tunnel.`;
 
   static override examples = [
     '<%= config.bin %> <%= command.id %>',
     '<%= config.bin %> <%= command.id %> --store 12',
     '<%= config.bin %> <%= command.id %> --create-dev-store --dev-store-name "Checkout tests"',
     '<%= config.bin %> <%= command.id %> --url https://my-tunnel.trycloudflare.com',
+    '<%= config.bin %> <%= command.id %> --use-localhost',
   ];
 
   static override flags = {
