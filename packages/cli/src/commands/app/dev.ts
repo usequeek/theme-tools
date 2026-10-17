@@ -9,7 +9,7 @@ import { appFlags, appSession } from '../../lib/app-command.js';
 import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
 import { ensureAppRegistered, ensureDevSecrets, ensureQueekIgnored, envLocalPath, MissingSecretError, readEnvFile, resolveDevSecret, writeEnvLocal } from '../../lib/app-env.js';
 import { startSupervised, waitForHealthy, type FetchFn } from '../../lib/app-run.js';
-import { manualTunnel, matchTunnelRateLimited, startCloudflared, type Tunnel } from '../../lib/app-tunnel.js';
+import { manualTunnel, matchTunnelRateLimited, startCloudflared, tunnelNotReadyMessage, waitForTunnel, type Tunnel } from '../../lib/app-tunnel.js';
 import { BaseCommand } from '../../lib/base-command.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -720,10 +720,8 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
       if (!healthy) {
         this.error(`The app did not answer http://127.0.0.1:${port}/health within 90s — its [app] log above says why. Fix it and run \`queek app dev\` again.`, { exit: 1 });
       }
-      const reachable = await waitForHealthy(`${tunnel.url}/health`, 60_000);
-      if (!reachable) {
-        this.logToStderr(`The tunnel ${tunnel.url} did not answer /health within 60s — installing anyway; the install retries if Queek cannot reach it yet.`);
-      }
+      const reachable = await waitForTunnel(tunnel.url, { onWait: (line) => this.logToStderr(line) });
+      if (!reachable.ready) this.error(tunnelNotReadyMessage(tunnel.url, reachable.detail), { exit: 1 });
       let current = await cycle(tunnel.url);
       this.readyBlock(tunnel.url, current.preview, store, current.appPid);
       this.log(`Watching ${tomlPath} — save it to re-register ([dev] changes need a restart). Ctrl+C to stop.`);

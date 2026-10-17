@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { closeSync, existsSync, openSync, readFileSync } from 'node:fs';
+import { lookup } from 'node:dns/promises';
 
 /**
  * `app dev` serves the app's tunnel URL to Queek (https only, like every app
@@ -141,4 +142,74 @@ function readLogTail(logFile: string): string {
   } catch {
     return '';
   }
+}
+
+/** How long `app dev` waits for a fresh tunnel hostname to resolve and answer. */
+export const TUNNEL_READY_TIMEOUT_S = 30;
+const TUNNEL_READY_REPORT_EVERY_S = 5;
+const TUNNEL_READY_REQUEST_TIMEOUT_MS = 5_000;
+
+export interface TunnelReadyOptions {
+  timeoutS?: number;
+  /** One line per report: "Waiting for the tunnel (n/30s)…". */
+  onWait?: (line: string) => void;
+  /** Resolve a hostname (throws when it does not resolve yet). */
+  resolveHost?: (host: string) => Promise<unknown>;
+  /** GET a URL: the status, or a throw when nothing answers. */
+  get?: (url: string) => Promise<{ ok: boolean; status: number }>;
+  sleep?: (ms: number) => Promise<void>;
+  now?: () => number;
+}
+
+export type TunnelReady = { ready: true } | { ready: false; detail: string };
+
+/**
+ * A fresh quick-tunnel hostname can take a while to resolve. Queek delivers
+ * the install through that hostname, so the install must wait until the
+ * name resolves AND `<url>/health` answers 2xx. Polls every second, reports
+ * "Waiting for the tunnel (n/30s)…" every five, and gives up after the
+ * timeout with the reason (DNS or HTTP), instead of waiting silently and
+ * installing anyway.
+ */
+export async function waitForTunnel(url: string, options: TunnelReadyOptions = {}): Promise<TunnelReady> {
+  const timeoutS = options.timeoutS ?? TUNNEL_READY_TIMEOUT_S;
+  const resolveHost = options.resolveHost ?? ((host: string) => lookup(host));
+  const get =
+    options.get ??
+    (async (target: string) => {
+      const response = await fetch(target, { signal: AbortSignal.timeout(TUNNEL_READY_REQUEST_TIMEOUT_MS) });
+      return { ok: response.ok, status: response.status };
+    });
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((done) => setTimeout(done, ms)));
+  const now = options.now ?? Date.now;
+  const origin = new URL(url);
+  const started = now();
+  let lastReported = -Infinity;
+  let detail = 'it did not answer';
+  for (;;) {
+    const elapsed = Math.floor((now() - started) / 1000);
+    try {
+      await resolveHost(origin.hostname);
+      try {
+        const answer = await get(`${origin.origin}/health`);
+        if (answer.ok) return { ready: true };
+        detail = `${origin.origin}/health answered ${answer.status}`;
+      } catch (error) {
+        detail = `${origin.origin}/health did not answer (${(error as Error).message})`;
+      }
+    } catch {
+      detail = `the hostname ${origin.hostname} does not resolve yet`;
+    }
+    if (elapsed >= timeoutS) return { ready: false, detail };
+    if (elapsed - lastReported >= TUNNEL_READY_REPORT_EVERY_S) {
+      lastReported = elapsed;
+      options.onWait?.(`Waiting for the tunnel (${elapsed}/${timeoutS}s)…`);
+    }
+    await sleep(1000);
+  }
+}
+
+/** The failure sentence: why, what was not done, and the two ways out. */
+export function tunnelNotReadyMessage(url: string, detail: string, timeoutS = TUNNEL_READY_TIMEOUT_S): string {
+  return `The tunnel ${url} did not become reachable within ${timeoutS}s: ${detail}. Nothing was installed. Run \`queek app dev\` again (a new tunnel usually resolves within a minute), or pass --url with a tunnel that is already up.`;
 }
