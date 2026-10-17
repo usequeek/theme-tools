@@ -7,7 +7,7 @@ import { apiFailureOf, DASHBOARD_URL, LoginNeededError, type ApiFailure, type De
 import { apiBase } from '../../lib/app-auth.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
-import { ensureDevSecrets, ensureQueekIgnored, envLocalPath, MissingSecretError, readEnvFile, resolveDevSecret, writeEnvLocal } from '../../lib/app-env.js';
+import { ensureAppRegistered, ensureDevSecrets, ensureQueekIgnored, envLocalPath, MissingSecretError, readEnvFile, resolveDevSecret, writeEnvLocal } from '../../lib/app-env.js';
 import { startSupervised, waitForHealthy, type FetchFn } from '../../lib/app-run.js';
 import { manualTunnel, matchTunnelRateLimited, startCloudflared, type Tunnel } from '../../lib/app-tunnel.js';
 import { BaseCommand } from '../../lib/base-command.js';
@@ -569,7 +569,7 @@ export default class AppDev extends BaseCommand {
   static override description = `Runs your app against a dev store, end to end:
 
 1. Starts a tunnel so Queek can reach your machine (or uses --url).
-2. Registers queek.app.toml as a development build. Re-running with the same version updates that build in place, so it does not create a new version each time.
+2. Registers queek.app.toml as a development build; an app whose slug is not registered yet is registered first, the way \`queek app deploy --no-release\` does (a development version, nothing served), so the first run needs no other command. Re-running with the same version updates that build in place, so it does not create a new version each time.
 3. Installs the app on a dev store you own, with every scope granted and no consent screen.
 4. Starts your app with the command in the [dev] table of queek.app.toml (for example "node ./server.js"). It receives APP_BASE_URL (the tunnel origin), PORT, NODE_ENV=development, QUEEK_API_BASE, and the signing secret, keypair and encryption key from .queek/.env.local (created on first run).
 
@@ -624,6 +624,9 @@ You must be signed in as a developer (queek auth login). Automation tokens canno
     const queek = queekDir(flags.path);
     mkdirSync(queek, { recursive: true });
     ensureQueekIgnored(flags.path);
+    // A slug nobody registered yet is registered here, the way
+    // `queek app deploy --no-release` would: no separate first step.
+    await ensureAppRegistered(api, first.manifest, flags.path, (line) => this.log(line)).catch((error: Error) => this.error(error.message, { exit: 1 }));
     const recorded = readEnvFile(envLocalPath(queek));
     await resolveDevSecret(api, first.manifest.slug, queek, recorded, process.env.QUEEK_APP_SECRET, (line) => this.log(line)).catch(
       (error: Error) => this.error(error.message, { exit: error instanceof MissingSecretError ? 2 : 1 }),

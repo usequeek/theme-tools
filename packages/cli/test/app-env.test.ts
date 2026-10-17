@@ -2,8 +2,10 @@ import { chmodSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync }
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, AutomationTokenError, type DeveloperApi } from '../src/lib/app-api.js';
+import { ApiError, AutomationTokenError, type DeployResult, type DeveloperApi } from '../src/lib/app-api.js';
+import type { AppManifest } from '../src/lib/app-manifest.js';
 import {
+  ensureAppRegistered,
   ensureDevSecrets,
   ensureQueekIgnored,
   envLocalPath,
@@ -12,6 +14,7 @@ import {
   parseDotEnv,
   readEnvFile,
   resolveDevSecret,
+  saveRegistrationSecret,
   toOneLineBase64,
   writeEnvLocal,
 } from '../src/lib/app-env.js';
@@ -244,5 +247,94 @@ describe('ensureQueekIgnored (one shared helper; init/dev/deploy all call it)', 
     ensureQueekIgnored(fresh);
     ensureQueekIgnored(fresh);
     expect(readFileSync(join(fresh, '.gitignore'), 'utf8')).toBe('.queek/\n');
+  });
+});
+
+describe('ensureAppRegistered (a new slug registers like deploy --no-release)', () => {
+  const manifest = { slug: 'hello', name: 'Hello' } as AppManifest;
+  const created = (extra: Partial<DeployResult> = {}): DeployResult => ({
+    p_id: 'app_1',
+    slug: 'hello',
+    name: 'Hello',
+    version: '0.0.1',
+    sequence: 1,
+    review_status: 'development',
+    status: 'created',
+    unchanged: false,
+    signing_secret: 'whsec_new',
+    ...extra,
+  });
+
+  it('does nothing when the app already exists', async () => {
+    const api = apiWith({ appConfig: vi.fn(async () => ({})) as unknown as DeveloperApi['appConfig'], deploy: vi.fn() });
+    const lines: string[] = [];
+    expect(await ensureAppRegistered(api, manifest, stage(), (line) => lines.push(line))).toBe(false);
+    expect(api.deploy).not.toHaveBeenCalled();
+    expect(lines).toEqual([]);
+  });
+
+  it('on a 404 registers with noRelease, stores the secret, and says so in one line without the value', async () => {
+    const dir = stage();
+    const api = apiWith({
+      appConfig: vi.fn(async () => { throw new ApiError('App not found', 404, null); }),
+      deploy: vi.fn(async () => created()),
+    });
+    const lines: string[] = [];
+    expect(await ensureAppRegistered(api, manifest, dir, (line) => lines.push(line))).toBe(true);
+    expect(api.deploy).toHaveBeenCalledWith(manifest, { noRelease: true });
+    expect(readEnvFile(join(dir, '.queek', '.env.local'))).toEqual({ QUEEK_APP_SECRET: 'whsec_new' });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain("Registered 'hello'");
+    expect(lines.join('\n')).not.toContain('whsec_new');
+  });
+
+  it('replaces a stale local secret: it belonged to another app', async () => {
+    const dir = stage();
+    writeEnvLocal(join(dir, '.queek'), { QUEEK_APP_SECRET: 'whsec_stale', APP_KEY_ID: 'k1' });
+    const api = apiWith({
+      appConfig: vi.fn(async () => { throw new ApiError('App not found', 404, null); }),
+      deploy: vi.fn(async () => created()),
+    });
+    await ensureAppRegistered(api, manifest, dir, () => {});
+    expect(readEnvFile(join(dir, '.queek', '.env.local'))).toEqual({ QUEEK_APP_SECRET: 'whsec_new', APP_KEY_ID: 'k1' });
+  });
+
+  it('registers on a 404 even when the server answers without a secret', async () => {
+    const dir = stage();
+    const api = apiWith({
+      appConfig: vi.fn(async () => { throw new ApiError('App not found', 404, null); }),
+      deploy: vi.fn(async () => created({ signing_secret: undefined })),
+    });
+    expect(await ensureAppRegistered(api, manifest, dir, () => {})).toBe(true);
+    expect(readEnvFile(join(dir, '.queek', '.env.local'))).toEqual({});
+  });
+
+  it('never registers on a guess: a non-404 failure or an automation refusal rethrows untouched', async () => {
+    for (const failure of [new ApiError('Server error', 500, null), new Error('network down'), new AutomationTokenError('refused', 401, null)]) {
+      const api = apiWith({ appConfig: vi.fn(async () => { throw failure; }), deploy: vi.fn() });
+      await expect(ensureAppRegistered(api, manifest, stage(), () => {})).rejects.toBe(failure);
+      expect(api.deploy).not.toHaveBeenCalled();
+    }
+  });
+
+  it('surfaces a refused registration verbatim (slug owned by someone else, validation)', async () => {
+    const refusal = new ApiError('That app slug is taken.', 422, null);
+    const api = apiWith({
+      appConfig: vi.fn(async () => { throw new ApiError('App not found', 404, null); }),
+      deploy: vi.fn(async () => { throw refusal; }),
+    });
+    await expect(ensureAppRegistered(api, manifest, stage(), () => {})).rejects.toBe(refusal);
+  });
+});
+
+describe('saveRegistrationSecret (shared by deploy and dev)', () => {
+  it('keeps an existing secret unless told the app is new', () => {
+    const dir = stage();
+    expect(saveRegistrationSecret(dir, 'one')).toEqual({ file: join(dir, '.queek', '.env.local'), written: true });
+    expect(saveRegistrationSecret(dir, 'two').written).toBe(false);
+    expect(readEnvFile(join(dir, '.queek', '.env.local')).QUEEK_APP_SECRET).toBe('one');
+    expect(saveRegistrationSecret(dir, 'two', true).written).toBe(true);
+    expect(readEnvFile(join(dir, '.queek', '.env.local')).QUEEK_APP_SECRET).toBe('two');
+    expect(readFileSync(join(dir, '.gitignore'), 'utf8')).toContain('.queek/');
   });
 });

@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ApiError, AutomationTokenError, type DeveloperApi } from './app-api.js';
+import { queekDir, type AppManifest } from './app-manifest.js';
 
 /**
  * `.env`-shaped files for `queek app dev`: the project's own `.env` (read)
@@ -151,6 +152,59 @@ export async function resolveDevSecret(
   }
   writeEnvLocal(queek, { QUEEK_APP_SECRET: secret });
   log(`Fetched the signing secret into ${envLocalPath(queek)} (gitignored, 0600 — values are never printed).`);
+}
+
+/**
+ * Persist the shown-once registration secret into `.queek/.env.local`
+ * (0600, gitignored). A secret already there is kept unless `replace` says
+ * the app was just created (then the old value belongs to another app).
+ * Shared by `app deploy` and `app dev` so first registration behaves the
+ * same from both. The path is the receipt; the value is never logged.
+ */
+export function saveRegistrationSecret(projectDir: string, secret: string, replace = false): { file: string; written: boolean } {
+  const queek = queekDir(projectDir);
+  mkdirSync(queek, { recursive: true });
+  ensureQueekIgnored(projectDir);
+  const file = envLocalPath(queek);
+  const existing = readEnvFile(file).QUEEK_APP_SECRET;
+  if (!replace && typeof existing === 'string' && existing !== '') return { file, written: false };
+  writeEnvLocal(queek, { QUEEK_APP_SECRET: secret });
+  return { file, written: true };
+}
+
+/**
+ * `queek app dev` on a slug that is not registered yet registers it exactly
+ * like `queek app deploy --no-release` (a development version, nothing
+ * served) and stores the signing secret, so the first run needs no separate
+ * step. Only a 404 from the config read means "not registered": any other
+ * failure stops the run with its own message instead of registering on a
+ * guess. Returns true when it registered.
+ */
+export async function ensureAppRegistered(
+  api: DeveloperApi,
+  manifest: AppManifest,
+  projectDir: string,
+  log: (line: string) => void,
+): Promise<boolean> {
+  try {
+    await api.appConfig(manifest.slug);
+    return false;
+  } catch (error) {
+    if (!(error instanceof ApiError) || error instanceof AutomationTokenError || error.status !== 404) throw error;
+  }
+  const result = await api.deploy(manifest, { noRelease: true });
+  if (result.status === 'review_required') {
+    log(`Registered '${manifest.slug}' as a new app (development version, not released).`);
+    return true;
+  }
+  const secret = result.signing_secret;
+  if (typeof secret === 'string' && secret !== '') {
+    const saved = saveRegistrationSecret(projectDir, secret, true);
+    log(`Registered '${manifest.slug}' as a new app (development version, not released); its signing secret is in ${saved.file} (gitignored, 0600 — values are never printed).`);
+  } else {
+    log(`Registered '${manifest.slug}' as a new app (development version, not released).`);
+  }
+  return true;
 }
 
 /** The app record holds at most this many keys — minting past it stops, it never fails mid-flow. */
