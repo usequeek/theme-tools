@@ -12,15 +12,13 @@ export interface InfoFacts {
   appId: string;
   scopes: string[];
   store: string | null;
-  storefrontPassword: string | null;
   user: 'developer session' | 'automation token (CI)';
 }
 
 /**
  * The CURRENT APP CONFIGURATION box: config file, app, app ID, scopes, dev
- * store, storefront password, user. Pure for tests — run() only gathers the
- * facts. The password (a shareable dev password, re-viewable by the owner)
- * prints on stdout only, never logs.
+ * store, user. Pure for tests — run() only gathers the facts. It carries no
+ * secrets; the dev store's storefront password is shown once, at creation.
  */
 export function infoLines(facts: InfoFacts): string[] {
   return [
@@ -29,7 +27,6 @@ export function infoLines(facts: InfoFacts): string[] {
     `App ID: ${facts.appId}`,
     `Scopes: ${facts.scopes.join(', ')}`,
     `Dev store: ${facts.store ?? 'Not yet configured (pass --store)'}`,
-    `Storefront password: ${facts.storefrontPassword ?? (facts.store === null ? 'pass --store to show it' : 'not served for this store')}`,
     `User: ${facts.user}`,
   ];
 }
@@ -70,7 +67,6 @@ export default class AppInfo extends BaseCommand {
 
     const config = await api.appConfig(manifest.slug).catch((error: Error) => this.error(error.message, { exit: 1 }));
     let store: string | null = null;
-    let storefrontPassword: string | null = null;
     if (flags.store) {
       // Dev-store reads sit outside the automation grant by design:
       // say so instead of dumping the 401/403 envelope.
@@ -83,7 +79,6 @@ export default class AppInfo extends BaseCommand {
       const found = stores.find((row) => String(row.p_id) === flags.store || row.name === flags.store || row.slug === flags.store);
       if (!found) this.error(devStoreRefusal(flags.store, stores), { exit: 2 });
       store = found.name;
-      storefrontPassword = typeof found.storefront_password === 'string' && found.storefront_password !== '' ? found.storefront_password : null;
     }
     const facts: InfoFacts = {
       file: resolveTomlPath(flags.path, flags.config),
@@ -92,7 +87,6 @@ export default class AppInfo extends BaseCommand {
       appId: config.p_id,
       scopes: infoScopes(config.manifest, manifest.scopes),
       store,
-      storefrontPassword,
       user: kind === 'automation' ? 'automation token (CI)' : 'developer session',
     };
     for (const line of infoLines(facts)) this.log(line);

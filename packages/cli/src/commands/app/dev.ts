@@ -897,17 +897,12 @@ export function resolvePreview(served: string | undefined, adminUrl: string | nu
 }
 
 /**
- * The ready block lines, pure for tests. The storefront password is a
- * shareable dev password — stdout only, one line, omitted when the API did
- * not serve one. It
- * never reaches debug output or logs: readyLines callers print, never store.
+ * The ready block lines, pure for tests. Secrets never appear here: the dev
+ * store's storefront password is printed once, when the store is created.
  */
 export function readyLines(tunnelUrl: string, preview: string | null, store: DevStore, appPid: string): string[] {
   const lines = ['✅ Ready, watching for changes', `Tunnel: ${tunnelUrl}`];
   if (preview) lines.push(`Preview URL: ${preview}`);
   else lines.push(...devLinks(store, appPid));
-  if (typeof store.storefront_password === 'string' && store.storefront_password !== '') {
-    lines.push(`Storefront password: ${store.storefront_password}`);
-  }
   return lines;
 }

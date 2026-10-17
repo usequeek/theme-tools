@@ -32,12 +32,11 @@ describe('dev ready block helpers', () => {
     expect(defaultDevStoreName('Hello')).toBe('Hello dev');
   });
 
-  it('prints the storefront password once in the ready block, omits it when unserved', () => {
-    expect(readyLines('https://abc.trycloudflare.com', 'https://dash/open-store?store=12&app=hello', { ...STORE, storefront_password: 'dev-pass-123' }, 'app_1')).toEqual([
+  it('prints the tunnel and the Preview URL, or the dashboard links without one', () => {
+    expect(readyLines('https://abc.trycloudflare.com', 'https://dash/open-store?store=12&app=hello', STORE, 'app_1')).toEqual([
       '✅ Ready, watching for changes',
       'Tunnel: https://abc.trycloudflare.com',
       'Preview URL: https://dash/open-store?store=12&app=hello',
-      'Storefront password: dev-pass-123',
     ]);
     expect(readyLines('https://abc.trycloudflare.com', null, STORE, 'app_1')).toEqual([
       '✅ Ready, watching for changes',

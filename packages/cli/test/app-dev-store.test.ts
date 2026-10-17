@@ -2,7 +2,9 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, type DevStore } from '../src/lib/app-api.js';
+import { ApiError, DeveloperApi, type DevStore, type FetchImpl } from '../src/lib/app-api.js';
+import { infoLines } from '../src/commands/app/info.js';
+import { readyLines } from '../src/commands/app/dev.js';
 import {
   createNewDevStore,
   DevStoreError,
@@ -221,5 +223,46 @@ describe('the saved selection (.queek/dev.json)', () => {
     expect(readSavedStore(dir)).toBeNull();
     writeFileSync(join(dir, 'dev.json'), '{"store":"12"}');
     expect(readSavedStore(dir)).toBeNull();
+  });
+});
+
+describe('storefront password hygiene (shown once at creation, never again)', () => {
+  const PASSWORD = 'pw-secret-9f3a';
+  const row = { ...store(2001, 'Hello dev'), storefront_password: PASSWORD };
+  const apiFor = (): DeveloperApi => {
+    const fetchImpl: FetchImpl = async (url, init) => {
+      const post = init?.method === 'POST';
+      const body = post ? { status: 'success', message: 'created', data: row } : { status: 'success', message: 'ok', data: { data: [row], meta: { total: 1 } } };
+      void url;
+      return new Response(JSON.stringify(body), { status: post ? 201 : 200, headers: { 'content-type': 'application/json' } });
+    };
+    return new DeveloperApi('https://api.test', { fetchImpl, getAuth: async () => ({ token: 't', kind: 'user' as const }) });
+  };
+  const everythingPrinted = (picked: DevStore, lines: string[]): string =>
+    [...lines, ...readyLines('https://t.example.com', 'https://dash/open?store=2001&app=hello', picked, 'app_1'), ...infoLines({ file: 'queek.app.toml', name: 'Hello', slug: 'hello', appId: 'app_1', scopes: [], store: picked.name, user: 'developer session' }), JSON.stringify(picked)].join('\n');
+
+  it('a creation run prints the password exactly once and the ready block and info never do', async () => {
+    const lines: string[] = [];
+    const { store: picked, created } = await selectDevStore(apiFor(), request({ create: true }), fakes([]).prompts, (line) => lines.push(line));
+    expect(created).toBe(true);
+    expect(everythingPrinted(picked, lines).split(PASSWORD)).toHaveLength(2);
+    expect(lines.filter((line) => line.includes(PASSWORD))).toHaveLength(1);
+    expect(lines.find((line) => line.includes(PASSWORD))).toContain('shown only now');
+  });
+
+  it('later runs (the server still lists the password) print it nowhere: not in logs, ready block, info or the store object', async () => {
+    for (const extra of [{}, { wanted: '2001' }, { saved: 2001 }]) {
+      const lines: string[] = [];
+      const { store: picked, created } = await selectDevStore(apiFor(), request(extra), fakes([]).prompts, (line) => lines.push(line));
+      expect(created).toBe(false);
+      expect(everythingPrinted(picked, lines)).not.toContain(PASSWORD);
+    }
+  });
+
+  it('the choice menu path on a run that selects an existing store prints no password either', async () => {
+    const lines: string[] = [];
+    const prompts = fakes([]).prompts;
+    const { store: picked } = await selectDevStore(apiFor(), request({ interactive: true }), prompts, (line) => lines.push(line));
+    expect(everythingPrinted(picked, lines)).not.toContain(PASSWORD);
   });
 });

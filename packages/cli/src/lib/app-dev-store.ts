@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { apiFailureOf, type DeveloperApi, type DevStore } from './app-api.js';
+import { apiFailureOf, type CreatedDevStore, type DeveloperApi, type DevStore } from './app-api.js';
 
 /**
  * Which dev store `queek app dev` (and `app dev clean`) works on.
@@ -23,9 +23,6 @@ export class DevStoreError extends Error {
     super(message);
   }
 }
-
-/** A dev store that was just created: the one payload that carries its storefront password. */
-export type CreatedDevStore = DevStore & { storefront_password?: string };
 
 export interface DevStorePrompts {
   /** No dev store yet: create one with this name? */

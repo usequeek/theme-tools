@@ -226,8 +226,10 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
       'POST /api/v1/biz/vendor/developer/dev-stores': [201, { status: 'success', message: 'Dev store created.', data: store }],
     });
     const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
-    expect(await api.devStores()).toEqual({ data: [store] });
-    // The 201's storefront password threads through (r27 must_fix: never dropped).
+    // List rows never keep the storefront password: it is shown once, at creation.
+    const { storefront_password: _password, ...listed } = store;
+    expect(await api.devStores()).toEqual({ data: [listed] });
+    // The 201's storefront password threads through to the creation caller.
     expect(await api.createDevStore('Hello dev', true, 'key-1')).toEqual(store);
     const post = calls.find((call) => call.method === 'POST');
     expect(post?.body).toEqual({ name: 'Hello dev', test_data: true });

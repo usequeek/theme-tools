@@ -81,15 +81,14 @@ export interface DevStore {
   storefront_url: string | null;
   admin_url: string | null;
   created_at: string | null;
-  /**
-   * Shareable dev storefront password (re-viewable by the owner, NOT a
-   * credential key). Carried on GET rows for the owner and on the POST 201 —
-   * the API never resends a lost one outside these payloads. Displayed
-   * on stdout only (ready block / info / after creation); never in debug
-   * output, and never logged.
-   */
-  storefront_password?: string;
 }
+
+/**
+ * A dev store as the creation call returns it: the only payload the CLI keeps
+ * a storefront password from. List rows never carry it here (the client
+ * drops it), so no later run can print it.
+ */
+export type CreatedDevStore = DevStore & { storefront_password?: string };
 
 export interface AppVersion {
   version: string;
@@ -542,7 +541,9 @@ export class DeveloperApi {
       'listing dev stores',
     );
     const total = typeof data.meta?.total === 'number' ? data.meta.total : data.data.length;
-    return { data: data.data, total };
+    // The list rows carry the storefront password for the owner; the CLI
+    // shows it once, at creation, so it is dropped before anything can print it.
+    return { data: data.data.map(withoutStorefrontPassword), total };
   }
 
   /** Every owned dev store, across pages (the `--store` selector never strands large owners). */
@@ -562,16 +563,16 @@ export class DeveloperApi {
    * {name (≤60), slug?, test_data} → 201 the store incl. storefront_password.
    * Slug omitted means the server default (slugified name + "-dev");
    * taken → 422 with a suggested free slug, surfaced verbatim. The 201's
-   * storefront_password is threaded through (never dropped): it is the only
-   * copy the API will show. Idempotency-Key is fresh per creation
+   * storefront_password is threaded through to the caller, which shows it
+   * once. Idempotency-Key is fresh per creation
    * attempt; a re-run lists first and only creates when still absent —
    * list-then-create is the dedupe, not key reuse.
    */
-  async createDevStore(name: string, testData: boolean, idempotencyKey: string, slug?: string): Promise<DevStore> {
+  async createDevStore(name: string, testData: boolean, idempotencyKey: string, slug?: string): Promise<CreatedDevStore> {
     const trimmed = name.trim();
     if (trimmed === '') throw new Error('A dev store needs a name.');
     if (trimmed.length > 60) throw new Error(`Dev store name '${trimmed}' is ${trimmed.length} characters — the dashboard allows 60.`);
-    const { data } = await this.vendor<DevStore>(
+    const { data } = await this.vendor<CreatedDevStore>(
       'POST',
       '/dev-stores',
       `creating dev store '${trimmed}'`,
@@ -831,6 +832,11 @@ export class DeveloperApi {
       review_note: typeof withdrawn.review_note === 'string' ? withdrawn.review_note : null,
     };
   }
+}
+
+function withoutStorefrontPassword(row: DevStore): DevStore {
+  const { storefront_password: _dropped, ...rest } = row as CreatedDevStore;
+  return rest;
 }
 
 function tokenPairOf(body: unknown, status: number): TokenPair {
