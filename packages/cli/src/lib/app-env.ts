@@ -70,7 +70,7 @@ export function toOneLineBase64(text: string): string {
 
 /** Absolute path of the local-only env file (handy for messages). */
 export function envLocalPath(queekDirPath: string): string {
-  return `${queekDirPath}/${LOCAL_FILE}`;
+  return join(queekDirPath, LOCAL_FILE);
 }
 
 /**
