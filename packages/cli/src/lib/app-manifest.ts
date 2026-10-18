@@ -70,24 +70,24 @@ const EXTENSION_SUBMIT_PRIMITIVE = 'submit';
  * The shopper text input on a product page. Extension blocks only (never the
  * dashboard), and deliberately outside `EXTENSION_PRIMITIVES`.
  */
-export const EXTENSION_LINE_INPUT_PRIMITIVE = 'line_text';
+const EXTENSION_LINE_INPUT_PRIMITIVE = 'line_text';
 /** Largest `max_length` a `line_text` field may declare. */
-export const LINE_TEXT_MAX_LENGTH = 500;
+const LINE_TEXT_MAX_LENGTH = 500;
 /** `line_text` fields one manifest may declare, across all of its blocks. */
-export const LINE_TEXT_FIELDS_PER_MANIFEST = 3;
+const LINE_TEXT_FIELDS_PER_MANIFEST = 3;
 /** Longest derived order-line property key (`app.<namespace>.<field key>`). */
-export const LINE_TEXT_DERIVED_KEY_MAX = 64;
+const LINE_TEXT_DERIVED_KEY_MAX = 64;
 /**
  * Parity constant, mirrors the API: the shape every derived property key must
  * match (the first segment is always `app`).
  */
 const LINE_PROPERTY_KEY_RE = /^(queek|[a-z][a-z0-9_]{1,31})(\.[a-z0-9_]+)+$/;
 /**
- * Parity constant, mirrors the API's bearer property suffixes (without the
- * leading dot): a `line_text` field key may not be, nor end with, any of them,
- * so the derived property key can never be read as a bearer link or claim.
+ * Parity constant: the derived property key must not end in a bearer suffix
+ * (`.claim`, `.reschedule_url`, `.cancel_url`). A field key can hold no dot, so
+ * that happens only when the field key is exactly one of these three strings.
  */
-export const LINE_TEXT_BEARER_KEY_SUFFIXES = ['claim', 'reschedule_url', 'cancel_url'] as const;
+const LINE_TEXT_BEARER_KEYS = ['claim', 'reschedule_url', 'cancel_url'];
 const EXTENSION_BLOCK_TYPES = ['app_block', 'app_embed'];
 
 /** Key/value shapes that smell like a secret and are refused in the toml. */
@@ -172,6 +172,10 @@ function checkSchemaFields(list: unknown, where: string, primitives: string[], p
     if (typeof field.key !== 'string' || !SETTING_KEY_RE.test(field.key)) problems.push(`The ${where}.schema[${index}].key must match [a-z0-9_]{1,64}.`);
     if (typeof field.label !== 'string' || field.label.length > 120) problems.push(`The ${where}.schema[${index}].label is required (max 120).`);
     if (!primitives.includes(field.type as string)) problems.push(`The schema primitive must be one of: ${primitives.join(', ')}.`);
+    if (lineInput && field.type === EXTENSION_LINE_INPUT_PRIMITIVE) {
+      if (field.label === '') problems.push(`The ${where}.schema[${index}].label must not be empty.`);
+      if (field.required !== undefined && typeof field.required !== 'boolean') problems.push(`The ${where}.schema[${index}].required must be true or false.`);
+    }
     if (lineInput && field.max_length !== undefined) {
       if (field.type !== EXTENSION_LINE_INPUT_PRIMITIVE) {
         problems.push(`The ${where}.schema[${index}].max_length is only valid on a ${EXTENSION_LINE_INPUT_PRIMITIVE} field.`);
@@ -640,8 +644,8 @@ function checkLineTextBlock(block: Record<string, unknown>, where: string, slug:
       problems.push(`The ${at} may be at most ${maxKeyLength} characters for this app (the derived property key is limited to ${LINE_TEXT_DERIVED_KEY_MAX}).`);
     }
     if (!LINE_PROPERTY_KEY_RE.test(`${prefix}${key}`)) problems.push(`The ${at} does not derive a valid property key.`);
-    if (LINE_TEXT_BEARER_KEY_SUFFIXES.some((suffix) => key.endsWith(suffix))) {
-      problems.push(`The ${at} may not be, or end with, ${LINE_TEXT_BEARER_KEY_SUFFIXES.join(', ')}.`);
+    if (LINE_TEXT_BEARER_KEYS.includes(key)) {
+      problems.push(`The ${at} may not be ${LINE_TEXT_BEARER_KEYS.join(', ')}.`);
     }
   });
 }

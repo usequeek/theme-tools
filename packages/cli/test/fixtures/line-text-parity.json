@@ -21,7 +21,9 @@
     {
       "name": "accepts a required field with max_length 30",
       "slug": "my-app",
+      "proxy": false,
       "valid": true,
+      "rule": null,
       "blocks": [
         {
           "key": "engraving",
@@ -45,7 +47,9 @@
     {
       "name": "accepts a field without max_length",
       "slug": "my-app",
+      "proxy": false,
       "valid": true,
+      "rule": null,
       "blocks": [
         {
           "key": "engraving",
@@ -67,7 +71,9 @@
     {
       "name": "accepts max_length 1 and 500",
       "slug": "my-app",
+      "proxy": false,
       "valid": true,
+      "rule": null,
       "blocks": [
         {
           "key": "engraving",
@@ -94,9 +100,11 @@
       ]
     },
     {
-      "name": "needs no proxy",
+      "name": "accepts a line_text block with no proxy",
       "slug": "my-app",
+      "proxy": false,
       "valid": true,
+      "rule": null,
       "blocks": [
         {
           "key": "engraving",
@@ -116,9 +124,11 @@
       ]
     },
     {
-      "name": "three fields across two blocks",
+      "name": "accepts three fields across two blocks",
       "slug": "my-app",
+      "proxy": false,
       "valid": true,
+      "rule": null,
       "blocks": [
         {
           "key": "a",
@@ -160,7 +170,9 @@
     {
       "name": "max_length 0 refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "max_length_value",
       "blocks": [
         {
           "key": "engraving",
@@ -183,7 +195,9 @@
     {
       "name": "max_length 501 refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "max_length_value",
       "blocks": [
         {
           "key": "engraving",
@@ -204,9 +218,11 @@
       ]
     },
     {
-      "name": "max_length as a string refused",
+      "name": "max_length as the numeric string \"30\" refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "max_length_value",
       "blocks": [
         {
           "key": "engraving",
@@ -219,7 +235,32 @@
               "key": "engraving",
               "label": "Engraving text",
               "type": "line_text",
-              "max_length": "x"
+              "max_length": "30"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "max_length as a boolean refused",
+      "slug": "my-app",
+      "proxy": false,
+      "valid": false,
+      "rule": "max_length_value",
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "Engraving text",
+              "type": "line_text",
+              "max_length": true
             }
           ],
           "available_if": "declared_products"
@@ -229,7 +270,9 @@
     {
       "name": "max_length fractional refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "max_length_value",
       "blocks": [
         {
           "key": "engraving",
@@ -252,7 +295,9 @@
     {
       "name": "max_length on date refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "max_length_placement",
       "blocks": [
         {
           "key": "engraving",
@@ -262,8 +307,8 @@
           ],
           "schema": [
             {
-              "key": "when",
-              "label": "When",
+              "key": "other",
+              "label": "Other",
               "type": "date",
               "max_length": 10
             }
@@ -275,7 +320,9 @@
     {
       "name": "max_length on time refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "max_length_placement",
       "blocks": [
         {
           "key": "engraving",
@@ -285,8 +332,8 @@
           ],
           "schema": [
             {
-              "key": "when",
-              "label": "When",
+              "key": "other",
+              "label": "Other",
               "type": "time",
               "max_length": 10
             }
@@ -298,7 +345,9 @@
     {
       "name": "max_length on select refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "max_length_placement",
       "blocks": [
         {
           "key": "engraving",
@@ -308,8 +357,8 @@
           ],
           "schema": [
             {
-              "key": "size",
-              "label": "Size",
+              "key": "other",
+              "label": "Other",
               "type": "select",
               "options": [
                 "s"
@@ -322,9 +371,11 @@
       ]
     },
     {
-      "name": "max_length on submit refused",
+      "name": "max_length on submit refused (proxy allows the submit)",
       "slug": "my-app",
+      "proxy": true,
       "valid": false,
+      "rule": "max_length_placement",
       "blocks": [
         {
           "key": "engraving",
@@ -334,8 +385,8 @@
           ],
           "schema": [
             {
-              "key": "send",
-              "label": "Send",
+              "key": "other",
+              "label": "Other",
               "type": "submit",
               "max_length": 10
             }
@@ -347,7 +398,9 @@
     {
       "name": "mixing with another primitive refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "no_mixing",
       "blocks": [
         {
           "key": "engraving",
@@ -362,8 +415,8 @@
               "type": "line_text"
             },
             {
-              "key": "when",
-              "label": "When",
+              "key": "other",
+              "label": "Other",
               "type": "date"
             }
           ],
@@ -374,7 +427,9 @@
     {
       "name": "without available_if refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "requires_declared_products",
       "blocks": [
         {
           "key": "engraving",
@@ -393,9 +448,11 @@
       ]
     },
     {
-      "name": "fourth field refused",
+      "name": "fourth field across blocks refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "field_cap",
       "blocks": [
         {
           "key": "a",
@@ -442,7 +499,9 @@
     {
       "name": "four fields in one block refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "field_cap",
       "blocks": [
         {
           "key": "a",
@@ -479,7 +538,9 @@
     {
       "name": "same key in two blocks refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "unique_keys",
       "blocks": [
         {
           "key": "a",
@@ -516,7 +577,9 @@
     {
       "name": "same key twice in one block refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "unique_keys",
       "blocks": [
         {
           "key": "a",
@@ -541,9 +604,11 @@
       ]
     },
     {
-      "name": "derived key at 64 characters passes",
+      "name": "derived key of exactly 64 characters passes",
       "slug": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "proxy": false,
       "valid": true,
+      "rule": null,
       "blocks": [
         {
           "key": "engraving",
@@ -563,9 +628,11 @@
       ]
     },
     {
-      "name": "derived key at 65 characters refused",
+      "name": "derived key of 65 characters refused",
       "slug": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "proxy": false,
       "valid": false,
+      "rule": "derived_key_length",
       "blocks": [
         {
           "key": "engraving",
@@ -587,7 +654,9 @@
     {
       "name": "30-character key under a 40-character slug refused (maximum 19)",
       "slug": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "proxy": false,
       "valid": false,
+      "rule": "derived_key_length",
       "blocks": [
         {
           "key": "engraving",
@@ -609,7 +678,9 @@
     {
       "name": "19-character key under a 40-character slug passes",
       "slug": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "proxy": false,
       "valid": true,
+      "rule": null,
       "blocks": [
         {
           "key": "engraving",
@@ -631,7 +702,9 @@
     {
       "name": "key claim refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "bearer_key",
       "blocks": [
         {
           "key": "engraving",
@@ -653,7 +726,9 @@
     {
       "name": "key reschedule_url refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "bearer_key",
       "blocks": [
         {
           "key": "engraving",
@@ -675,7 +750,9 @@
     {
       "name": "key cancel_url refused",
       "slug": "my-app",
+      "proxy": false,
       "valid": false,
+      "rule": "bearer_key",
       "blocks": [
         {
           "key": "engraving",
@@ -695,9 +772,11 @@
       ]
     },
     {
-      "name": "key ending with a bearer suffix refused",
+      "name": "key my_claim passes (only the exact strings are refused)",
       "slug": "my-app",
-      "valid": false,
+      "proxy": false,
+      "valid": true,
+      "rule": null,
       "blocks": [
         {
           "key": "engraving",
@@ -717,9 +796,11 @@
       ]
     },
     {
-      "name": "key that only contains a bearer word passes",
+      "name": "key claim_note passes",
       "slug": "my-app",
+      "proxy": false,
       "valid": true,
+      "rule": null,
       "blocks": [
         {
           "key": "engraving",
@@ -732,6 +813,103 @@
               "key": "claim_note",
               "label": "Engraving text",
               "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "key reclaim passes",
+      "slug": "my-app",
+      "proxy": false,
+      "valid": true,
+      "rule": null,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "reclaim",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "empty label refused",
+      "slug": "my-app",
+      "proxy": false,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "non-string label refused",
+      "slug": "my-app",
+      "proxy": false,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": 5,
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "required as a string refused",
+      "slug": "my-app",
+      "proxy": false,
+      "valid": false,
+      "rule": "required",
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "Engraving text",
+              "type": "line_text",
+              "required": "yes"
             }
           ],
           "available_if": "declared_products"

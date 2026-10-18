@@ -630,7 +630,7 @@ notify_url = "https://hello.example.com/notify"
 });
 
 describe('line_text (the shopper text input on a product page)', () => {
-  interface ParityRow { name: string; slug: string; valid: boolean; blocks: unknown[] }
+  interface ParityRow { name: string; slug: string; valid: boolean; proxy: boolean; rule: string | null; blocks: unknown[] }
   const parity = JSON.parse(readFileSync(new URL('./fixtures/line-text-parity.json', import.meta.url), 'utf8')) as {
     namespaces: { slug: string; namespace: string }[];
     rows: ParityRow[];
@@ -648,7 +648,7 @@ describe('line_text (the shopper text input on a product page)', () => {
   const fromRow = (row: ParityRow): Record<string, unknown> => {
     const doc = loadTomlFile(stageFile(BASE)).doc;
     doc.slug = row.slug;
-    doc.extensions = { blocks: row.blocks };
+    doc.extensions = { ...(row.proxy ? { proxy: { url: 'https://x.example.com/p', subpath: 'hello', allow_post: true } } : {}), blocks: row.blocks };
     return doc;
   };
 
@@ -677,18 +677,38 @@ describe('line_text (the shopper text input on a product page)', () => {
     expect(message(toml)).toContain('may be at most 19 characters');
   });
 
+  /** Each refusal rule in the fixture, as the message lines this validator gives for it. */
+  const RULE_MESSAGES: Record<string, RegExp> = {
+    max_length_value: /max_length must be a whole number from 1 to 500\.$/,
+    max_length_placement: /max_length is only valid on a line_text field\.$/,
+    no_mixing: /may not mix line_text fields with other primitives\.$/,
+    requires_declared_products: /must set available_if to declared_products\.$/,
+    field_cap: /^A manifest may declare at most 3 line_text fields\.$/,
+    unique_keys: /is already used by another line_text field\.$/,
+    derived_key_length: /may be at most \d+ characters for this app|slug is too long to declare a line_text field/,
+    bearer_key: /may not be claim, reschedule_url, cancel_url\.$/,
+    label: /label must not be empty\.$|label is required \(max 120\)\.$/,
+    required: /required must be true or false\.$/,
+  };
+
   it('parity fixture matches the backend table', () => {
-    expect(parity.rows.length).toBeGreaterThan(20);
+    expect(parity.rows.length).toBeGreaterThan(30);
     for (const row of parity.rows) {
-      const outcome = (() => {
-        try {
-          toManifest(fromRow(row));
-          return 'accepted';
-        } catch {
-          return 'refused';
-        }
-      })();
-      expect(outcome, row.name).toBe(row.valid ? 'accepted' : 'refused');
+      let failure: string | null = null;
+      try {
+        toManifest(fromRow(row));
+      } catch (error) {
+        failure = (error as Error).message;
+      }
+      if (row.valid) {
+        expect(failure, row.name).toBeNull();
+        expect(row.rule, row.name).toBeNull();
+      } else {
+        const pattern = RULE_MESSAGES[row.rule ?? ''];
+        expect(pattern, `${row.name}: unknown rule`).toBeDefined();
+        expect(failure, row.name).not.toBeNull();
+        for (const line of (failure ?? '').split('\n')) expect(line, row.name).toMatch(pattern);
+      }
     }
   });
 
@@ -697,9 +717,12 @@ describe('line_text (the shopper text input on a product page)', () => {
     for (const entry of parity.namespaces) expect(`app.${lineTextNamespace(entry.slug)}.`, entry.slug).toBe(entry.namespace);
   });
 
-  it('refuses a key that is, or ends with, a bearer suffix', () => {
-    for (const key of ['claim', 'reschedule_url', 'cancel_url', 'my_claim']) {
-      expect(message(`${BASE}${LINE_BLOCK}${FIELD.replace('engraving', key)}`), key).toContain('may not be, or end with');
+  it('refuses a key that equals a bearer suffix and accepts keys that merely contain one', () => {
+    for (const key of ['claim', 'reschedule_url', 'cancel_url']) {
+      expect(message(`${BASE}${LINE_BLOCK}${FIELD.replace('engraving', key)}`), key).toContain('may not be claim, reschedule_url, cancel_url');
+    }
+    for (const key of ['my_claim', 'claim_note', 'reclaim']) {
+      expect(message(`${BASE}${LINE_BLOCK}${FIELD.replace('engraving', key)}`), key).toBe('no error');
     }
   });
 
