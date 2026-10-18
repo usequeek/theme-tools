@@ -37,7 +37,8 @@ describe('latestDevelopmentVersion', () => {
     expect(latestDevelopmentVersion([row(3, 'live', true), row(4, 'in_review')])).toBeNull();
     expect(latestDevelopmentVersion([row(2, 'development'), row(3, 'live', true)])).toBeNull();
     expect(latestDevelopmentVersion([row(3, 'rejected')])).toBeNull();
-    expect(latestDevelopmentVersion([row(3, 'development', true)])).toBeNull();
+    // A development app's newest version is also its current one: still updated in place.
+    expect(latestDevelopmentVersion([row(3, 'development', true)])).toBe('1.0.3');
     expect(latestDevelopmentVersion([])).toBeNull();
   });
 });

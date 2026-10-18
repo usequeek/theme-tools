@@ -50,9 +50,13 @@ export function withDevUrls(manifest: AppManifest, tunnelUrl: string): AppManife
   return { ...(deep(manifest) as AppManifest), distribution: 'development' };
 }
 
-/** A version `dev` may update in place: unreleased, not serving, not in review, not rejected. */
-function isDevelopmentVersion(version: { review_status: string; current?: boolean }): boolean {
-  return version.review_status === 'development' && version.current !== true;
+/**
+ * A version `dev` may update in place: still in development (not in review,
+ * live or rejected). A development app's newest version is also its current
+ * one, so "current" does not rule it out.
+ */
+function isDevelopmentVersion(version: { review_status: string }): boolean {
+  return version.review_status === 'development';
 }
 
 /**
