@@ -190,6 +190,7 @@ development version, nothing served; the signing secret goes to
 90s by default, `--tunnel-timeout <seconds>`: the hostname must resolve and
 `/health` must answer, with a `Waiting for the tunnel (n/90s)…` line every 5s;
 it stops before installing, saying why, if not), installs on a dev store and starts your app.
+Dev runs and saves update the latest development version in place; a new version is created only when you release or bump (or when the latest version is released or in review, which are never edited).
 `dev` only installs on a dev store; merchant and test stores are refused with
 the wrong-kind copy.
 

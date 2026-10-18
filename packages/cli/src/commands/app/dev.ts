@@ -2,7 +2,7 @@ import { mkdirSync, watch } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
 import * as p from '@clack/prompts';
 import { Flags } from '@oclif/core';
-import { apiFailureOf, DASHBOARD_URL, errorText, requestIdLine, LoginNeededError, type ApiFailure, type DeveloperApi, type DevStore } from '../../lib/app-api.js';
+import { apiFailureOf, DASHBOARD_URL, errorText, requestIdLine, LoginNeededError, type ApiFailure, type AppVersion, type DeployResult, type DeveloperApi, type DevStore, type ReviewRequired } from '../../lib/app-api.js';
 import { DevStoreError, readSavedStore, saveStore, selectDevStore, terminalDevStorePrompts, type DevStorePrompts } from '../../lib/app-dev-store.js';
 import { apiBase } from '../../lib/app-auth.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
@@ -48,6 +48,64 @@ export function withDevUrls(manifest: AppManifest, tunnelUrl: string): AppManife
     return swapLeaf(node);
   };
   return { ...(deep(manifest) as AppManifest), distribution: 'development' };
+}
+
+/** A version `dev` may update in place: unreleased, not serving, not in review, not rejected. */
+function isDevelopmentVersion(version: { review_status: string; current?: boolean }): boolean {
+  return version.review_status === 'development' && version.current !== true;
+}
+
+/**
+ * The newest version's string when it is a development build, else null.
+ * "Newest" is the highest sequence, whatever order the list arrives in.
+ */
+export function latestDevelopmentVersion(versions: AppVersion[]): string | null {
+  const latest = versions.reduce<AppVersion | null>((top, row) => (top === null || row.sequence > top.sequence ? row : top), null);
+  return latest !== null && isDevelopmentVersion(latest) ? latest.version : null;
+}
+
+/** The server refused a same-version edit because that version is under review (frozen). */
+export function isFrozenVersionRefusal(error: unknown): boolean {
+  const failure = apiFailureOf(error);
+  if (failure === null) return false;
+  const text = `${failure.errorType ?? ''} ${failure.errorCode ?? ''} ${failure.message}`;
+  return /frozen|under[ _]review|in[ _]review/i.test(text);
+}
+
+/**
+ * Deploys the dev manifest without minting a version per run. The version to
+ * name is resolved once (an explicit manifest version wins; else the app's
+ * versions are read and a newest development build is named, so the server
+ * updates it in place) and afterwards carried from each successful deploy's
+ * own result, so a toml save or tunnel restart makes no extra versions call.
+ * Anything else deploys unnamed and the server mints the next patch. A named
+ * deploy refused as frozen (the version went to review meanwhile) falls back
+ * to one unnamed deploy.
+ */
+export function createDevDeployer(
+  api: Pick<DeveloperApi, 'deploy' | 'appVersions'>,
+  log: (line: string) => void,
+): (manifest: AppManifest) => Promise<DeployResult | ReviewRequired> {
+  // undefined: not resolved yet; null: deploy unnamed; string: update that version in place.
+  let inPlace: string | null | undefined;
+  return async (manifest) => {
+    if (typeof manifest.version === 'string' && manifest.version !== '') {
+      return api.deploy(manifest, { version: manifest.version });
+    }
+    if (inPlace === undefined) inPlace = latestDevelopmentVersion((await api.appVersions(manifest.slug)).versions);
+    let result: DeployResult | ReviewRequired;
+    try {
+      result = inPlace === null ? await api.deploy(manifest) : await api.deploy(manifest, { version: inPlace });
+    } catch (error) {
+      if (inPlace === null || !isFrozenVersionRefusal(error)) throw error;
+      log(`v${inPlace} is under review and frozen — deploying the next version instead.`);
+      result = await api.deploy(manifest);
+    }
+    // Carry the version just deployed when it is still a development build;
+    // a released, reviewed or gated one is never edited in place.
+    inPlace = result.status !== 'review_required' && isDevelopmentVersion(result) ? result.version : null;
+    return result;
+  };
 }
 
 /**
@@ -557,7 +615,7 @@ export default class AppDev extends BaseCommand {
   static override description = `Runs your app against a dev store, end to end:
 
 1. Starts a tunnel so Queek can reach your machine (or uses --url), and waits up to 90s (--tunnel-timeout) for it to resolve and answer /health. If it never does, the command stops before installing anything and says why.
-2. Registers queek.app.toml as a development build; an app whose slug is not registered yet is registered first, the way \`queek app deploy --no-release\` does (a development version, nothing served), so the first run needs no other command. Re-running with the same version updates that build in place, so it does not create a new version each time.
+2. Registers queek.app.toml as a development build; an app whose slug is not registered yet is registered first, the way \`queek app deploy --no-release\` does (a development version, nothing served), so the first run needs no other command. Dev runs and saves update the latest development version in place; a new version is created only when you release or bump, or when the latest one is released or in review.
 3. Installs the app on a dev store you own, with every scope granted and no consent screen. The store is the one you pass with --store, else the one picked last time (remembered in .queek/dev.json), else your only dev store; with several you choose on a terminal (or pass --store in CI).
 4. Starts your app with the command in the [dev] table of queek.app.toml (for example "node ./server.js"). It receives APP_BASE_URL (the tunnel origin), PORT, NODE_ENV=development, QUEEK_API_BASE, and the signing secret, keypair and encryption key from .queek/.env.local (created on first run).
 
@@ -668,13 +726,17 @@ With no dev store, the command offers to create one named after the app, with te
       process.once('SIGINT', stop);
       process.once('SIGTERM', stop);
 
+      // One deployer for the run: dev updates the latest development version
+      // in place instead of minting one per run or save.
+      const deployDev = createDevDeployer(api, (line) => this.log(handoffLine('queek', line)));
+
       // The tunnel URL is a parameter (not the closure): the toml watcher
       // re-registers the current tunnel, the restart path the new one —
       // both run this same cycle.
       const cycle = async (tunnelUrl: string): Promise<{ preview: string | null; appPid: string; localUrl: string | null }> => {
         const { manifest } = loadApp(flags.path, flags.config);
         const devManifest = withDevUrls(manifest, tunnelUrl);
-        const result = await api.deploy(devManifest).catch((error: Error) => this.error(errorText(error), { exit: 1 }));
+        const result = await deployDev(devManifest).catch((error: Error) => this.error(errorText(error), { exit: 1 }));
         // Development builds release even when explicit submit is required —
         // but if the API ever gates one, dev cannot install what was never
         // created: say so instead of crashing on the union.
