@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { devLinks, handoffLine, isRetryableHandoffFailure, localPageUrl, previewUrl, readyLines, resolvePreview, withDevResources, withDevUrls } from '../src/commands/app/dev.js';
-import { ApiError, apiFailureOf, type DevStore } from '../src/lib/app-api.js';
+import { ApiError, apiFailureOf, DeveloperApi, type DevStore, type FetchImpl } from '../src/lib/app-api.js';
 import { defaultDevStoreName, devStoreRefusal } from '../src/lib/app-dev-store.js';
 import type { AppManifest } from '../src/lib/app-manifest.js';
 
@@ -49,12 +49,11 @@ describe('dev ready block helpers', () => {
   });
 
   it('--use-localhost: prints the link to open and says the embed loads from localhost while the tunnel keeps the server calls', () => {
-    expect(localPageUrl(3000)).toBe('http://localhost:3000');
-    expect(readyLines('https://abc.trycloudflare.com', 'https://dash/open-store?store=12&app=hello', STORE, 'app_1', localPageUrl(5173))).toEqual([
+    expect(readyLines('https://abc.trycloudflare.com', 'https://dash/open-store?store=12&app=hello', STORE, 'app_1', 'http://localhost:5173/admin')).toEqual([
       '✅ Ready, watching for changes',
       'Tunnel: https://abc.trycloudflare.com',
       'Preview URL: https://dash/open-store?store=12&app=hello',
-      'Embed address: http://localhost:5173 (--use-localhost; the tunnel above still serves install, uninstall and webhook calls)',
+      'Embed address: http://localhost:5173/admin (--use-localhost; the tunnel above still serves install, uninstall and webhook calls)',
     ]);
   });
 
@@ -193,5 +192,64 @@ describe('app dev URLs', () => {
     expect(block.link_url).toBe('https://abc.trycloudflare.com/blocks/recs');
     expect(block.image.url).toBe('https://abc.trycloudflare.com/img/recs.png');
     expect(dev.logo_url).toBe('https://cdn.example.net/logo.png');
+  });
+});
+
+describe('localPageUrl (localhost + the PATH of merchant_page_url, nothing else)', () => {
+  const manifestWith = (merchantPageUrl?: unknown): AppManifest =>
+    ({ slug: 'hello', name: 'Hello', scopes: [], install_url: 'https://x.example/install', uninstall_url: 'https://x.example/uninstall', ...(merchantPageUrl === undefined ? {} : { extensions: { merchant_page_url: merchantPageUrl } }) }) as AppManifest;
+
+  it.each([
+    ['https://x.example/admin', 'http://localhost:3000/admin'],
+    ['https://x.example/', 'http://localhost:3000/'],
+    ['https://x.example', 'http://localhost:3000/'],
+    ['https://x.example/app/admin', 'http://localhost:3000/app/admin'],
+    ['https://x.example/admin/', 'http://localhost:3000/admin/'],
+    ['https://x.example/admin?tab=1&token=abc#top', 'http://localhost:3000/admin'],
+    ['https://other.apps.queek.com.ng:8443/a/b/?x=1', 'http://localhost:3000/a/b/'],
+  ])('%s -> %s', (page, expected) => {
+    expect(localPageUrl(manifestWith(page), 3000)).toBe(expected);
+  });
+
+  it('uses the given port, and is null without an embedded page', () => {
+    expect(localPageUrl(manifestWith('https://x.example/admin'), 5173)).toBe('http://localhost:5173/admin');
+    expect(localPageUrl(manifestWith(), 3000)).toBeNull();
+    expect(localPageUrl(manifestWith(42), 3000)).toBeNull();
+  });
+
+  it('reads the page path through the tunnel rewrite too: the tunnel host never leaks in', () => {
+    const rewritten = withDevUrls({ ...manifestWith('https://x.example/admin') }, 'https://abc.trycloudflare.com');
+    expect(localPageUrl(rewritten, 3000)).toBe('http://localhost:3000/admin');
+  });
+});
+
+describe('the dev-install request body under --use-localhost', () => {
+  const sent = async (merchantPageUrl: string | undefined, port: number, useLocalhost: boolean): Promise<unknown> => {
+    let body: unknown;
+    const fetchImpl: FetchImpl = async (_url, init) => {
+      body = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({ status: 'success', message: 'ok', data: { installation_p_id: 'i', store_p_id: 12, app_p_id: 'a', status: 'active', installed_version: '1.0.0' } }), { status: 201 });
+    };
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: async () => ({ token: 't', kind: 'user' as const }) });
+    const manifest = { slug: 'hello', name: 'Hello', scopes: [], install_url: 'https://x.example/i', uninstall_url: 'https://x.example/u', ...(merchantPageUrl ? { extensions: { merchant_page_url: merchantPageUrl } } : {}) } as AppManifest;
+    const local = useLocalhost ? localPageUrl(manifest, port) : null;
+    await api.devInstall('hello', 12, local === null ? {} : { localPageUrl: local });
+    return body;
+  };
+
+  it('https://x.example/admin on port 3000 sends exactly the path-carrying loopback address', async () => {
+    expect(await sent('https://x.example/admin', 3000, true)).toEqual({ test_store_p_id: 12, local_page_url: 'http://localhost:3000/admin' });
+  });
+
+  it('copies the path only: nested, root, trailing slash, and never the query', async () => {
+    expect(await sent('https://x.example/app/admin', 3000, true)).toEqual({ test_store_p_id: 12, local_page_url: 'http://localhost:3000/app/admin' });
+    expect(await sent('https://x.example/', 3000, true)).toEqual({ test_store_p_id: 12, local_page_url: 'http://localhost:3000/' });
+    expect(await sent('https://x.example/admin/', 3000, true)).toEqual({ test_store_p_id: 12, local_page_url: 'http://localhost:3000/admin/' });
+    expect(await sent('https://x.example/admin?tab=1', 8080, true)).toEqual({ test_store_p_id: 12, local_page_url: 'http://localhost:8080/admin' });
+  });
+
+  it('sends no local_page_url without the flag, or when the manifest has no embedded page', async () => {
+    expect(await sent('https://x.example/admin', 3000, false)).toEqual({ test_store_p_id: 12 });
+    expect(await sent(undefined, 3000, true)).toEqual({ test_store_p_id: 12 });
   });
 });

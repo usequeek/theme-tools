@@ -63,7 +63,7 @@ describe('waitForTunnel (resolution + GET, visible, bounded)', () => {
     expect(result).toEqual({ ready: true });
     expect(resolves).toBe(13);
     expect(get).toHaveBeenCalledTimes(1);
-    expect(lines).toEqual(['Waiting for the tunnel (0/30s)…', 'Waiting for the tunnel (5/30s)…', 'Waiting for the tunnel (10/30s)…']);
+    expect(lines).toEqual(['Waiting for the tunnel (0/90s)…', 'Waiting for the tunnel (5/90s)…', 'Waiting for the tunnel (10/90s)…']);
   });
 
   it('keeps waiting while /health is not 2xx, then succeeds', async () => {
@@ -79,12 +79,12 @@ describe('waitForTunnel (resolution + GET, visible, bounded)', () => {
     expect(result).toEqual({ ready: true });
   });
 
-  it('gives up after 30s when the name never resolves, with the DNS reason', async () => {
+  it('gives up after 90s when the name never resolves, with the DNS reason', async () => {
     const lines: string[] = [];
     const result = await waitForTunnel(URL_, { ...clock(), resolveHost: async () => { throw new Error('ENOTFOUND'); }, get: async () => ({ ok: true, status: 200 }), onWait: (line) => lines.push(line) });
     expect(result).toEqual({ ready: false, detail: 'the hostname abc-def.trycloudflare.com does not resolve yet' });
-    expect(lines.at(-1)).toBe('Waiting for the tunnel (25/30s)…');
-    expect(lines).toHaveLength(6);
+    expect(lines.at(-1)).toBe('Waiting for the tunnel (85/90s)…');
+    expect(lines).toHaveLength(18);
   });
 
   it('gives up with the HTTP reason when it resolves but never answers 2xx, or the request fails', async () => {
@@ -95,9 +95,27 @@ describe('waitForTunnel (resolution + GET, visible, bounded)', () => {
     expect((refused as { detail: string }).detail).toContain('connect ECONNREFUSED');
   });
 
+  it('honours a custom timeout: the counter and the failure use it', async () => {
+    const lines: string[] = [];
+    const result = await waitForTunnel(URL_, { ...clock(), timeoutS: 12, resolveHost: async () => { throw new Error('ENOTFOUND'); }, onWait: (line) => lines.push(line) });
+    expect(result.ready).toBe(false);
+    expect(lines).toEqual(['Waiting for the tunnel (0/12s)…', 'Waiting for the tunnel (5/12s)…', 'Waiting for the tunnel (10/12s)…']);
+    expect(tunnelNotReadyMessage(URL_, 'x', 12)).toContain('within 12s');
+  });
+
+  it('a name that resolves only after ~60s still succeeds inside the default window', async () => {
+    let resolves = 0;
+    const result = await waitForTunnel(URL_, {
+      ...clock(),
+      resolveHost: async () => { resolves += 1; if (resolves <= 60) throw new Error('ENOTFOUND'); return {}; },
+      get: async () => ({ ok: true, status: 200 }),
+    });
+    expect(result).toEqual({ ready: true });
+  });
+
   it('the failure message says nothing was installed and offers both ways out', () => {
     const message = tunnelNotReadyMessage(URL_, 'the hostname abc-def.trycloudflare.com does not resolve yet');
-    expect(message).toContain('within 30s');
+    expect(message).toContain('within 90s');
     expect(message).toContain('Nothing was installed');
     expect(message).toContain('--url');
     expect(message).toContain('`queek app dev` again');

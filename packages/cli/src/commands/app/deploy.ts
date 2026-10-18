@@ -1,5 +1,5 @@
 import { Flags } from '@oclif/core';
-import { DASHBOARD_URL, LoginNeededError } from '../../lib/app-api.js';
+import { DASHBOARD_URL, errorText, LoginNeededError } from '../../lib/app-api.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { saveRegistrationSecret } from '../../lib/app-env.js';
 import { assertSemver, loadApp } from '../../lib/app-manifest.js';
@@ -61,14 +61,14 @@ export default class AppDeploy extends BaseCommand {
       log: (line) => this.log(line),
       logError: (line) => this.logToStderr(line),
       debug: (line) => this.debug(line),
-    }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
+    }).catch((error: Error) => this.error(errorText(error), { exit: error instanceof LoginNeededError ? 2 : 1 }));
 
     // Server validation errors (422 whole-config refusals like
     // "[product]: requires write_products") surface verbatim: the server's
     // message passes through unwrapped, never reworded.
     const result = await api
       .deploy(manifest, { version: flags.version, message: flags.message, noRelease: flags['no-release'] })
-      .catch((error: Error) => this.error(error.message, { exit: 1 }));
+      .catch((error: Error) => this.error(errorText(error), { exit: 1 }));
 
     // When the server requires an explicit submit, a successful deploy
     // leaves its version waiting in development — not a failure, exit 0.

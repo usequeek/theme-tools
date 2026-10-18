@@ -187,8 +187,9 @@ business days.`
 yet is registered first, the way `queek app deploy --no-release` does (a
 development version, nothing served; the signing secret goes to
 `.queek/.env.local` and is never printed). It then waits for the tunnel (up to
-30s: the hostname must resolve and `/health` must answer; it stops before
-installing, saying why, if not), installs on a dev store and starts your app.
+90s by default, `--tunnel-timeout <seconds>`: the hostname must resolve and
+`/health` must answer, with a `Waiting for the tunnel (n/90s)…` line every 5s;
+it stops before installing, saying why, if not), installs on a dev store and starts your app.
 `dev` only installs on a dev store; merchant and test stores are refused with
 the wrong-kind copy.
 
@@ -200,12 +201,13 @@ the wrong-kind copy.
 | `--dev-store-address <slug>` | Address (slug) of the created store; if it is taken, Queek suggests another. |
 | `--port <n>` | Your local server port (default: `[dev].port`, else 3000). |
 | `--url <https-url>` | Your own tunnel; skips starting cloudflared. |
-| `--use-localhost` | The dashboard embeds your app from `http://localhost:<port>` (the dev install sends `local_page_url`), so hot reload works there. The tunnel still starts for what Queek's servers call: install, uninstall and webhooks. |
+| `--tunnel-timeout <seconds>` | How long to wait for the tunnel hostname to resolve and answer before giving up (default 90; env `QUEEK_APP_TUNNEL_TIMEOUT`). Queek's servers call install, uninstall and webhooks through the tunnel, so an unreachable one is never installed against. |
+| `--use-localhost` | The dashboard embeds your app from `http://localhost:<port>` plus the path of `[extensions] merchant_page_url` (e.g. `/admin`; the dev install sends it as `local_page_url`; the query is never copied), so hot reload works there. Needs `merchant_page_url`; without it the flag says so and the tunnel address is used. The tunnel still starts for what Queek's servers call. |
 
 With no dev store at all, `dev` offers once to create one (`--create-dev-store`
 in CI). The dev store's storefront password is printed exactly once, labelled,
 when the CLI creates the store; no later run, `--verbose` output or `app info`
-prints it. The ready block prints the tunnel URL, the Preview URL (the link to
+prints it. Every API failure prints the server's request id on its own line (`Request id: …`) so you can quote it to support; tokens and passwords are never printed. The ready block prints the tunnel URL, the Preview URL (the link to
 open) and the address the embedded app loads from; every install and app line
 logs with time + source. Dev credentials are written to `.queek/.env.local` and
 never printed.

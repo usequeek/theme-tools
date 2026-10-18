@@ -180,6 +180,26 @@ describe('createNewDevStore (refusals and the one-time password)', () => {
     expect(f.lines).toEqual([]);
   });
 
+  it('every refusal carries the request id on its own line', async () => {
+    for (const failure of [
+      new ApiError('You have reached your dev store limit.', 422, { error_type: 'dev_store_limit_reached' }, 'req_limit'),
+      new ApiError("That store slug is taken. 'a-2' is free.", 422, { error_type: 'slug_taken' }, 'req_slug'),
+      new ApiError('Something broke.', 500, null, 'req_boom'),
+    ]) {
+      const f = fakes([]);
+      f.api.createDevStore.mockRejectedValueOnce(failure);
+      const error = (await createNewDevStore(f.api, 'X', undefined, f.log).catch((e: unknown) => e)) as Error;
+      expect(error.message.split('\n').at(-1)).toBe(`Request id: ${failure.requestId}`);
+    }
+  });
+
+  it('a failed store list carries the request id too', async () => {
+    const f = fakes([A]);
+    f.api.devStores.mockRejectedValueOnce(new ApiError('Server error', 500, null, 'req_list'));
+    const error = (await selectDevStore(f.api, request(), f.prompts, f.log).catch((e: unknown) => e)) as Error;
+    expect(error.message).toBe('Server error\nRequest id: req_list');
+  });
+
   it('treats a 403 plan refusal the same way', async () => {
     const f = fakes([]);
     f.api.createDevStore.mockRejectedValueOnce(new ApiError('Your plan does not include dev stores.', 403, null));

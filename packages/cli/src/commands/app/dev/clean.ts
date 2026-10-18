@@ -1,6 +1,6 @@
 import * as p from '@clack/prompts';
 import { Flags } from '@oclif/core';
-import { apiFailureOf, AutomationTokenError, LoginNeededError, type DeveloperApi, type DevStore } from '../../../lib/app-api.js';
+import { apiFailureOf, AutomationTokenError, errorText, LoginNeededError, requestIdLine, type DeveloperApi, type DevStore } from '../../../lib/app-api.js';
 import { appFlags, appSession } from '../../../lib/app-command.js';
 import { DevStoreError, forgetSavedStore, readSavedStore, selectDevStore, terminalDevStorePrompts } from '../../../lib/app-dev-store.js';
 import { loadApp, queekDir } from '../../../lib/app-manifest.js';
@@ -36,7 +36,7 @@ export async function cleanDevInstall(
     await api.removeDevInstall(slug, store.p_id);
   } catch (error) {
     if (removalUnsupported(error)) {
-      throw new Error(`This Queek API cannot remove a dev install yet — uninstall '${slug}' from the admin of dev store '${store.name}' instead.`);
+      throw new Error(`This Queek API cannot remove a dev install yet — uninstall '${slug}' from the admin of dev store '${store.name}' instead.${requestIdLine(apiFailureOf(error)?.requestId)}`);
     }
     const failure = apiFailureOf(error);
     if (failure?.status === 404) {
@@ -77,7 +77,7 @@ export default class AppDevClean extends BaseCommand {
       log: (line) => this.log(line),
       logError: (line) => this.logToStderr(line),
       debug: (line) => this.debug(line),
-    }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
+    }).catch((error: Error) => this.error(errorText(error), { exit: error instanceof LoginNeededError ? 2 : 1 }));
     if (kind === 'automation') {
       this.error('`queek app dev clean` needs a developer session (dev-store reads are outside the automation grant) — run it where `queek auth login` works.', { exit: 2 });
     }
@@ -101,10 +101,10 @@ export default class AppDevClean extends BaseCommand {
       },
       terminalDevStorePrompts(answer),
       (line) => this.log(line),
-    ).catch((error: Error) => this.error(error.message, { exit: error instanceof DevStoreError ? error.exit : 1 }));
+    ).catch((error: Error) => this.error(errorText(error), { exit: error instanceof DevStoreError ? error.exit : 1 }));
 
     const removed = await cleanDevInstall(api, manifest.slug, store, (line) => this.log(line)).catch((error: Error) =>
-      this.error(error.message, { exit: error instanceof AutomationTokenError ? 2 : 1 }),
+      this.error(errorText(error), { exit: error instanceof AutomationTokenError ? 2 : 1 }),
     );
     let reset = false;
     if (flags.reset) {

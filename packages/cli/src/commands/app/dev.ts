@@ -2,14 +2,14 @@ import { mkdirSync, watch } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
 import * as p from '@clack/prompts';
 import { Flags } from '@oclif/core';
-import { apiFailureOf, DASHBOARD_URL, LoginNeededError, type ApiFailure, type DeveloperApi, type DevStore } from '../../lib/app-api.js';
+import { apiFailureOf, DASHBOARD_URL, errorText, requestIdLine, LoginNeededError, type ApiFailure, type DeveloperApi, type DevStore } from '../../lib/app-api.js';
 import { DevStoreError, readSavedStore, saveStore, selectDevStore, terminalDevStorePrompts, type DevStorePrompts } from '../../lib/app-dev-store.js';
 import { apiBase } from '../../lib/app-auth.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { DEFAULT_DEV_PORT, loadApp, queekDir, resolveTomlPath, type AppManifest, type DevTable } from '../../lib/app-manifest.js';
 import { ensureAppRegistered, ensureDevSecrets, ensureQueekIgnored, envLocalPath, MissingSecretError, readEnvFile, resolveDevSecret, writeEnvLocal } from '../../lib/app-env.js';
 import { startSupervised, waitForHealthy, type FetchFn } from '../../lib/app-run.js';
-import { manualTunnel, matchTunnelRateLimited, startCloudflared, tunnelNotReadyMessage, waitForTunnel, type Tunnel } from '../../lib/app-tunnel.js';
+import { manualTunnel, matchTunnelRateLimited, startCloudflared, TUNNEL_READY_TIMEOUT_S, tunnelNotReadyMessage, waitForTunnel, type Tunnel } from '../../lib/app-tunnel.js';
 import { BaseCommand } from '../../lib/base-command.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -556,12 +556,12 @@ export default class AppDev extends BaseCommand {
 
   static override description = `Runs your app against a dev store, end to end:
 
-1. Starts a tunnel so Queek can reach your machine (or uses --url), and waits up to 30s for it to resolve and answer /health. If it never does, the command stops before installing anything and says why.
+1. Starts a tunnel so Queek can reach your machine (or uses --url), and waits up to 90s (--tunnel-timeout) for it to resolve and answer /health. If it never does, the command stops before installing anything and says why.
 2. Registers queek.app.toml as a development build; an app whose slug is not registered yet is registered first, the way \`queek app deploy --no-release\` does (a development version, nothing served), so the first run needs no other command. Re-running with the same version updates that build in place, so it does not create a new version each time.
 3. Installs the app on a dev store you own, with every scope granted and no consent screen. The store is the one you pass with --store, else the one picked last time (remembered in .queek/dev.json), else your only dev store; with several you choose on a terminal (or pass --store in CI).
 4. Starts your app with the command in the [dev] table of queek.app.toml (for example "node ./server.js"). It receives APP_BASE_URL (the tunnel origin), PORT, NODE_ENV=development, QUEEK_API_BASE, and the signing secret, keypair and encryption key from .queek/.env.local (created on first run).
 
-With no dev store, the command offers to create one named after the app, with test data. --create-dev-store always creates a new dev store (also when you own others) and runs on it; the storefront password is printed once, when the store is created, and never again. When everything is ready it prints the tunnel URL, the Preview URL that opens the app inside the dev store's dashboard, and the address the embedded app loads from (the tunnel, or http://localhost:<port> with --use-localhost). Saving queek.app.toml registers the build again; changes to [dev] need a restart.
+With no dev store, the command offers to create one named after the app, with test data. --create-dev-store always creates a new dev store (also when you own others) and runs on it; the storefront password is printed once, when the store is created, and never again. When everything is ready it prints the tunnel URL, the Preview URL that opens the app inside the dev store's dashboard, and the address the embedded app loads from (the tunnel, or http://localhost:<port> plus the merchant page path with --use-localhost). Saving queek.app.toml registers the build again; changes to [dev] need a restart.
 
 \`queek app dev clean\` removes the dev install from the dev store again. You must be signed in as a developer (queek auth login). Automation tokens cannot read dev stores, so they cannot run this command. Ctrl+C stops the app and the tunnel.`;
 
@@ -581,7 +581,8 @@ With no dev store, the command offers to create one named after the app, with te
     'dev-store-address': Flags.string({ summary: 'Slug (address) for the created dev store (default: derived from the name). If the slug is taken, Queek suggests another.', env: 'QUEEK_APP_DEV_STORE_SLUG' }),
     port: Flags.integer({ summary: 'Your local app server port the tunnel forwards to (default: [dev].port, else 3000).', min: 1, max: 65535 }),
     url: Flags.string({ summary: 'Your own tunnel URL (https). Skips starting cloudflared.' }),
-    'use-localhost': Flags.boolean({ summary: 'Embed your app in the dashboard straight from http://localhost:<port> (so hot reload works there). The tunnel still serves what Queek itself calls: install, uninstall and webhooks.', default: false }),
+    'tunnel-timeout': Flags.integer({ summary: 'Seconds to wait for the tunnel hostname to resolve and answer /health before giving up (default 90). A free quick tunnel can take a minute.', min: 1, default: TUNNEL_READY_TIMEOUT_S, env: 'QUEEK_APP_TUNNEL_TIMEOUT' }),
+    'use-localhost': Flags.boolean({ summary: 'Embed your app in the dashboard straight from http://localhost:<port><merchant page path> (so hot reload works there; needs [extensions] merchant_page_url). The tunnel still serves what Queek itself calls: install, uninstall and webhooks.', default: false }),
   };
 
   async run(): Promise<void> {
@@ -592,7 +593,7 @@ With no dev store, the command offers to create one named after the app, with te
       log: (line) => this.log(line),
       logError: (line) => this.logToStderr(line),
       debug: (line) => this.debug(line),
-    }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
+    }).catch((error: Error) => this.error(errorText(error), { exit: error instanceof LoginNeededError ? 2 : 1 }));
     if (kind === 'automation') {
       this.error('`queek app dev` needs a developer session (dev-store reads are outside the automation grant) — run it where `queek auth login` works.', { exit: 2 });
     }
@@ -604,9 +605,6 @@ With no dev store, the command offers to create one named after the app, with te
       this.error('`queek app dev` starts the app from the toml’s [dev] table — add `[dev]` with `command = "node ./server.js"` (and optionally `port = 3000`) to queek.app.toml.', { exit: 2 });
     }
     const port = flags.port ?? dev.port ?? DEFAULT_DEV_PORT;
-    // --use-localhost: the dashboard embeds the app from this address; the
-    // tunnel stays for everything Queek's servers call.
-    const localUrl = flags['use-localhost'] ? localPageUrl(port) : null;
 
     // The signing secret is never minted or rotated here — dev and
     // production share one app record, so rotating would break every live
@@ -619,10 +617,10 @@ With no dev store, the command offers to create one named after the app, with te
     ensureQueekIgnored(flags.path);
     // A slug nobody registered yet is registered here, the way
     // `queek app deploy --no-release` would: no separate first step.
-    await ensureAppRegistered(api, first.manifest, flags.path, (line) => this.log(line)).catch((error: Error) => this.error(error.message, { exit: 1 }));
+    await ensureAppRegistered(api, first.manifest, flags.path, (line) => this.log(line)).catch((error: Error) => this.error(errorText(error), { exit: 1 }));
     const recorded = readEnvFile(envLocalPath(queek));
     await resolveDevSecret(api, first.manifest.slug, queek, recorded, process.env.QUEEK_APP_SECRET, (line) => this.log(line)).catch(
-      (error: Error) => this.error(error.message, { exit: error instanceof MissingSecretError ? 2 : 1 }),
+      (error: Error) => this.error(errorText(error), { exit: error instanceof MissingSecretError ? 2 : 1 }),
     );
 
     // The dev store is chosen once, before anything starts: a prompt or a
@@ -642,7 +640,7 @@ With no dev store, the command offers to create one named after the app, with te
       },
       this.devStorePrompts(),
       (line) => this.log(line),
-    ).catch((error: Error) => this.error(error.message, { exit: error instanceof DevStoreError ? error.exit : 1 }));
+    ).catch((error: Error) => this.error(errorText(error), { exit: error instanceof DevStoreError ? error.exit : 1 }));
     if (store.p_id !== savedStore) saveStore(queek, store.p_id);
 
     const tomlPath = resolveTomlPath(flags.path, flags.config);
@@ -672,10 +670,10 @@ With no dev store, the command offers to create one named after the app, with te
       // The tunnel URL is a parameter (not the closure): the toml watcher
       // re-registers the current tunnel, the restart path the new one —
       // both run this same cycle.
-      const cycle = async (tunnelUrl: string): Promise<{ preview: string | null; appPid: string }> => {
+      const cycle = async (tunnelUrl: string): Promise<{ preview: string | null; appPid: string; localUrl: string | null }> => {
         const { manifest } = loadApp(flags.path, flags.config);
         const devManifest = withDevUrls(manifest, tunnelUrl);
-        const result = await api.deploy(devManifest).catch((error: Error) => this.error(error.message, { exit: 1 }));
+        const result = await api.deploy(devManifest).catch((error: Error) => this.error(errorText(error), { exit: 1 }));
         // Development builds release even when explicit submit is required —
         // but if the API ever gates one, dev cannot install what was never
         // created: say so instead of crashing on the union.
@@ -689,6 +687,14 @@ With no dev store, the command offers to create one named after the app, with te
         // tunnel, so a fresh quick-tunnel host that is not resolvable yet
         // answers 424 app_handoff_failed (502 before the Cloudflare fix):
         // retry a few times before giving up.
+        // --use-localhost: the dashboard embeds the app from localhost while
+        // the tunnel keeps serving what Queek's servers call. The address
+        // carries the app page's path (the API requires it under the page
+        // path), and only needs an embedded page to exist.
+        const localUrl = flags['use-localhost'] ? localPageUrl(manifest, port) : null;
+        if (flags['use-localhost'] && localUrl === null) {
+          this.logToStderr('--use-localhost needs an embedded page: set [extensions] merchant_page_url in queek.app.toml. Continuing with the tunnel address.');
+        }
         const installOnce = () => api.devInstall(result.slug, store.p_id, localUrl === null ? {} : { localPageUrl: localUrl });
         let installed: Awaited<ReturnType<typeof installOnce>> | undefined;
         for (let attempt = 1; installed === undefined; attempt++) {
@@ -700,7 +706,7 @@ With no dev store, the command offers to create one named after the app, with te
             // store that stopped being one must read as wrong-kind, with the
             // server's reason verbatim.
             if (failure?.errorType === 'dev_store_required') {
-              this.error(`Could not install on '${store.name}': ${failure.message} \`queek app dev\` needs a dev store (dashboard → Developers → Dev stores).`, { exit: 1 });
+              this.error(`Could not install on '${store.name}': ${failure.message} \`queek app dev\` needs a dev store (dashboard → Developers → Dev stores).${requestIdLine(failure.requestId)}`, { exit: 1 });
             }
             const retryable = isRetryableHandoffFailure(failure);
             if (retryable && attempt < 4) {
@@ -709,13 +715,13 @@ With no dev store, the command offers to create one named after the app, with te
               continue;
             }
             const reason = failure ? `${failure.message}${failure.errorType ? ` (${failure.errorType})` : ''}` : (error as Error).message;
-            this.error(`Dev install on '${store.name}' failed: ${reason}. Queek calls your app at ${tunnelUrl} — check the [app] log above and that ${tunnelUrl}/health answers.`, { exit: 1 });
+            this.error(`Dev install on '${store.name}' failed: ${reason}. Queek calls your app at ${tunnelUrl} — check the [app] log above and that ${tunnelUrl}/health answers.${requestIdLine(failure?.requestId)}`, { exit: 1 });
           }
         }
         this.log(handoffLine('queek', `Dev install: ${result.slug} ${result.version} on dev store '${store.name}' ← ${tunnelUrl} (install ${installed.status})`));
         // The served preview wins; admin_url+slug rebuilds only as fallback.
         const preview = resolvePreview(installed.preview_url, store.admin_url, result.slug);
-        return { preview, appPid: result.p_id };
+        return { preview, appPid: result.p_id, localUrl };
       };
 
       // Install only once the app answers locally AND through the tunnel —
@@ -725,10 +731,10 @@ With no dev store, the command offers to create one named after the app, with te
       if (!healthy) {
         this.error(`The app did not answer http://127.0.0.1:${port}/health within 90s — its [app] log above says why. Fix it and run \`queek app dev\` again.`, { exit: 1 });
       }
-      const reachable = await waitForTunnel(tunnel.url, { onWait: (line) => this.logToStderr(line) });
-      if (!reachable.ready) this.error(tunnelNotReadyMessage(tunnel.url, reachable.detail), { exit: 1 });
+      const reachable = await waitForTunnel(tunnel.url, { timeoutS: flags['tunnel-timeout'], onWait: (line) => this.logToStderr(line) });
+      if (!reachable.ready) this.error(tunnelNotReadyMessage(tunnel.url, reachable.detail, flags['tunnel-timeout']), { exit: 1 });
       let current = await cycle(tunnel.url);
-      this.readyBlock(tunnel.url, current.preview, store, current.appPid, localUrl);
+      this.readyBlock(tunnel.url, current.preview, store, current.appPid, current.localUrl);
       this.log(`Watching ${tomlPath} — save it to re-register ([dev] changes need a restart). Ctrl+C to stop.`);
       // Deploys serialize across toml saves and restart re-registers: a
       // save landing mid-restart queues behind instead of racing it. One
@@ -738,9 +744,9 @@ With no dev store, the command offers to create one named after the app, with te
       watch(tomlPath, { persistent: true }, async () => {
         try {
           current = await deployQueue(() => cycle(tunnel.url));
-          this.readyBlock(tunnel.url, current.preview, store, current.appPid, localUrl);
+          this.readyBlock(tunnel.url, current.preview, store, current.appPid, current.localUrl);
         } catch (error) {
-          this.logToStderr(`Re-register failed: ${(error as Error).message}`);
+          this.logToStderr(`Re-register failed: ${errorText(error as Error)}`);
         }
       });
       // A give-up rejects the wait below, so the run throws through
@@ -819,9 +825,9 @@ With no dev store, the command offers to create one named after the app, with te
     const queek = queekDir(dir);
     mkdirSync(queek, { recursive: true });
     const local = readEnvFile(envLocalPath(queek));
-    const { kids } = await api.appKeys(slug).catch((error: Error) => this.error(error.message, { exit: 1 }));
+    const { kids } = await api.appKeys(slug).catch((error: Error) => this.error(errorText(error), { exit: 1 }));
     const secrets = await ensureDevSecrets(api, slug, local, kids, (line) => this.log(line), process.env.QUEEK_APP_SECRET).catch(
-      (error: Error) => this.error(error.message, { exit: error instanceof MissingSecretError ? 2 : 1 }),
+      (error: Error) => this.error(errorText(error), { exit: error instanceof MissingSecretError ? 2 : 1 }),
     );
     if (secrets.generated.length > 0) {
       const keep: Record<string, string> = {};
@@ -887,9 +893,22 @@ export function resolvePreview(served: string | undefined, adminUrl: string | nu
   return served ?? previewUrl(adminUrl, appSlug);
 }
 
-/** The loopback address `--use-localhost` hands the dashboard to embed (the API accepts loopback only). */
-export function localPageUrl(port: number): string {
-  return `http://localhost:${port}`;
+/**
+ * The loopback address `--use-localhost` hands the dashboard to embed:
+ * `http://localhost:<port>` plus the PATH of the manifest's
+ * `extensions.merchant_page_url` (the API requires it under that page's
+ * path). Never the host, query or fragment of the page URL. Null when the
+ * manifest has no embedded page.
+ */
+export function localPageUrl(manifest: AppManifest, port: number): string | null {
+  const extensions = manifest.extensions;
+  const page = isRecord(extensions) ? extensions.merchant_page_url : undefined;
+  if (typeof page !== 'string') return null;
+  try {
+    return `http://localhost:${port}${new URL(page).pathname}`;
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   AutomationTokenError,
   DeniedError,
   DeveloperApi,
+  errorText,
   LoginNeededError,
   reviewRequiredOf,
   type AuthContext,
@@ -608,5 +609,34 @@ describe('DeveloperApi vs the S1 build (mocked HTTP)', () => {
     const down = new DeveloperApi('https://api.test', { fetchImpl: refusing, getAuth: userAuth() });
     await expect(down.appVersions('hello')).rejects.toMatchObject({ status: 0 });
     expect(new LoginNeededError('x')).toBeInstanceOf(Error);
+  });
+});
+
+describe('request ids on failures', () => {
+  const failing = (headers: Record<string, string>, body: Record<string, unknown>): DeveloperApi =>
+    new DeveloperApi('https://api.test', {
+      fetchImpl: async () => new Response(JSON.stringify(body), { status: 422, headers: { 'content-type': 'application/json', ...headers } }),
+      getAuth: async () => ({ token: 'tok-secret-123', kind: 'user' as const }),
+    });
+
+  it('a 422 with an X-Request-Id header prints the sentence and the id on its own line, nothing else', async () => {
+    const error = (await failing({ 'X-Request-Id': 'req_abc123' }, { message: 'The local_page_url path must stay under the app page path.' }).devInstall('hello', 12).catch((e: unknown) => e)) as Error;
+    expect(errorText(error)).toBe('The local_page_url path must stay under the app page path.\nRequest id: req_abc123');
+    expect(errorText(error).split('\n')[1]).toBe('Request id: req_abc123');
+    expect(errorText(error)).not.toContain('tok-secret-123');
+    expect(apiFailureOf(error)?.requestId).toBe('req_abc123');
+  });
+
+  it('falls back to body.request_id, and the header wins when both exist', async () => {
+    const fromBody = (await failing({}, { message: 'Nope.', request_id: 'req_body' }).appConfig('hello').catch((e: unknown) => e)) as Error;
+    expect(errorText(fromBody)).toBe('Nope.\nRequest id: req_body');
+    const both = (await failing({ 'x-request-id': 'req_header' }, { message: 'Nope.', request_id: 'req_body' }).appConfig('hello').catch((e: unknown) => e)) as Error;
+    expect(errorText(both)).toBe('Nope.\nRequest id: req_header');
+  });
+
+  it('prints just the sentence when the server sent no id, and for non-API errors', async () => {
+    const error = (await failing({}, { message: 'Nope.' }).appConfig('hello').catch((e: unknown) => e)) as Error;
+    expect(errorText(error)).toBe('Nope.');
+    expect(errorText(new Error('boom'))).toBe('boom');
   });
 });

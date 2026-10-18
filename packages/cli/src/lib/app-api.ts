@@ -28,9 +28,34 @@ export class ApiError extends Error {
     message: string,
     readonly status: number,
     readonly body: unknown,
+    /** The server's id for this request (X-Request-Id header, else body.request_id), for support. */
+    readonly requestId?: string,
   ) {
     super(message);
   }
+}
+
+/**
+ * The message to print for a failure: the sentence, plus the request id on
+ * its own line when the server sent one. Never carries a token or any body.
+ */
+export function errorText(error: Error): string {
+  return error.message + (error instanceof ApiError ? requestIdLine(error.requestId) : '');
+}
+
+/** `\nRequest id: …` for appending to a failure sentence; empty when the server sent none. */
+export function requestIdLine(requestId: string | undefined): string {
+  return requestId ? `\nRequest id: ${requestId}` : '';
+}
+
+function requestIdOf(headers: Headers | undefined, body: unknown): string | undefined {
+  const fromHeader = headers?.get('x-request-id');
+  if (fromHeader) return fromHeader;
+  if (body !== null && typeof body === 'object') {
+    const fromBody = (body as Record<string, unknown>).request_id;
+    if (typeof fromBody === 'string' && fromBody !== '') return fromBody;
+  }
+  return undefined;
 }
 
 /** A 401/403 under an automation token: wrong app or beyond its grant (never a dead session). */
@@ -197,6 +222,7 @@ export interface ApiFailure {
   errorCode?: string;
   failures: SubmitFailure[];
   data: Record<string, unknown>;
+  requestId?: string;
 }
 
 /** Pull the gated outcome out of a thrown error, if it is one. */
@@ -229,6 +255,7 @@ export function apiFailureOf(error: unknown): ApiFailure | null {
     message: error.message,
     ...(typeof body.error_type === 'string' ? { errorType: body.error_type } : {}),
     ...(typeof body.error_code === 'string' ? { errorCode: body.error_code } : {}),
+    ...(error.requestId ? { requestId: error.requestId } : {}),
     failures,
     data: data !== null && typeof data === 'object' && !Array.isArray(data) ? (data as Record<string, unknown>) : {},
   };
@@ -298,7 +325,7 @@ export class DeveloperApi {
     this.onRefresh = options.onRefresh;
   }
 
-  private async raw(url: string, init: RequestInit): Promise<{ status: number; body: unknown }> {
+  private async raw(url: string, init: RequestInit): Promise<{ status: number; body: unknown; requestId?: string }> {
     let response: Response;
     try {
       response = await this.fetchImpl(url, init);
@@ -311,7 +338,7 @@ export class DeveloperApi {
     } catch {
       body = null;
     }
-    return { status: response.status, body };
+    return { status: response.status, body, requestId: requestIdOf(response.headers, body) };
   }
 
   /**
@@ -329,13 +356,13 @@ export class DeveloperApi {
     appSlug?: string,
     headers?: Record<string, string>,
   ): Promise<{ data: T; message: string; status: number }> {
-    const automationRefusal = (status: number, raw: unknown): AutomationTokenError => {
+    const automationRefusal = (status: number, raw: unknown, requestId?: string): AutomationTokenError => {
       const detail = messageOf(raw, status);
       const scope = appSlug ? `it only works for app '${appSlug}'s deploy, versions, release and submit` : 'it only works for its own app';
-      return new AutomationTokenError(`This automation token can't do that — ${scope}. (Server: ${detail})`, status, raw);
+      return new AutomationTokenError(`This automation token can't do that — ${scope}. (Server: ${detail})`, status, raw, requestId);
     };
     const attempt = async (token: string, kind: AuthKind, retried: boolean): Promise<{ data: unknown; message: string; status: number }> => {
-      const { status, body: raw } = await this.raw(`${this.base}${VENDOR_PREFIX}${path}`, {
+      const { status, body: raw, requestId } = await this.raw(`${this.base}${VENDOR_PREFIX}${path}`, {
         method,
         headers: { 'content-type': 'application/json', accept: 'application/json', authorization: `Bearer ${token}`, ...(headers ?? {}) },
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -344,15 +371,15 @@ export class DeveloperApi {
       // outside its app's allowed routes reads as 401, same as a dead
       // developer session — but the two mean opposite things, so they split
       // here and never meet a browser login.
-      if (status === 401 && kind === 'automation') throw automationRefusal(status, raw);
+      if (status === 401 && kind === 'automation') throw automationRefusal(status, raw, requestId);
       // One transparent refresh-and-retry on 401 (user sessions only): a
       // second 401 throws below instead of looping.
       if (status === 401 && kind === 'user' && !retried && this.onRefresh) {
         const fresh = await this.onRefresh();
         return attempt(fresh, kind, true);
       }
-      if (status === 403 && kind === 'automation') throw automationRefusal(status, raw);
-      if (status < 200 || status >= 300) throw new ApiError(messageOf(raw, status), status, raw);
+      if (status === 403 && kind === 'automation') throw automationRefusal(status, raw, requestId);
+      if (status < 200 || status >= 300) throw new ApiError(messageOf(raw, status), status, raw, requestId);
       const envelope = (raw ?? {}) as { data?: unknown; message?: unknown };
       return { data: envelope.data ?? null, message: typeof envelope.message === 'string' ? envelope.message : '', status };
     };

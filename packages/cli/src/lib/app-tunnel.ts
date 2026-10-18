@@ -145,7 +145,7 @@ function readLogTail(logFile: string): string {
 }
 
 /** How long `app dev` waits for a fresh tunnel hostname to resolve and answer. */
-export const TUNNEL_READY_TIMEOUT_S = 30;
+export const TUNNEL_READY_TIMEOUT_S = 90;
 const TUNNEL_READY_REPORT_EVERY_S = 5;
 const TUNNEL_READY_REQUEST_TIMEOUT_MS = 5_000;
 

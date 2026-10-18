@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as p from '@clack/prompts';
-import { apiFailureOf, type CreatedDevStore, type DeveloperApi, type DevStore } from './app-api.js';
+import { apiFailureOf, errorText, requestIdLine, type CreatedDevStore, type DeveloperApi, type DevStore } from './app-api.js';
 
 /**
  * Which dev store `queek app dev` (and `app dev clean`) works on.
@@ -93,16 +93,17 @@ export async function createNewDevStore(
   } catch (error) {
     const failure = apiFailureOf(error);
     const reason = failure?.message ?? (error as Error).message;
+    const requestId = requestIdLine(failure?.requestId);
     if (failure?.errorType === 'dev_store_limit_reached' || failure?.status === 402 || failure?.status === 403) {
       throw new DevStoreError(
-        `Could not create a dev store: ${reason}. Delete one you no longer need (dashboard → Developers → Dev stores), or pass --store to use one you already have.`,
+        `Could not create a dev store: ${reason}. Delete one you no longer need (dashboard → Developers → Dev stores), or pass --store to use one you already have.${requestId}`,
         1,
       );
     }
     if (failure?.errorType === 'slug_taken') {
-      throw new DevStoreError(`Could not create a dev store: ${reason} Pass it with --dev-store-address, or choose another address.`, 2);
+      throw new DevStoreError(`Could not create a dev store: ${reason} Pass it with --dev-store-address, or choose another address.${requestId}`, 2);
     }
-    throw new DevStoreError(reason, 1);
+    throw new DevStoreError(`${reason}${requestId}`, 1);
   }
   const { storefront_password: password, ...store } = created;
   log(`Created dev store '${store.name}' (${store.p_id}) with test data.`);
@@ -122,7 +123,7 @@ export async function selectDevStore(
     throw new DevStoreError('--create-dev-store makes a new dev store and --store picks an existing one — pass only one of them.', 2);
   }
   const { data: stores } = await api.devStores().catch((error: Error) => {
-    throw new DevStoreError(error.message, 1);
+    throw new DevStoreError(errorText(error), 1);
   });
   const name = request.storeName ?? defaultDevStoreName(request.appName);
   const make = async (chosenName: string): Promise<DevStoreSelection> => ({
