@@ -1,6 +1,6 @@
 {
   "name": "@usequeek/create-theme",
-  "version": "0.15.4",
+  "version": "0.16.1",
   "description": "npm create @usequeek/theme — start a Queek storefront theme from the official starter.",
   "license": "MIT",
   "author": "Queekx Technology LTD",
