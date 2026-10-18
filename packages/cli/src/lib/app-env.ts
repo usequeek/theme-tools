@@ -51,7 +51,7 @@ const LOCAL_FILE = '.env.local';
  */
 export function writeEnvLocal(dir: string, values: Record<string, string>): string {
   mkdirSync(dir, { recursive: true });
-  const file = `${dir}/${LOCAL_FILE}`;
+  const file = envLocalPath(dir);
   const current = readEnvFile(file);
   const lines = Object.entries({ ...current, ...values }).map(([key, value]) => `${key}=${value}`);
   writeFileSync(file, `${lines.join('\n')}\n`, { mode: 0o600 });
