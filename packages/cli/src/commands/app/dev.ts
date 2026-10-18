@@ -641,7 +641,8 @@ With no dev store, the command offers to create one named after the app, with te
       this.devStorePrompts(),
       (line) => this.log(line),
     ).catch((error: Error) => this.error(errorText(error), { exit: error instanceof DevStoreError ? error.exit : 1 }));
-    if (store.p_id !== savedStore) saveStore(queek, store.p_id);
+    // An explicit --store is a one-off (CI, a second store): it never replaces the remembered choice.
+    if (flags.store === undefined && store.p_id !== savedStore) saveStore(queek, store.p_id);
 
     const tomlPath = resolveTomlPath(flags.path, flags.config);
     // let: a dead cloudflared tunnel restarts in place (superviseTunnel

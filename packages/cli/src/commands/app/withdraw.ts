@@ -1,6 +1,6 @@
 import { Args, Flags } from '@oclif/core';
 import * as p from '@clack/prompts';
-import { LoginNeededError } from '../../lib/app-api.js';
+import { errorText, LoginNeededError } from '../../lib/app-api.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { latestSequence } from '../../lib/app-submit.js';
 import { BaseCommand } from '../../lib/base-command.js';
@@ -34,11 +34,11 @@ export default class AppWithdraw extends BaseCommand {
       log: (line) => this.log(line),
       logError: (line) => this.logToStderr(line),
       debug: (line) => this.debug(line),
-    }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
+    }).catch((error: Error) => this.error(errorText(error), { exit: error instanceof LoginNeededError ? 2 : 1 }));
 
     let sequence = flags.sequence;
     if (sequence === undefined) {
-      const { versions } = await api.appVersions(args.app).catch((error: Error) => this.error(error.message, { exit: 1 }));
+      const { versions } = await api.appVersions(args.app).catch((error: Error) => this.error(errorText(error), { exit: 1 }));
       const latest = latestSequence(versions);
       if (latest === null) this.error(`'${args.app}' has no versions yet — nothing to withdraw.`, { exit: 1 });
       sequence = latest;
@@ -48,7 +48,7 @@ export default class AppWithdraw extends BaseCommand {
       const confirmed = await p.confirm({ message: `Withdraw sequence ${sequence} of '${args.app}' from review (back to development)?` });
       if (p.isCancel(confirmed) || !confirmed) this.error('Cancelled.', { exit: 130 });
     }
-    const withdrawn = await api.withdrawVersion(args.app, sequence).catch((error: Error) => this.error(error.message, { exit: 1 }));
+    const withdrawn = await api.withdrawVersion(args.app, sequence).catch((error: Error) => this.error(errorText(error), { exit: 1 }));
     this.log(`Withdrew v${withdrawn.version} (sequence ${withdrawn.sequence}) — back to development.${withdrawn.review_note ? ` Note: ${withdrawn.review_note}` : ''}`);
     return { app: args.app, version: withdrawn.version, sequence: withdrawn.sequence };
   }

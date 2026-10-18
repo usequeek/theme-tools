@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { Args, Flags } from '@oclif/core';
 import * as p from '@clack/prompts';
-import { apiFailureOf, LoginNeededError } from '../../lib/app-api.js';
+import { apiFailureOf, errorText, LoginNeededError } from '../../lib/app-api.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { blockingErrors, checkLabel, formatCheck, latestSequence, submitBody, unackedWarnings, wordSubmitFailure } from '../../lib/app-submit.js';
 import { BaseCommand } from '../../lib/base-command.js';
@@ -43,10 +43,10 @@ export default class AppSubmit extends BaseCommand {
       log: (line) => this.log(line),
       logError: (line) => this.logToStderr(line),
       debug: (line) => this.debug(line),
-    }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
+    }).catch((error: Error) => this.error(errorText(error), { exit: error instanceof LoginNeededError ? 2 : 1 }));
 
     const sequence = await this.resolveSequence(api, args.app, flags.sequence);
-    const checklist = await api.submission(args.app, sequence).catch((error: Error) => this.error(error.message, { exit: 1 }));
+    const checklist = await api.submission(args.app, sequence).catch((error: Error) => this.error(errorText(error), { exit: 1 }));
     this.log(`Submission checklist for ${args.app} v${checklist.version} (sequence ${checklist.sequence}, ${checklist.review_status}):`);
     for (const check of checklist.checks) this.log(`  ${formatCheck(check)}`);
 
@@ -118,7 +118,7 @@ export default class AppSubmit extends BaseCommand {
 
   private async resolveSequence(api: { appVersions: (app: string) => Promise<{ versions: Array<{ sequence: number }> }> }, app: string, wanted: number | undefined): Promise<number> {
     if (wanted !== undefined) return wanted;
-    const { versions } = await api.appVersions(app).catch((error: Error) => this.error(error.message, { exit: 1 }));
+    const { versions } = await api.appVersions(app).catch((error: Error) => this.error(errorText(error), { exit: 1 }));
     const latest = latestSequence(versions);
     if (latest === null) this.error(`'${app}' has no versions yet — \`queek app deploy\` cuts the first one.`, { exit: 1 });
     return latest;
@@ -161,7 +161,7 @@ export default class AppSubmit extends BaseCommand {
 
   private submitError(error: Error, version: string, sequence: number): { version: string; sequence: number; fresh: boolean } {
     const failure = apiFailureOf(error);
-    if (!failure) this.error(error.message, { exit: 1 });
+    if (!failure) this.error(errorText(error), { exit: 1 });
     const worded = wordSubmitFailure(failure);
     if (worded.already) {
       this.log('That version was already submitted for review — nothing to do.');

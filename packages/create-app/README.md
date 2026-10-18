@@ -24,8 +24,8 @@ and with no folder the folder is named after the slug (my-app with --yes or no t
   --template <source>    another starter: a giget source or a local folder
 ```
 
-Next: `cd my-app`, `queek auth login`, `queek app dev` (creates a dev store
-with test data when you have none).
+Next: `cd my-app`, `queek auth login`, `queek app dev` (picks or creates a dev
+store with test data).
 
 Every scaffolded app also ships the AI setup verbatim from the starter:
 `AGENTS.md` (capacity check via the Queek AI toolkit first, SDK entries,

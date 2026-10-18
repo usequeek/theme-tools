@@ -1,6 +1,7 @@
 import { Flags } from '@oclif/core';
-import { AutomationTokenError, LoginNeededError } from '../../lib/app-api.js';
+import { AutomationTokenError, errorText, LoginNeededError } from '../../lib/app-api.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
+import { findDevStore } from '../../lib/app-dev-store.js';
 import { loadApp, resolveTomlPath } from '../../lib/app-manifest.js';
 import { BaseCommand } from '../../lib/base-command.js';
 import { devStoreRefusal } from '../../lib/app-dev-store.js';
@@ -63,9 +64,9 @@ export default class AppInfo extends BaseCommand {
       log: (line) => this.log(line),
       logError: (line) => this.logToStderr(line),
       debug: (line) => this.debug(line),
-    }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
+    }).catch((error: Error) => this.error(errorText(error), { exit: error instanceof LoginNeededError ? 2 : 1 }));
 
-    const config = await api.appConfig(manifest.slug).catch((error: Error) => this.error(error.message, { exit: 1 }));
+    const config = await api.appConfig(manifest.slug).catch((error: Error) => this.error(errorText(error), { exit: 1 }));
     let store: string | null = null;
     if (flags.store) {
       // Dev-store reads sit outside the automation grant by design:
@@ -74,9 +75,9 @@ export default class AppInfo extends BaseCommand {
         if (error instanceof AutomationTokenError) {
           this.error('Resolving --store needs a developer session — automation tokens cannot list dev stores. Run where `queek auth login` works, or omit --store.', { exit: 2 });
         }
-        this.error(error.message, { exit: 1 });
+        this.error(errorText(error), { exit: 1 });
       });
-      const found = stores.find((row) => String(row.p_id) === flags.store || row.name === flags.store || row.slug === flags.store);
+      const found = findDevStore(stores, flags.store);
       if (!found) this.error(devStoreRefusal(flags.store, stores), { exit: 2 });
       store = found.name;
     }

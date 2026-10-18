@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Args, Flags } from '@oclif/core';
-import { LoginNeededError } from '../../../lib/app-api.js';
+import { errorText, LoginNeededError } from '../../../lib/app-api.js';
 import { appFlags, appSession } from '../../../lib/app-command.js';
 import { fromManifest, preserveDevTable, tomlFileName } from '../../../lib/app-manifest.js';
 import { BaseCommand } from '../../../lib/base-command.js';
@@ -33,9 +33,9 @@ export default class AppConfigLink extends BaseCommand {
       log: (line) => this.log(line),
       logError: (line) => this.logToStderr(line),
       debug: (line) => this.debug(line),
-    }).catch((error: Error) => this.error(error.message, { exit: error instanceof LoginNeededError ? 2 : 1 }));
+    }).catch((error: Error) => this.error(errorText(error), { exit: error instanceof LoginNeededError ? 2 : 1 }));
 
-    const config = await api.appConfig(args.app).catch((error: Error) => this.error(error.message, { exit: 1 }));
+    const config = await api.appConfig(args.app).catch((error: Error) => this.error(errorText(error), { exit: 1 }));
     const target = resolve(flags.path, tomlFileName(flags.config));
     if (existsSync(target) && !flags.force) {
       this.error(`${tomlFileName(flags.config)} already exists — pass --force to overwrite it with the server manifest.`, { exit: 2 });

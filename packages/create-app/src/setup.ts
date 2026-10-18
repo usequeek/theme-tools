@@ -27,7 +27,7 @@ export function successBanner(dir: string): string {
   return [
     `Next steps:`,
     `  cd ${dir}`,
-    `  queek app dev          # creates a dev store if you have none, then tunnels + installs + watches`,
+    `  queek app dev          # picks or creates a dev store, then tunnels, installs and watches`,
     `AI assistants: AGENTS.md ships verbatim from the starter (toolkit capacity check first, then the live Merchant spec); .mcp.json is where the Queek MCP is configured.`,
   ].join('\n');
 }

@@ -151,7 +151,7 @@ const TUNNEL_READY_REQUEST_TIMEOUT_MS = 5_000;
 
 export interface TunnelReadyOptions {
   timeoutS?: number;
-  /** One line per report: "Waiting for the tunnel (n/30s)…". */
+  /** One line per report: "Waiting for the tunnel (n/<timeout>s)…". */
   onWait?: (line: string) => void;
   /** Resolve a hostname (throws when it does not resolve yet). */
   resolveHost?: (host: string) => Promise<unknown>;
@@ -167,7 +167,7 @@ export type TunnelReady = { ready: true } | { ready: false; detail: string };
  * A fresh quick-tunnel hostname can take a while to resolve. Queek delivers
  * the install through that hostname, so the install must wait until the
  * name resolves AND `<url>/health` answers 2xx. Polls every second, reports
- * "Waiting for the tunnel (n/30s)…" every five, and gives up after the
+ * "Waiting for the tunnel (n/<timeout>s)…" every five, and gives up after the
  * timeout with the reason (DNS or HTTP), instead of waiting silently and
  * installing anyway.
  */

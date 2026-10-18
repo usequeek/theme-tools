@@ -202,7 +202,7 @@ the wrong-kind copy.
 | `--port <n>` | Your local server port (default: `[dev].port`, else 3000). |
 | `--url <https-url>` | Your own tunnel; skips starting cloudflared. |
 | `--tunnel-timeout <seconds>` | How long to wait for the tunnel hostname to resolve and answer before giving up (default 90; env `QUEEK_APP_TUNNEL_TIMEOUT`). Queek's servers call install, uninstall and webhooks through the tunnel, so an unreachable one is never installed against. |
-| `--use-localhost` | The dashboard embeds your app from `http://localhost:<port>` plus the path of `[extensions] merchant_page_url` (e.g. `/admin`; the dev install sends it as `local_page_url`; the query is never copied), so hot reload works there. Needs `merchant_page_url`; without it the flag says so and the tunnel address is used. The tunnel still starts for what Queek's servers call. |
+| `--use-localhost` | The dashboard embeds your app from `http://localhost:<port>` plus the path of `[extensions] merchant_page_url` (e.g. `/admin`; the dev install sends it as `local_page_url`; the query is never copied), so hot reload works there. Needs `merchant_page_url`; without it the flag says so and the tunnel address is used. The tunnel still starts for what Queek's servers call. A page on `https://` loading from `http://localhost` is allowed by Chrome and Edge; Safari and Firefox may block it, in which case run without the flag. |
 
 With no dev store at all, `dev` offers once to create one (`--create-dev-store`
 in CI). The dev store's storefront password is printed exactly once, labelled,
