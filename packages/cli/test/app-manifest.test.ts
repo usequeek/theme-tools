@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import {
   EXTENSION_KEYS,
   fromManifest,
   isEmbedDescriptorWithinLimit,
+  lineTextNamespace,
   loadApp,
   loadTomlFile,
   MANIFEST_KEYS,
@@ -296,7 +297,7 @@ describe('server parity', () => {
         'may declare at most one submit primitive.',
       );
       const bad = build(`${PROXY}allow_post = true\n`, '\n[[extensions.blocks.schema]]\nkey = "x"\nlabel = "X"\ntype = "text"\n');
-      expect(message(bad)).toContain('The schema primitive must be one of: date, time, select, submit.');
+      expect(message(bad)).toContain('The schema primitive must be one of: date, time, select, submit, line_text.');
     });
   });
 
@@ -625,5 +626,96 @@ notify_url = "https://hello.example.com/notify"
     const { manifest } = toManifest(loadTomlFile(stageFile(action('merchant-orders-read'))).doc);
     expect((manifest.dashboard as { actions: unknown[] }).actions).toHaveLength(1);
     expect(() => toManifest(loadTomlFile(stageFile(action('merchant-orders-write'))).doc)).toThrow('never grants');
+  });
+});
+
+describe('line_text (the shopper text input on a product page)', () => {
+  interface ParityRow { name: string; slug: string; valid: boolean; blocks: unknown[] }
+  const parity = JSON.parse(readFileSync(new URL('./fixtures/line-text-parity.json', import.meta.url), 'utf8')) as {
+    namespaces: { slug: string; namespace: string }[];
+    rows: ParityRow[];
+  };
+  const FIELD = '\n[[extensions.blocks.schema]]\nkey = "engraving"\nlabel = "Engraving text"\ntype = "line_text"\n';
+  const LINE_BLOCK = `${BLOCK}available_if = "declared_products"\n`;
+  const message = (toml: string): string => {
+    try {
+      toManifest(loadTomlFile(stageFile(toml)).doc);
+      return 'no error';
+    } catch (error) {
+      return (error as Error).message;
+    }
+  };
+  const fromRow = (row: ParityRow): Record<string, unknown> => {
+    const doc = loadTomlFile(stageFile(BASE)).doc;
+    doc.slug = row.slug;
+    doc.extensions = { blocks: row.blocks };
+    return doc;
+  };
+
+  it('accepts line_text', () => {
+    const { manifest, warnings } = toManifest(loadTomlFile(stageFile(`${BASE}${LINE_BLOCK}${FIELD}required = true\nmax_length = 30\n`)).doc);
+    expect(warnings).toEqual([]);
+    const schema = (manifest.extensions as { blocks: { schema: Record<string, unknown>[] }[] }).blocks[0].schema;
+    expect(schema).toEqual([{ key: 'engraving', label: 'Engraving text', type: 'line_text', required: true, max_length: 30 }]);
+  });
+
+  it('needs no proxy', () => {
+    expect(message(`${BASE}${LINE_BLOCK}${FIELD}`)).toBe('no error');
+  });
+
+  it('refuses a max_length outside 1..500 or off a line_text field, and a line_text block without declared_products', () => {
+    expect(message(`${BASE}${LINE_BLOCK}${FIELD}max_length = 501\n`)).toContain('max_length must be a whole number from 1 to 500');
+    expect(message(`${BASE}${LINE_BLOCK}\n[[extensions.blocks.schema]]\nkey = "when"\nlabel = "When"\ntype = "date"\nmax_length = 5\n`)).toContain(
+      'max_length is only valid on a line_text field',
+    );
+    expect(message(`${BASE}${BLOCK}${FIELD}`)).toContain('must set available_if to declared_products');
+  });
+
+  it('names the maximum key length for the slug', () => {
+    const slug = 'a'.repeat(40);
+    const toml = `${BASE.replace('slug = "hello"', `slug = "${slug}"`)}${LINE_BLOCK}${FIELD.replace('engraving', 'k'.repeat(30))}`;
+    expect(message(toml)).toContain('may be at most 19 characters');
+  });
+
+  it('parity fixture matches the backend table', () => {
+    expect(parity.rows.length).toBeGreaterThan(20);
+    for (const row of parity.rows) {
+      const outcome = (() => {
+        try {
+          toManifest(fromRow(row));
+          return 'accepted';
+        } catch {
+          return 'refused';
+        }
+      })();
+      expect(outcome, row.name).toBe(row.valid ? 'accepted' : 'refused');
+    }
+  });
+
+  it('namespace parity table', () => {
+    expect(parity.namespaces.map((entry) => entry.slug)).toEqual(['my-app', 'a--b', 'queek-translator', 'x1']);
+    for (const entry of parity.namespaces) expect(`app.${lineTextNamespace(entry.slug)}.`, entry.slug).toBe(entry.namespace);
+  });
+
+  it('refuses a key that is, or ends with, a bearer suffix', () => {
+    for (const key of ['claim', 'reschedule_url', 'cancel_url', 'my_claim']) {
+      expect(message(`${BASE}${LINE_BLOCK}${FIELD.replace('engraving', key)}`), key).toContain('may not be, or end with');
+    }
+  });
+
+  describe('dashboard blocks and actions', () => {
+    const DASH = `${BASE}\n[dashboard]\n[[dashboard.blocks]]\nkey = "b"\ntitle = "B"\ntarget = "order-details"\n`;
+    const dashField = (body: string): string => `${DASH}[[dashboard.blocks.schema]]\nkey = "f"\nlabel = "F"\n${body}`;
+
+    it('dashboard schemas refuse line_text and max_length', () => {
+      expect(message(dashField('type = "line_text"\n'))).toContain('The schema primitive must be one of: date, time, select, text, slot-list.');
+      expect(message(dashField('type = "text"\nmax_length = 30\n'))).toContain("Unknown field 'max_length' in manifest.dashboard.blocks.schema[0].");
+    });
+
+    it('dashboard schemas validate exactly as before', () => {
+      expect(message(dashField('type = "text"\n'))).toBe('no error');
+      expect(message(dashField('type = "select"\noptions = ["a"]\n'))).toBe('no error');
+      expect(message(dashField('type = "submit"\n'))).toContain('The schema primitive must be one of: date, time, select, text, slot-list.');
+    });
   });
 });

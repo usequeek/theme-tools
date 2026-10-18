@@ -1,0 +1,742 @@
+{
+  "namespaces": [
+    {
+      "slug": "my-app",
+      "namespace": "app.my_app."
+    },
+    {
+      "slug": "a--b",
+      "namespace": "app.a_b."
+    },
+    {
+      "slug": "queek-translator",
+      "namespace": "app.queek_translator."
+    },
+    {
+      "slug": "x1",
+      "namespace": "app.x1."
+    }
+  ],
+  "rows": [
+    {
+      "name": "accepts a required field with max_length 30",
+      "slug": "my-app",
+      "valid": true,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "Engraving text",
+              "type": "line_text",
+              "required": true,
+              "max_length": 30
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "accepts a field without max_length",
+      "slug": "my-app",
+      "valid": true,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "accepts max_length 1 and 500",
+      "slug": "my-app",
+      "valid": true,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "one",
+              "label": "Engraving text",
+              "type": "line_text",
+              "max_length": 1
+            },
+            {
+              "key": "many",
+              "label": "Engraving text",
+              "type": "line_text",
+              "max_length": 500
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "needs no proxy",
+      "slug": "my-app",
+      "valid": true,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "three fields across two blocks",
+      "slug": "my-app",
+      "valid": true,
+      "blocks": [
+        {
+          "key": "a",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "one",
+              "label": "Engraving text",
+              "type": "line_text"
+            },
+            {
+              "key": "two",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        },
+        {
+          "key": "b",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "three",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "max_length 0 refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "Engraving text",
+              "type": "line_text",
+              "max_length": 0
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "max_length 501 refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "Engraving text",
+              "type": "line_text",
+              "max_length": 501
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "max_length as a string refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "Engraving text",
+              "type": "line_text",
+              "max_length": "x"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "max_length fractional refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "Engraving text",
+              "type": "line_text",
+              "max_length": 2.5
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "max_length on date refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "when",
+              "label": "When",
+              "type": "date",
+              "max_length": 10
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "max_length on time refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "when",
+              "label": "When",
+              "type": "time",
+              "max_length": 10
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "max_length on select refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "size",
+              "label": "Size",
+              "type": "select",
+              "options": [
+                "s"
+              ],
+              "max_length": 10
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "max_length on submit refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "send",
+              "label": "Send",
+              "type": "submit",
+              "max_length": 10
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "mixing with another primitive refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "Engraving text",
+              "type": "line_text"
+            },
+            {
+              "key": "when",
+              "label": "When",
+              "type": "date"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "without available_if refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "fourth field refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "a",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "one",
+              "label": "Engraving text",
+              "type": "line_text"
+            },
+            {
+              "key": "two",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        },
+        {
+          "key": "b",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "three",
+              "label": "Engraving text",
+              "type": "line_text"
+            },
+            {
+              "key": "four",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "four fields in one block refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "a",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "one",
+              "label": "Engraving text",
+              "type": "line_text"
+            },
+            {
+              "key": "two",
+              "label": "Engraving text",
+              "type": "line_text"
+            },
+            {
+              "key": "three",
+              "label": "Engraving text",
+              "type": "line_text"
+            },
+            {
+              "key": "four",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "same key in two blocks refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "a",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "same",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        },
+        {
+          "key": "b",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "same",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "same key twice in one block refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "a",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "same",
+              "label": "Engraving text",
+              "type": "line_text"
+            },
+            {
+              "key": "same",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "derived key at 64 characters passes",
+      "slug": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "valid": true,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "x",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "derived key at 65 characters refused",
+      "slug": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "x",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "30-character key under a 40-character slug refused (maximum 19)",
+      "slug": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "19-character key under a 40-character slug passes",
+      "slug": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "valid": true,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "kkkkkkkkkkkkkkkkkkk",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "key claim refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "claim",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "key reschedule_url refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "reschedule_url",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "key cancel_url refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "cancel_url",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "key ending with a bearer suffix refused",
+      "slug": "my-app",
+      "valid": false,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "my_claim",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "key that only contains a bearer word passes",
+      "slug": "my-app",
+      "valid": true,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "claim_note",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    }
+  ]
+}

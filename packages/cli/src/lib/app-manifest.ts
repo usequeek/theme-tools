@@ -66,6 +66,28 @@ const EXTENSION_BLOCK_TARGETS = ['product'];
 const EXTENSION_PRIMITIVES = ['date', 'time', 'select'];
 /** The block's write action: needs extensions.proxy.allow_post, one per block. */
 const EXTENSION_SUBMIT_PRIMITIVE = 'submit';
+/**
+ * The shopper text input on a product page. Extension blocks only (never the
+ * dashboard), and deliberately outside `EXTENSION_PRIMITIVES`.
+ */
+export const EXTENSION_LINE_INPUT_PRIMITIVE = 'line_text';
+/** Largest `max_length` a `line_text` field may declare. */
+export const LINE_TEXT_MAX_LENGTH = 500;
+/** `line_text` fields one manifest may declare, across all of its blocks. */
+export const LINE_TEXT_FIELDS_PER_MANIFEST = 3;
+/** Longest derived order-line property key (`app.<namespace>.<field key>`). */
+export const LINE_TEXT_DERIVED_KEY_MAX = 64;
+/**
+ * Parity constant, mirrors the API: the shape every derived property key must
+ * match (the first segment is always `app`).
+ */
+const LINE_PROPERTY_KEY_RE = /^(queek|[a-z][a-z0-9_]{1,31})(\.[a-z0-9_]+)+$/;
+/**
+ * Parity constant, mirrors the API's bearer property suffixes (without the
+ * leading dot): a `line_text` field key may not be, nor end with, any of them,
+ * so the derived property key can never be read as a bearer link or claim.
+ */
+export const LINE_TEXT_BEARER_KEY_SUFFIXES = ['claim', 'reschedule_url', 'cancel_url'] as const;
 const EXTENSION_BLOCK_TYPES = ['app_block', 'app_embed'];
 
 /** Key/value shapes that smell like a secret and are refused in the toml. */
@@ -118,7 +140,22 @@ function checkScope(scope: unknown, fail: (message: string) => never): void {
   }
 }
 
-function checkSchemaFields(list: unknown, where: string, primitives: string[], problems: string[]): void {
+/**
+ * The order-line property namespace for an app handle, mirroring the API's
+ * slug rule: lowercase alphanumeric runs joined by one dash, trimmed, then
+ * dashes become underscores (`a--b` -> `a_b`).
+ */
+export function lineTextNamespace(slug: string): string {
+  return slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-/g, '_');
+}
+
+/**
+ * `lineInput` is true only for extension blocks: it is the one place the
+ * `line_text` primitive (listed in `primitives`) and its `max_length` are
+ * accepted. Dashboard blocks and actions leave it false and refuse `max_length`
+ * as an unknown field.
+ */
+function checkSchemaFields(list: unknown, where: string, primitives: string[], problems: string[], lineInput = false): void {
   if (!Array.isArray(list)) {
     problems.push(`The ${where} schema must be a list.`);
     return;
@@ -130,11 +167,18 @@ function checkSchemaFields(list: unknown, where: string, primitives: string[], p
       return;
     }
     for (const key of Object.keys(field)) {
-      if (!['key', 'label', 'type', 'required', 'options'].includes(key)) problems.push(unknownField(key, `${where}.schema[${index}]`));
+      if (!['key', 'label', 'type', 'required', 'options', ...(lineInput ? ['max_length'] : [])].includes(key)) problems.push(unknownField(key, `${where}.schema[${index}]`));
     }
     if (typeof field.key !== 'string' || !SETTING_KEY_RE.test(field.key)) problems.push(`The ${where}.schema[${index}].key must match [a-z0-9_]{1,64}.`);
     if (typeof field.label !== 'string' || field.label.length > 120) problems.push(`The ${where}.schema[${index}].label is required (max 120).`);
     if (!primitives.includes(field.type as string)) problems.push(`The schema primitive must be one of: ${primitives.join(', ')}.`);
+    if (lineInput && field.max_length !== undefined) {
+      if (field.type !== EXTENSION_LINE_INPUT_PRIMITIVE) {
+        problems.push(`The ${where}.schema[${index}].max_length is only valid on a ${EXTENSION_LINE_INPUT_PRIMITIVE} field.`);
+      } else if (typeof field.max_length !== 'number' || !Number.isInteger(field.max_length) || field.max_length < 1 || field.max_length > LINE_TEXT_MAX_LENGTH) {
+        problems.push(`The ${where}.schema[${index}].max_length must be a whole number from 1 to ${LINE_TEXT_MAX_LENGTH}.`);
+      }
+    }
     if (field.type === 'select') {
       if (!Array.isArray(field.options) || field.options.length < 1) {
         problems.push('A select primitive needs at least one option.');
@@ -527,6 +571,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
   if (!Array.isArray(blocks)) throw fail('The extensions.blocks section must be a list of [[extensions.blocks]] tables.');
   if ((blocks as unknown[]).length > 10) throw fail('The extensions.blocks list must not have more than 10 blocks.');
   const checked: unknown[] = [];
+  const lineTextKeys = new Set<string>();
   (blocks as Record<string, unknown>[]).forEach((block, index) => {
     const where = `manifest.extensions.blocks[${index}]`;
     if (!isRecord(block)) throw fail(unknownField(String(index), 'manifest.extensions.blocks'));
@@ -549,7 +594,8 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
       throw fail(`The block visibility condition must be one of: ${BLOCK_AVAILABLE_IF.join(', ')}.`);
     }
     if (block.schema !== undefined) {
-      checkSchemaFields(block.schema, where, [...EXTENSION_PRIMITIVES, EXTENSION_SUBMIT_PRIMITIVE], problems);
+      checkSchemaFields(block.schema, where, [...EXTENSION_PRIMITIVES, EXTENSION_SUBMIT_PRIMITIVE, EXTENSION_LINE_INPUT_PRIMITIVE], problems, true);
+      checkLineTextBlock(block, where, manifest.slug, lineTextKeys, problems);
       const submits = Array.isArray(block.schema) ? block.schema.filter((field) => isRecord(field) && field.type === EXTENSION_SUBMIT_PRIMITIVE) : [];
       if (submits.length > 0 && !(isRecord(extensions.proxy) && extensions.proxy.allow_post === true)) {
         throw fail(`The ${where}.schema declares a submit primitive, which needs extensions.proxy.allow_post: true.`);
@@ -564,6 +610,40 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
   if (Object.keys(out).length > 0 || (blocks as unknown[]).length > 0 || embeds.length > 0) {
     manifest.extensions = { ...out, ...(((blocks as unknown[]).length > 0) ? { blocks: checked } : {}), ...(embeds.length > 0 ? { embeds: checkedEmbeds } : {}) };
   }
+}
+
+/**
+ * Block rules for `line_text` fields (mirrors the API): a block holding one
+ * holds only `line_text` fields, is shown only on declared products, and every
+ * field key is unique across the manifest, at most three in all, and derives a
+ * property key of at most 64 characters that is not a bearer key.
+ */
+function checkLineTextBlock(block: Record<string, unknown>, where: string, slug: string, seenKeys: Set<string>, problems: string[]): void {
+  if (!Array.isArray(block.schema)) return;
+  const fields = block.schema as unknown[];
+  const isLineText = (field: unknown): field is Record<string, unknown> => isRecord(field) && field.type === EXTENSION_LINE_INPUT_PRIMITIVE;
+  if (!fields.some(isLineText)) return;
+  if (!fields.every(isLineText)) problems.push(`The ${where}.schema may not mix ${EXTENSION_LINE_INPUT_PRIMITIVE} fields with other primitives.`);
+  if (block.available_if !== 'declared_products') problems.push(`The ${where} with ${EXTENSION_LINE_INPUT_PRIMITIVE} fields must set available_if to declared_products.`);
+  const prefix = `app.${lineTextNamespace(slug)}.`;
+  const maxKeyLength = LINE_TEXT_DERIVED_KEY_MAX - prefix.length;
+  fields.forEach((field, fieldIndex) => {
+    if (!isLineText(field) || typeof field.key !== 'string' || !SETTING_KEY_RE.test(field.key)) return;
+    const key = field.key;
+    const at = `${where}.schema[${fieldIndex}].key`;
+    if (seenKeys.has(key)) problems.push(`The ${at} '${key}' is already used by another ${EXTENSION_LINE_INPUT_PRIMITIVE} field.`);
+    seenKeys.add(key);
+    if (seenKeys.size === LINE_TEXT_FIELDS_PER_MANIFEST + 1) problems.push(`A manifest may declare at most ${LINE_TEXT_FIELDS_PER_MANIFEST} ${EXTENSION_LINE_INPUT_PRIMITIVE} fields.`);
+    if (maxKeyLength < 1) {
+      problems.push(`The app slug is too long to declare a ${EXTENSION_LINE_INPUT_PRIMITIVE} field (the derived property key would pass ${LINE_TEXT_DERIVED_KEY_MAX} characters).`);
+    } else if (key.length > maxKeyLength) {
+      problems.push(`The ${at} may be at most ${maxKeyLength} characters for this app (the derived property key is limited to ${LINE_TEXT_DERIVED_KEY_MAX}).`);
+    }
+    if (!LINE_PROPERTY_KEY_RE.test(`${prefix}${key}`)) problems.push(`The ${at} does not derive a valid property key.`);
+    if (LINE_TEXT_BEARER_KEY_SUFFIXES.some((suffix) => key.endsWith(suffix))) {
+      problems.push(`The ${at} may not be, or end with, ${LINE_TEXT_BEARER_KEY_SUFFIXES.join(', ')}.`);
+    }
+  });
 }
 
 /** Backend descriptor accounting uses UTF-8 bytes of normalized JSON. */
