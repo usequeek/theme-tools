@@ -83,6 +83,14 @@ const LINE_TEXT_DERIVED_KEY_MAX = 64;
  */
 const LINE_PROPERTY_KEY_RE = /^(queek|[a-z][a-z0-9_]{1,31})(\.[a-z0-9_]+)+$/;
 /**
+ * Parity constant: a label that is blank after PHP `trim()` (space, tab, newline,
+ * carriage return, NUL, vertical tab) counts as empty, exactly as the API does.
+ * Deliberately not JavaScript `trim()`, which also strips no-break and
+ * zero-width spaces that the API accepts.
+ */
+const PHP_TRIM_CHARACTERS = ' \t\n\r\0\x0B';
+const isPhpBlank = (value: string): boolean => [...value].every((character) => PHP_TRIM_CHARACTERS.includes(character));
+/**
  * Parity constant: the derived property key must not end in a bearer suffix
  * (`.claim`, `.reschedule_url`, `.cancel_url`). A field key can hold no dot, so
  * that happens only when the field key is exactly one of these three strings.
@@ -173,7 +181,7 @@ function checkSchemaFields(list: unknown, where: string, primitives: string[], p
     if (typeof field.label !== 'string' || field.label.length > 120) problems.push(`The ${where}.schema[${index}].label is required (max 120).`);
     if (!primitives.includes(field.type as string)) problems.push(`The schema primitive must be one of: ${primitives.join(', ')}.`);
     if (lineInput && field.type === EXTENSION_LINE_INPUT_PRIMITIVE) {
-      if (field.label === '') problems.push(`The ${where}.schema[${index}].label must not be empty.`);
+      if (typeof field.label === 'string' && isPhpBlank(field.label)) problems.push(`The ${where}.schema[${index}].label must not be empty.`);
       if (field.required !== undefined && typeof field.required !== 'boolean') problems.push(`The ${where}.schema[${index}].required must be true or false.`);
     }
     if (lineInput && field.max_length !== undefined) {

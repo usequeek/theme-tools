@@ -892,6 +892,126 @@
       ]
     },
     {
+      "name": "spaces-only label refused",
+      "slug": "my-app",
+      "proxy": false,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "   ",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "tab-only label refused",
+      "slug": "my-app",
+      "proxy": false,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "\t",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "newline-only label refused",
+      "slug": "my-app",
+      "proxy": false,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "\n",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "no-break-space-only label passes (the API does not trim it)",
+      "slug": "my-app",
+      "proxy": false,
+      "valid": true,
+      "rule": null,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "\u00a0",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "zero-width-space-only label passes (the API does not trim it)",
+      "slug": "my-app",
+      "proxy": false,
+      "valid": true,
+      "rule": null,
+      "blocks": [
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "\u200b",
+              "type": "line_text"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
       "name": "required as a string refused",
       "slug": "my-app",
       "proxy": false,
