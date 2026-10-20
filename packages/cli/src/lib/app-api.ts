@@ -146,6 +146,8 @@ export interface DeployResult {
   unchanged: boolean;
   /** Shown ONCE on first registration — never returned again. */
   signing_secret?: string;
+  /** What this version adds that needs review (server labels, cleaned); absent when the server names none. */
+  review_additions?: string[];
 }
 
 export interface ReleaseResult {
@@ -153,6 +155,8 @@ export interface ReleaseResult {
   status: 'released' | 'in_review';
   version: string | null;
   sequence: number | null;
+  /** What this version adds that needs review (server labels, cleaned); absent when the server names none. */
+  review_additions?: string[];
 }
 
 /**
@@ -167,6 +171,8 @@ export interface ReviewRequired {
   version: string;
   sequence: number;
   submission_url: string | null;
+  /** What this version adds that needs review (server labels, cleaned); absent when the server names none. */
+  review_additions?: string[];
 }
 
 /** One readiness probe. `label`/`message` are the server-written sentences; older servers send neither. */
@@ -225,17 +231,49 @@ export interface ApiFailure {
   requestId?: string;
 }
 
+/** Labels printed before the line folds the rest into "and N more". */
+const REVIEW_ADDITIONS_SHOWN = 5;
+// Control characters, line/paragraph separators and bidirectional overrides.
+// eslint-disable-next-line no-control-regex
+const UNSAFE_TEXT = /[\u0000-\u001F\u007F-\u009F\u2028\u2029\u202A-\u202E\u2066-\u2069]+/g;
+
+/**
+ * The labels of `data.review_additions` (`[{facet, label}]`): only string
+ * labels, treated as untrusted text (unsafe characters become a space, runs of
+ * whitespace collapse), blank ones dropped. A missing or malformed field is an
+ * empty list.
+ */
+export function reviewAdditionsOf(data: unknown): string[] {
+  const rows = typeof data === 'object' && data !== null ? (data as Record<string, unknown>).review_additions : undefined;
+  if (!Array.isArray(rows)) return [];
+  return rows.flatMap((row: unknown) => {
+    const label = typeof row === 'object' && row !== null ? (row as Record<string, unknown>).label : undefined;
+    const clean = typeof label === 'string' ? label.replace(UNSAFE_TEXT, ' ').replace(/\s+/g, ' ').trim() : '';
+    return clean === '' ? [] : [clean];
+  });
+}
+
+/** `It adds: a, b` (at most five labels, then `and N more`), or null when there is nothing to name. */
+export function reviewAdditionsLine(labels: string[] | undefined): string | null {
+  if (!labels || labels.length === 0) return null;
+  const shown = labels.slice(0, REVIEW_ADDITIONS_SHOWN).join(', ');
+  const more = labels.length - REVIEW_ADDITIONS_SHOWN;
+  return `It adds: ${shown}${more > 0 ? ` and ${more} more` : ''}`;
+}
+
 /** Pull the gated outcome out of a thrown error, if it is one. */
 export function reviewRequiredOf(error: unknown): ReviewRequired | null {
   if (!(error instanceof ApiError) || error.status !== 409) return null;
   const body = (error.body ?? {}) as Record<string, unknown>;
   if (body.error_type !== 'review_required') return null;
   const data = (body.data ?? {}) as Record<string, unknown>;
+  const additions = reviewAdditionsOf(data);
   return {
     status: 'review_required',
     version: typeof data.version === 'string' ? data.version : '',
     sequence: typeof data.sequence === 'number' ? data.sequence : 0,
     submission_url: typeof data.submission_url === 'string' ? data.submission_url : null,
+    ...(additions.length > 0 ? { review_additions: additions } : {}),
   };
 }
 
@@ -537,6 +575,7 @@ export class DeveloperApi {
       throw new ApiError('Unexpected deploy response from Queek — no status (expected released|in_review|created).', httpStatus, data);
     }
     const status = data.status;
+    const additions = reviewAdditionsOf(data);
     return {
       p_id: data.p_id as string,
       slug: data.slug as string,
@@ -547,6 +586,7 @@ export class DeveloperApi {
       status,
       unchanged,
       ...(typeof data.signing_secret === 'string' ? { signing_secret: data.signing_secret } : {}),
+      ...(additions.length > 0 ? { review_additions: additions } : {}),
     };
   }
 
@@ -721,10 +761,12 @@ export class DeveloperApi {
       throw error;
     }
     const status: 'released' | 'in_review' = data.status === 'in_review' ? 'in_review' : 'released';
+    const additions = reviewAdditionsOf(data);
     return {
       status,
       version: typeof data.version === 'string' ? data.version : input,
       sequence: typeof data.sequence === 'number' ? data.sequence : sequence,
+      ...(additions.length > 0 ? { review_additions: additions } : {}),
     };
   }
 

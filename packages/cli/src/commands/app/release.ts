@@ -1,5 +1,5 @@
 import { Args, Flags } from '@oclif/core';
-import { errorText, LoginNeededError } from '../../lib/app-api.js';
+import { errorText, LoginNeededError, reviewAdditionsLine } from '../../lib/app-api.js';
 import { appFlags, appSession } from '../../lib/app-command.js';
 import { BaseCommand } from '../../lib/base-command.js';
 
@@ -38,11 +38,15 @@ export default class AppRelease extends BaseCommand {
     const result = await api.releaseVersion(args.app, version).catch((error: Error) => this.error(errorText(error), { exit: 1 }));
     if (result.status === 'review_required') {
       this.log(`v${result.version} is ready for review. Run: queek app submit ${args.app} --sequence ${result.sequence}`);
+      const adds = reviewAdditionsLine(result.review_additions);
+      if (adds) this.log(adds);
       this.log('Track it on the Developer page: https://dashboard.usequeek.com/developers');
       return { app: args.app, version: result.version, sequence: result.sequence, status: result.status };
     }
     if (result.status === 'in_review') {
       this.log(`Version ${result.version} submitted for review — it releases when approved.`);
+      const adds = reviewAdditionsLine(result.review_additions);
+      if (adds) this.log(adds);
     } else {
       this.log(`Released ${args.app} version ${result.version} (sequence ${result.sequence}) — installs now serve it.`);
     }
