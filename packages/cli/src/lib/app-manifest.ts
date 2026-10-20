@@ -180,8 +180,8 @@ function checkSchemaFields(list: unknown, where: string, primitives: string[], p
     if (typeof field.key !== 'string' || !SETTING_KEY_RE.test(field.key)) problems.push(`The ${where}.schema[${index}].key must match [a-z0-9_]{1,64}.`);
     if (typeof field.label !== 'string' || field.label.length > 120) problems.push(`The ${where}.schema[${index}].label is required (max 120).`);
     if (!primitives.includes(field.type as string)) problems.push(`The schema primitive must be one of: ${primitives.join(', ')}.`);
+    if (typeof field.label === 'string' && isPhpBlank(field.label)) problems.push(`The ${where}.schema[${index}].label must not be empty.`);
     if (lineInput && field.type === EXTENSION_LINE_INPUT_PRIMITIVE) {
-      if (typeof field.label === 'string' && isPhpBlank(field.label)) problems.push(`The ${where}.schema[${index}].label must not be empty.`);
       if (field.required !== undefined && typeof field.required !== 'boolean') problems.push(`The ${where}.schema[${index}].required must be true or false.`);
     }
     if (lineInput && field.max_length !== undefined) {
