@@ -143,6 +143,23 @@ describe('shopper account manifest messages', () => {
     expect(failure(docFor(PROXY, [{ key: 'p', title: '  ', targets: ['product'] }]))).toBe('The manifest.extensions.blocks[0].title field is required (max 80).');
   });
 
+  it('reports a repeated block key once, and only when no account refusal stands', () => {
+    expect(failure(docFor(PROXY, [order(), order()]))).toBe('A manifest may declare at most 1 account order block.');
+    expect(failure(docFor(PROXY, [{ key: 'p', title: 'P', targets: ['product'] }, { key: 'p', title: 'Q', targets: ['product'] }]))).toBe('Extension block keys must be unique.');
+  });
+
+  it('counts the block title cap in code points, as the API does (not UTF-16 units)', () => {
+    const product = (title: string): Record<string, unknown> => ({ key: 'p', title, targets: ['product'] });
+    const cap = 'The manifest.extensions.blocks[0].title field is required (max 80).';
+    expect(failure(docFor(null, [product('\u{1F4C5}'.repeat(41))]))).toBeNull();
+    expect(failure(docFor(null, [product('\u{1F4C5}'.repeat(80))]))).toBeNull();
+    expect(failure(docFor(null, [product('\u{1F4C5}'.repeat(81))]))).toBe(cap);
+    expect(failure(docFor(null, [product('e\u0301'.repeat(40))]))).toBeNull();
+    expect(failure(docFor(null, [product(`a${'\u0301'.repeat(80)}`)]))).toBe(cap);
+    expect(failure(docFor(null, [product('a'.repeat(80))]))).toBeNull();
+    expect(failure(docFor(null, [product('a'.repeat(81))]))).toBe(cap);
+  });
+
   it('does not apply the account title rule to product blocks', () => {
     expect(failure(docFor(null, [{ key: 'p', title: 'Pick​er‮', targets: ['product'] }]))).toBeNull();
   });

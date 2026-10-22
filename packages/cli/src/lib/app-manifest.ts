@@ -622,7 +622,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
       if (!allowed.includes(key)) problems.push(unknownField(key, where));
     }
     if (typeof block.key !== 'string' || !SETTING_KEY_RE.test(block.key)) throw fail(`The ${where}.key must match [a-z0-9_]{1,64}.`);
-    if (typeof block.title !== 'string' || isPhpBlank(block.title) || block.title.length > 80) throw fail(`The ${where}.title field is required (max 80).`);
+    if (typeof block.title !== 'string' || isPhpBlank(block.title) || [...block.title].length > 80) throw fail(`The ${where}.title field is required (max 80).`);
     if (block.description !== undefined && block.description !== null && (typeof block.description !== 'string' || block.description.length > 500)) {
       throw fail(`The ${where}.description field must be a string (max 500).`);
     }
@@ -655,6 +655,10 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
   });
   // The API reaches the account rules only once every earlier refusal is clear.
   if (problems.length === 0) problems.push(...accountExtensionProblems(extensions, checked as Record<string, unknown>[]));
+  // Then block keys, the API's order: account refusals first, uniqueness after.
+  if (problems.length === 0 && new Set((checked as Record<string, unknown>[]).map((block) => block.key)).size !== checked.length) {
+    problems.push('Extension block keys must be unique.');
+  }
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
   if (Object.keys(out).length > 0 || (blocks as unknown[]).length > 0 || embeds.length > 0) {
     manifest.extensions = { ...out, ...(((blocks as unknown[]).length > 0) ? { blocks: checked } : {}), ...(embeds.length > 0 ? { embeds: checkedEmbeds } : {}) };

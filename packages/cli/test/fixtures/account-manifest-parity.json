@@ -1,5 +1,5 @@
 {
- "note": "CLI-side parity rows for the shopper account manifest contract, mirrored from the API's account manifest test. The API's own test adopts the same rows later (same names, same block shapes). Messages are matched by substring: the CLI names a field with the manifest. prefix, the API does not. Rows that depend on the API's configured Queek hosts use the public Queek hosts here.",
+ "note": "CLI-side parity rows for the shopper account manifest contract, mirrored from the API's account manifest test. Rows mirrored from the API's validator. Messages are matched by substring: the CLI names a field with the manifest. prefix, the API does not. Rows that depend on the API's configured Queek hosts use the public Queek hosts here.",
  "rows": [
   {
    "name": "page and order block",
@@ -1023,6 +1023,150 @@
    ],
    "contains": "title must be 1-40 characters",
    "count": 4
+  },
+  {
+   "name": "page and order block sharing a key",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    },
+    {
+     "key": "my_bookings",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ]
+    }
+   ],
+   "contains": "Extension block keys must be unique."
+  },
+  {
+   "name": "two product blocks sharing a key",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "promo",
+     "title": "Promo",
+     "targets": [
+      "product"
+     ]
+    },
+    {
+     "key": "promo",
+     "title": "Promo",
+     "targets": [
+      "product"
+     ]
+    }
+   ],
+   "contains": "Extension block keys must be unique."
+  },
+  {
+   "name": "page and product block sharing a key",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    },
+    {
+     "key": "my_bookings",
+     "title": "Promo",
+     "targets": [
+      "product"
+     ]
+    }
+   ],
+   "contains": "Extension block keys must be unique."
+  },
+  {
+   "name": "an account refusal wins over a repeated key",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings"
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    },
+    {
+     "key": "my_bookings",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ]
+    }
+   ],
+   "contains": "share_customer_id: true"
+  },
+  {
+   "name": "distinct keys across page, order and product",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    },
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ]
+    },
+    {
+     "key": "promo",
+     "title": "Promo",
+     "targets": [
+      "product"
+     ]
+    }
+   ],
+   "contains": null
   }
  ],
  "titles": [
