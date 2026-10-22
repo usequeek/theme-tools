@@ -1187,7 +1187,7 @@
      "url": "https://us\tequeek.com/"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: line feed inside the host",
@@ -1208,7 +1208,7 @@
      "url": "https://us\nequeek.com/"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: carriage return inside the host",
@@ -1229,7 +1229,7 @@
      "url": "https://us\requeek.com/"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: space in the path",
@@ -1250,7 +1250,7 @@
      "url": "https://apps.example.com/a b"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: trailing space",
@@ -1271,7 +1271,7 @@
      "url": "https://apps.example.com/a "
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: no-break space in the path",
@@ -1292,7 +1292,7 @@
      "url": "https://apps.example.com/a\u00a0b"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: line separator U+2028 in the path",
@@ -1313,7 +1313,7 @@
      "url": "https://apps.example.com/a\u2028b"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: paragraph separator U+2029 in the path",
@@ -1334,7 +1334,7 @@
      "url": "https://apps.example.com/a\u2029b"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: zero-width space in the path",
@@ -1355,7 +1355,7 @@
      "url": "https://apps.example.com/a\u200bb"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: raw zero-width joiner in the path",
@@ -1376,7 +1376,7 @@
      "url": "https://apps.example.com/a\u200db"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: right-to-left override in the path",
@@ -1397,7 +1397,7 @@
      "url": "https://apps.example.com/a\u202eb"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: NUL in the path",
@@ -1418,7 +1418,7 @@
      "url": "https://apps.example.com/a\u0000b"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: soft hyphen in the host",
@@ -1439,7 +1439,7 @@
      "url": "https://apps\u00ad.example.com/a"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: backslash dressing a Queek host",
@@ -1460,7 +1460,7 @@
      "url": "https://apps.example.com\\@dashboard.usequeek.com/"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url: backslash after the host",
@@ -1481,7 +1481,7 @@
      "url": "https://dashboard.usequeek.com\\.apps.example.com/"
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "page url accepts an internationalised host",
@@ -1565,7 +1565,7 @@
      "url": "https://apps.example.com/a"
     }
    ],
-   "contains": "extensions.proxy.url must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "extensions.proxy.url must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "product block link_url with a zero-width joiner",
@@ -1585,7 +1585,7 @@
      "link_url": "https://apps.example.com/a\u200db"
     }
    ],
-   "contains": "link_url must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "link_url must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "product block image url with a space",
@@ -1607,7 +1607,7 @@
      }
     }
    ],
-   "contains": "image.url must not contain control characters, whitespace, invisible characters or a backslash"
+   "contains": "image.url must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
    "name": "product block link_url with a query string passes",
@@ -1628,6 +1628,256 @@
     }
    ],
    "contains": null
+  },
+  {
+   "name": "page url: backslash after a Queek host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://usequeek.com\\.evil.example/"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "page url: backslash ending a Queek host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://usequeek.com\\"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "page url: scheme followed by two backslashes",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https:\\\\usequeek.com"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "page url: scheme, slash, backslash",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https:/\\usequeek.com"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "page url: three slashes then a backslash",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https:///\\usequeek.com"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "page url: upper-case scheme with a backslash",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "HTTPS://usequeek.com\\x"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "page url: port then backslash then at-sign",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://a.com:443\\@usequeek.com/"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "page url: userinfo then backslash then at-sign",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://u:p\\@usequeek.com/"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "page url accepts a backslash in the path",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a\\b"
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "page url accepts a backslash in the query",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a?x=a\\b"
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "product block link_url accepts a backslash in the fragment",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "promo",
+     "title": "Promo",
+     "targets": [
+      "product"
+     ],
+     "link_url": "https://apps.example.com/a#x\\y"
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "product block link_url refuses a backslash in the host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "promo",
+     "title": "Promo",
+     "targets": [
+      "product"
+     ],
+     "link_url": "https://apps.example.com\\.evil.example/"
+    }
+   ],
+   "contains": "link_url must not contain control characters, whitespace, invisible characters or a backslash in the host"
   }
  ],
  "titles": [

@@ -173,7 +173,7 @@ describe('shopper account manifest messages', () => {
 });
 
 describe('urls with control characters, whitespace, invisible characters or a backslash', () => {
-  const UNSAFE = 'must not contain control characters, whitespace, invisible characters or a backslash.';
+  const UNSAFE = 'must not contain control characters, whitespace, invisible characters or a backslash in the host.';
   const bad = 'https://apps.example.com/a b';
   const ext = (doc: Record<string, unknown>): Record<string, unknown> => doc.extensions as Record<string, unknown>;
   const withDoc = (mutate: (doc: Record<string, unknown>) => void): string | null => {
@@ -214,8 +214,11 @@ describe('urls with control characters, whitespace, invisible characters or a ba
     expect(failure(docFor(PROXY, [page({ url: 'http://apps.example.com/a b' })]))).toBe(`The manifest.extensions.blocks[0].url ${UNSAFE}`);
   });
 
-  it('refuses a backslash on a page url (the API refuses any backslash; the path form is the one open question)', () => {
-    expect(failure(docFor(PROXY, [page({ url: 'https://apps.example.com/a\\b' })]))).toBe(`The manifest.extensions.blocks[0].url ${UNSAFE}`);
+  it('refuses a backslash in the authority only; in the path, query or fragment it stays accepted, as on the API', () => {
+    expect(failure(docFor(PROXY, [page({ url: 'https://apps.example.com\\.evil.example/' })]))).toBe(`The manifest.extensions.blocks[0].url ${UNSAFE}`);
+    expect(failure(docFor(PROXY, [page({ url: 'https://apps.example.com/a\\b' })]))).toBeNull();
+    expect(failure(docFor(PROXY, [page({ url: 'https://apps.example.com/a?x=a\\b' })]))).toBeNull();
+    expect(withDoc((doc) => { ext(doc).blocks = [{ key: 'p', title: 'P', targets: ['product'], link_url: 'https://apps.example.com/a#x\\y' }]; })).toBeNull();
   });
 
   it('accepts an internationalised host, a query string and a plain https url', () => {

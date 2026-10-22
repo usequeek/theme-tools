@@ -155,20 +155,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Parity constant, mirrors the API: a URL carrying a control character, any
- * whitespace or separator, an invisible format character or a backslash is
- * refused, tested on the RAW string. WHATWG `new URL` strips tabs and newlines
- * and turns a backslash into a slash, so a host that reads as unrelated to a
- * Queek domain here could resolve to one in a browser.
+ * Parity constants, mirror the API. A URL is unsafe when it carries a control
+ * character, any whitespace or separator, or an invisible format character
+ * anywhere (tested on the RAW string), or a backslash in its authority (the text
+ * after `scheme:` and any slashes, up to the first `/`, `?` or `#`). WHATWG
+ * `new URL` strips tabs and newlines and reads `\` as `/`, so a host that looks
+ * unrelated to a Queek domain here could resolve to one in a browser. A backslash
+ * in the path, query or fragment cannot move the origin and stays accepted.
  */
-const UNSAFE_URL_CHARACTER_RE = /[\p{Cc}\p{Z}\p{Cf}\\]/u;
-const unsafeUrlProblem = (field: string): string => `The ${field} must not contain control characters, whitespace, invisible characters or a backslash.`;
+const UNSAFE_URL_CHARACTER_RE = /[\p{Cc}\p{Z}\p{Cf}]/u;
+const URL_AUTHORITY_RE = /^[a-z][a-z0-9+.-]*:\/*([^/?#]*)/i;
+const hasUnsafeUrlCharacter = (url: string): boolean => UNSAFE_URL_CHARACTER_RE.test(url) || (URL_AUTHORITY_RE.exec(url)?.[1] ?? '').includes('\\');
+const unsafeUrlProblem = (field: string): string => `The ${field} must not contain control characters, whitespace, invisible characters or a backslash in the host.`;
 
 function httpsProblem(field: string, value: unknown): string | null {
   if (typeof value !== 'string' || !value.startsWith('https://')) {
     return `The ${field} must be an https URL.`;
   }
-  if (UNSAFE_URL_CHARACTER_RE.test(value)) return unsafeUrlProblem(field);
+  if (hasUnsafeUrlCharacter(value)) return unsafeUrlProblem(field);
   return null;
 }
 
@@ -743,7 +747,7 @@ function accountPageProblems(block: Record<string, unknown>, targets: string[], 
   if (targets.length !== 1 || targets[0] !== ACCOUNT_PAGE_TARGET) problems.push(`The ${where} app_page must have exactly the ${ACCOUNT_PAGE_TARGET} target.`);
   const url = typeof block.url === 'string' ? block.url : '';
   if (url === '') return [...problems, `The ${where}.url is required on an app_page.`];
-  if (UNSAFE_URL_CHARACTER_RE.test(url)) return [...problems, unsafeUrlProblem(`${where}.url`)];
+  if (hasUnsafeUrlCharacter(url)) return [...problems, unsafeUrlProblem(`${where}.url`)];
   if (url.includes('#')) problems.push(`The ${where}.url must not contain a fragment.`);
   if (/^[a-z][a-z0-9+.-]*:\/\/[^/?#]*@/i.test(url)) problems.push(`The ${where}.url must not contain credentials.`);
   if (!url.toLowerCase().startsWith('https://')) return [...problems, `The ${where}.url must be an https URL.`];
