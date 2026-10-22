@@ -1,0 +1,1280 @@
+{
+ "note": "CLI-side parity rows for the shopper account manifest contract, mirrored from the API's account manifest test. The API's own test adopts the same rows later (same names, same block shapes). Messages are matched by substring: the CLI names a field with the manifest. prefix, the API does not. Rows that depend on the API's configured Queek hosts use the public Queek hosts here.",
+ "rows": [
+  {
+   "name": "page and order block",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    },
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ]
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "page alone",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "order block alone",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ]
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "page with an empty schema list",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account",
+     "schema": []
+    },
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ],
+     "schema": []
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "page url with a query and a port",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com:8443/bookings/account?lang=en"
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "product block next to a page",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "promo",
+     "title": "Promo",
+     "targets": [
+      "product"
+     ]
+    },
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "page needs share_customer_id",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings"
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    }
+   ],
+   "contains": "share_customer_id: true"
+  },
+  {
+   "name": "page with no proxy at all",
+   "valid": false,
+   "proxy": null,
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    }
+   ],
+   "contains": "share_customer_id: true"
+  },
+  {
+   "name": "order block needs share_customer_id",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings"
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ]
+    }
+   ],
+   "contains": "share_customer_id: true"
+  },
+  {
+   "name": "share_customer_id false",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": false
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    }
+   ],
+   "contains": "share_customer_id: true"
+  },
+  {
+   "name": "two pages",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    },
+    {
+     "key": "second",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    }
+   ],
+   "contains": "at most 1 account page"
+  },
+  {
+   "name": "two order blocks",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ]
+    },
+    {
+     "key": "second",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ]
+    }
+   ],
+   "contains": "at most 1 account order block"
+  },
+  {
+   "name": "page with schema",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account",
+     "schema": [
+      {
+       "key": "d",
+       "label": "Date",
+       "type": "date"
+      }
+     ]
+    }
+   ],
+   "contains": "extensions.blocks[0].schema is not available"
+  },
+  {
+   "name": "page with link_url",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account",
+     "link_url": "https://apps.example.com/x"
+    }
+   ],
+   "contains": "link_url is not available"
+  },
+  {
+   "name": "page with image",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account",
+     "image": {
+      "url": "https://apps.example.com/i.png"
+     }
+    }
+   ],
+   "contains": "image is not available"
+  },
+  {
+   "name": "page with available_if",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account",
+     "available_if": "declared_products"
+    }
+   ],
+   "contains": "available_if is not available"
+  },
+  {
+   "name": "order block with an empty image table",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ],
+     "image": {}
+    }
+   ],
+   "contains": "image is not available"
+  },
+  {
+   "name": "page without url",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ]
+    }
+   ],
+   "contains": "url is required on an app_page"
+  },
+  {
+   "name": "page with an empty url",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": ""
+    }
+   ],
+   "contains": "url is required on an app_page"
+  },
+  {
+   "name": "page with http url",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "http://apps.example.com/a"
+    }
+   ],
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "page with fragment",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a#x"
+    }
+   ],
+   "contains": "must not contain a fragment"
+  },
+  {
+   "name": "page with user and password",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://user:pw@apps.example.com/a"
+    }
+   ],
+   "contains": "must not contain credentials"
+  },
+  {
+   "name": "page with a user only",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://u@apps.example.com/a"
+    }
+   ],
+   "contains": "must not contain credentials"
+  },
+  {
+   "name": "page with an empty user",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://@apps.example.com/a"
+    }
+   ],
+   "contains": "must not contain credentials"
+  },
+  {
+   "name": "page with an empty user and password",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://:@apps.example.com/a"
+    }
+   ],
+   "contains": "must not contain credentials"
+  },
+  {
+   "name": "page with a host dressed as userinfo",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com:443@evil.example.net/"
+    }
+   ],
+   "contains": "must not contain credentials"
+  },
+  {
+   "name": "page on a Queek dashboard host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://dashboard.usequeek.com/account"
+    }
+   ],
+   "contains": "own domain"
+  },
+  {
+   "name": "page on a Queek apex host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://usequeek.com/account"
+    }
+   ],
+   "contains": "own domain"
+  },
+  {
+   "name": "page on a Queek storefront host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://shop.queek.com.ng/account"
+    }
+   ],
+   "contains": "own domain"
+  },
+  {
+   "name": "page with two targets",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page",
+      "account-order"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    }
+   ],
+   "contains": "exactly the account-page target"
+  },
+  {
+   "name": "page with a repeated target",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page",
+      "account-page"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    }
+   ],
+   "contains": "exactly the account-page target"
+  },
+  {
+   "name": "page mixing product",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page",
+      "product"
+     ],
+     "url": "https://apps.example.com/bookings/account"
+    }
+   ],
+   "contains": "may not mix product and account targets"
+  },
+  {
+   "name": "order block mixing product",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order",
+      "product"
+     ]
+    }
+   ],
+   "contains": "may not mix product and account targets"
+  },
+  {
+   "name": "order block with line_text schema",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ],
+     "schema": [
+      {
+       "key": "engraving",
+       "label": "Text",
+       "type": "line_text"
+      }
+     ],
+     "available_if": "declared_products"
+    }
+   ],
+   "contains": "is not available on an account page"
+  },
+  {
+   "name": "order block with submit",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true,
+    "allow_post": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ],
+     "schema": [
+      {
+       "key": "go",
+       "label": "Go",
+       "type": "submit"
+      }
+     ]
+    }
+   ],
+   "contains": "schema is not available"
+  },
+  {
+   "name": "order block with link_url",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ],
+     "link_url": "https://apps.example.com/x"
+    }
+   ],
+   "contains": "link_url is not available"
+  },
+  {
+   "name": "order block typed as embed",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ],
+     "type": "app_embed"
+    }
+   ],
+   "contains": "must be an app_block"
+  },
+  {
+   "name": "order block repeating its target",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order",
+      "account-order"
+     ]
+    }
+   ],
+   "contains": "must be an app_block with exactly that target"
+  },
+  {
+   "name": "page target on an app_block",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-page"
+     ]
+    }
+   ],
+   "contains": "needs the block type app_page"
+  },
+  {
+   "name": "page target next to the order target on an app_block",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-page",
+      "account-order"
+     ]
+    }
+   ],
+   "contains": "needs the block type app_page"
+  },
+  {
+   "name": "url on a product block",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "promo",
+     "title": "Promo",
+     "targets": [
+      "product"
+     ],
+     "url": "https://apps.example.com/x"
+    }
+   ],
+   "contains": "Unknown field 'url' in"
+  },
+  {
+   "name": "url on an order block",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ],
+     "url": "https://apps.example.com/x"
+    }
+   ],
+   "contains": "Unknown field 'url' in"
+  },
+  {
+   "name": "url on an embed block",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "p",
+     "type": "app_embed",
+     "title": "P",
+     "targets": [
+      "product"
+     ],
+     "url": "https://apps.example.com/x"
+    }
+   ],
+   "contains": "Unknown field 'url' in"
+  },
+  {
+   "name": "account-profile is not a v1 target",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-profile"
+     ]
+    }
+   ],
+   "contains": "The block target must be one of: product, account-page, account-order."
+  },
+  {
+   "name": "unknown target",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "cart"
+     ]
+    }
+   ],
+   "contains": "The block target must be one of: product, account-page, account-order."
+  },
+  {
+   "name": "unknown block type",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "order_booking",
+     "title": "Booking",
+     "targets": [
+      "account-order"
+     ],
+     "type": "bogus"
+    }
+   ],
+   "contains": "The block type must be one of: app_block, app_embed, app_page."
+  },
+  {
+   "name": "every problem of one block in one answer",
+   "valid": false,
+   "proxy": null,
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "x\u200b",
+     "targets": [
+      "account-page"
+     ],
+     "url": "http://apps.example.com/p",
+     "link_url": "https://apps.example.com/l"
+    }
+   ],
+   "contains": "title must be 1-40 characters",
+   "count": 4
+  }
+ ],
+ "titles": [
+  {
+   "name": "plain",
+   "title": "My bookings",
+   "valid": true
+  },
+  {
+   "name": "accented and emoji",
+   "title": "R\u00e9servations \ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "emoji with a ZWJ sequence",
+   "title": "Family \ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67",
+   "valid": true
+  },
+  {
+   "name": "arabic",
+   "title": "\u062d\u062c\u0648\u0632\u0627\u062a\u064a",
+   "valid": true
+  },
+  {
+   "name": "persian with ZWNJ",
+   "title": "\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645 \u0633\u0641\u0627\u0631\u0634\u200c\u0647\u0627",
+   "valid": true
+  },
+  {
+   "name": "hebrew",
+   "title": "\u05d4\u05d4\u05d6\u05de\u05e0\u05d5\u05ea \u05e9\u05dc\u05d9",
+   "valid": true
+  },
+  {
+   "name": "japanese",
+   "title": "\u79c1\u306e\u4e88\u7d04",
+   "valid": true
+  },
+  {
+   "name": "chinese",
+   "title": "\u6211\u7684\u8ba2\u5355",
+   "valid": true
+  },
+  {
+   "name": "korean",
+   "title": "\ub0b4 \uc608\uc57d",
+   "valid": true
+  },
+  {
+   "name": "devanagari with ZWJ",
+   "title": "\u0915\u094d\u200d\u0937 \u0911\u0930\u094d\u0921\u0930",
+   "valid": true
+  },
+  {
+   "name": "forty code points",
+   "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "forty emoji (40 code points, 80 UTF-16 units)",
+   "title": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "forty-one code points",
+   "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "forty-one emoji",
+   "title": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "only a space",
+   "title": " ",
+   "valid": false
+  },
+  {
+   "name": "only NBSP",
+   "title": "\u00a0\u00a0",
+   "valid": false
+  },
+  {
+   "name": "only ideographic space",
+   "title": "\u3000",
+   "valid": false
+  },
+  {
+   "name": "only em space and thin space",
+   "title": "\u2003\u2009",
+   "valid": false
+  },
+  {
+   "name": "only ZWNJ",
+   "title": "\u200c",
+   "valid": false
+  },
+  {
+   "name": "only ZWJ and a space",
+   "title": "\u200d \u200d",
+   "valid": false
+  },
+  {
+   "name": "newline",
+   "title": "My\nbookings",
+   "valid": false
+  },
+  {
+   "name": "trailing newline",
+   "title": "My bookings\n",
+   "valid": false
+  },
+  {
+   "name": "carriage return",
+   "title": "My\rbookings",
+   "valid": false
+  },
+  {
+   "name": "tab",
+   "title": "My\tbookings",
+   "valid": false
+  },
+  {
+   "name": "nul",
+   "title": "My\u0000bookings",
+   "valid": false
+  },
+  {
+   "name": "del",
+   "title": "My\u007fbookings",
+   "valid": false
+  },
+  {
+   "name": "next line U+0085",
+   "title": "My\u0085bookings",
+   "valid": false
+  },
+  {
+   "name": "C1 control U+009F",
+   "title": "My\u009fbookings",
+   "valid": false
+  },
+  {
+   "name": "soft hyphen U+00AD",
+   "title": "My\u00adbookings",
+   "valid": false
+  },
+  {
+   "name": "arabic letter mark U+061C",
+   "title": "My\u061cbookings",
+   "valid": false
+  },
+  {
+   "name": "mongolian vowel separator U+180E",
+   "title": "My\u180ebookings",
+   "valid": false
+  },
+  {
+   "name": "zero-width space U+200B",
+   "title": "My\u200bbookings",
+   "valid": false
+  },
+  {
+   "name": "left-to-right mark U+200E",
+   "title": "My\u200ebookings",
+   "valid": false
+  },
+  {
+   "name": "right-to-left mark U+200F",
+   "title": "My\u200fbookings",
+   "valid": false
+  },
+  {
+   "name": "line separator U+2028",
+   "title": "My\u2028bookings",
+   "valid": false
+  },
+  {
+   "name": "paragraph separator U+2029",
+   "title": "My\u2029bookings",
+   "valid": false
+  },
+  {
+   "name": "embedding U+202A",
+   "title": "My\u202abookings",
+   "valid": false
+  },
+  {
+   "name": "pop directional U+202C",
+   "title": "My\u202cbookings",
+   "valid": false
+  },
+  {
+   "name": "right-to-left override U+202E",
+   "title": "My\u202ebookings",
+   "valid": false
+  },
+  {
+   "name": "word joiner U+2060",
+   "title": "My\u2060bookings",
+   "valid": false
+  },
+  {
+   "name": "invisible times U+2062",
+   "title": "My\u2062bookings",
+   "valid": false
+  },
+  {
+   "name": "invisible plus U+2064",
+   "title": "My\u2064bookings",
+   "valid": false
+  },
+  {
+   "name": "isolate open U+2066",
+   "title": "My\u2066bookings",
+   "valid": false
+  },
+  {
+   "name": "isolate close U+2069",
+   "title": "My\u2069bookings",
+   "valid": false
+  },
+  {
+   "name": "BOM U+FEFF",
+   "title": "\ufeffMy bookings",
+   "valid": false
+  },
+  {
+   "name": "tag language U+E0001",
+   "title": "My\udb40\udc01bookings",
+   "valid": false
+  },
+  {
+   "name": "tag space U+E0020",
+   "title": "My\udb40\udc20bookings",
+   "valid": false
+  },
+  {
+   "name": "tag cancel U+E007F",
+   "title": "My\udb40\udc7fbookings",
+   "valid": false
+  },
+  {
+   "name": "unassigned tag block U+E0000",
+   "title": "My\udb40\udc00bookings",
+   "valid": false
+  },
+  {
+   "name": "unassigned tag block U+E0002",
+   "title": "My\udb40\udc02bookings",
+   "valid": false
+  }
+ ]
+}

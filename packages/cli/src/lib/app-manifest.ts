@@ -63,6 +63,32 @@ const DASHBOARD_WHEN_FIELDS = ['order.has_appointment', 'order.is_paid', 'produc
 /** Closed visibility conditions for an extension block. */
 const BLOCK_AVAILABLE_IF = ['declared_products'];
 const EXTENSION_BLOCK_TARGETS = ['product'];
+/**
+ * Shopper account extensions (mirror of the API): one `app_page` (a full page
+ * in the account chrome) and one block on the account order page. `account-profile`
+ * is not a v1 target.
+ */
+const ACCOUNT_PAGE_TARGET = 'account-page';
+const ACCOUNT_BLOCK_TARGETS = ['account-order'];
+const ACCOUNT_PAGE_TYPE = 'app_page';
+const STOREFRONT_BLOCK_TARGETS = [...EXTENSION_BLOCK_TARGETS, ACCOUNT_PAGE_TARGET, ...ACCOUNT_BLOCK_TARGETS];
+/** One account page and one account order block per manifest. */
+const ACCOUNT_PAGES_MAX = 1;
+const ACCOUNT_BLOCKS_MAX = 1;
+const ACCOUNT_TITLE_MAX = 40;
+/**
+ * Parity constant, mirrors the API's account title rule (PCRE, flags `uD`):
+ * 1-40 code points; no control (Cc), line or paragraph separator (Zl, Zp) or
+ * format (Cf) character, U+180E or the tag block, EXCEPT ZWNJ and ZWJ (Persian
+ * and other scripts need them); a title of only whitespace or ZWNJ/ZWJ is
+ * refused. The `u` flag counts code points and makes `\p{..}` Unicode-aware;
+ * JavaScript `$` (no `m` flag) matches only at the very end, which is what
+ * PCRE's `D` flag gives, so a trailing newline is refused.
+ */
+const ACCOUNT_TITLE_RE = new RegExp(
+  `^(?![\\p{Z}\\u200C\\u200D]+$)(?:[^\\p{Cc}\\p{Zl}\\p{Zp}\\p{Cf}\\u180E\\u{E0000}-\\u{E007F}]|[\\u200C\\u200D]){1,${ACCOUNT_TITLE_MAX}}$`,
+  'u',
+);
 const EXTENSION_PRIMITIVES = ['date', 'time', 'select'];
 /** The block's write action: needs extensions.proxy.allow_post, one per block. */
 const EXTENSION_SUBMIT_PRIMITIVE = 'submit';
@@ -96,7 +122,7 @@ const isPhpBlank = (value: string): boolean => [...value].every((character) => P
  * that happens only when the field key is exactly one of these three strings.
  */
 const LINE_TEXT_BEARER_KEYS = ['claim', 'reschedule_url', 'cancel_url'];
-const EXTENSION_BLOCK_TYPES = ['app_block', 'app_embed'];
+const EXTENSION_BLOCK_TYPES = ['app_block', 'app_embed', ACCOUNT_PAGE_TYPE];
 
 /** Key/value shapes that smell like a secret and are refused in the toml. */
 function secretProblem(path: string, key: string, value: unknown): string | null {
@@ -527,6 +553,9 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     if (proxy.allow_post !== undefined && typeof proxy.allow_post !== 'boolean') {
       throw fail('The extensions.proxy.allow_post field must be true or false.');
     }
+    if (proxy.share_customer_id !== undefined && !isLaravelBoolean(proxy.share_customer_id)) {
+      throw fail('The extensions.proxy.share_customer_id field must be true or false.');
+    }
     out.proxy = {
       url: proxy.url,
       subpath: proxy.subpath,
@@ -588,19 +617,25 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     const where = `manifest.extensions.blocks[${index}]`;
     if (!isRecord(block)) throw fail(unknownField(String(index), 'manifest.extensions.blocks'));
     for (const key of Object.keys(block)) {
-      if (!['key', 'type', 'title', 'description', 'targets', 'available_if', 'schema', 'link_url', 'image'].includes(key)) problems.push(unknownField(key, where));
+      // `url` belongs to the app_page block alone; on any other block it stays an unknown field.
+      const allowed = ['key', 'type', 'title', 'description', 'targets', 'available_if', 'schema', 'link_url', 'image', ...(block.type === ACCOUNT_PAGE_TYPE ? ['url'] : [])];
+      if (!allowed.includes(key)) problems.push(unknownField(key, where));
     }
     if (typeof block.key !== 'string' || !SETTING_KEY_RE.test(block.key)) throw fail(`The ${where}.key must match [a-z0-9_]{1,64}.`);
-    if (typeof block.title !== 'string' || block.title.length > 80) throw fail(`The ${where}.title field is required (max 80).`);
+    if (typeof block.title !== 'string' || isPhpBlank(block.title) || block.title.length > 80) throw fail(`The ${where}.title field is required (max 80).`);
     if (block.description !== undefined && block.description !== null && (typeof block.description !== 'string' || block.description.length > 500)) {
       throw fail(`The ${where}.description field must be a string (max 500).`);
+    }
+    if (block.type === ACCOUNT_PAGE_TYPE && block.url !== undefined) {
+      if (typeof block.url !== 'string') throw fail(`The ${where}.url field must be a string.`);
+      if (block.url.length > 2048) throw fail(`The ${where}.url must not be longer than 2048 characters.`);
     }
     if (block.type !== undefined && !EXTENSION_BLOCK_TYPES.includes(block.type as string)) {
       throw fail(`The block type must be one of: ${EXTENSION_BLOCK_TYPES.join(', ')}.`);
     }
     if (!Array.isArray(block.targets) || (block.targets as unknown[]).length < 1) throw fail(`The ${where}.targets field is required (at least one).`);
     for (const target of block.targets as unknown[]) {
-      if (!EXTENSION_BLOCK_TARGETS.includes(target as string)) throw fail(`The block target must be one of: ${EXTENSION_BLOCK_TARGETS.join(', ')}.`);
+      if (!STOREFRONT_BLOCK_TARGETS.includes(target as string)) throw fail(`The block target must be one of: ${STOREFRONT_BLOCK_TARGETS.join(', ')}.`);
     }
     if (block.available_if !== undefined && !BLOCK_AVAILABLE_IF.includes(block.available_if as string)) {
       throw fail(`The block visibility condition must be one of: ${BLOCK_AVAILABLE_IF.join(', ')}.`);
@@ -618,10 +653,86 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     checkImage(block.image, where, problems, fail);
     checked.push(block);
   });
+  // The API reaches the account rules only once every earlier refusal is clear.
+  if (problems.length === 0) problems.push(...accountExtensionProblems(extensions, checked as Record<string, unknown>[]));
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
   if (Object.keys(out).length > 0 || (blocks as unknown[]).length > 0 || embeds.length > 0) {
     manifest.extensions = { ...out, ...(((blocks as unknown[]).length > 0) ? { blocks: checked } : {}), ...(embeds.length > 0 ? { embeds: checkedEmbeds } : {}) };
   }
+}
+
+/** Laravel's `boolean` rule: true, false, 1, 0, "1", "0". */
+const isLaravelBoolean = (value: unknown): boolean => [true, false, 1, 0, '1', '0'].includes(value as boolean | number | string);
+
+/**
+ * Shopper account rules (mirrors the API): an `app_page` and an `account-order`
+ * block both put the shopper's store customer id in front of the app, so the
+ * manifest must opt into extensions.proxy.share_customer_id; a block never mixes
+ * product and account targets, and an account entry carries none of the product
+ * block's data fields. Collects every problem of every account block.
+ */
+function accountExtensionProblems(extensions: Record<string, unknown>, blocks: Record<string, unknown>[]): string[] {
+  const problems: string[] = [];
+  let pages = 0;
+  let accountBlocks = 0;
+  let needsCustomerId = false;
+  blocks.forEach((block, index) => {
+    const where = `manifest.extensions.blocks[${index}]`;
+    const targets = (block.targets as unknown[]).map(String);
+    const isPage = block.type === ACCOUNT_PAGE_TYPE;
+    const accountTargets = targets.filter((target) => target === ACCOUNT_PAGE_TARGET || ACCOUNT_BLOCK_TARGETS.includes(target));
+    if (!isPage && accountTargets.length === 0) return;
+    needsCustomerId = true;
+    if (targets.some((target) => !accountTargets.includes(target))) problems.push(`The ${where}.targets may not mix product and account targets.`);
+    if (!ACCOUNT_TITLE_RE.test(String(block.title ?? ''))) {
+      problems.push(`The ${where}.title must be 1-${ACCOUNT_TITLE_MAX} characters with no control, zero-width or direction-override characters.`);
+    }
+    // Present means declared, whatever the value.
+    for (const field of ['available_if', 'link_url', 'image']) {
+      if (block[field] !== undefined && block[field] !== null) problems.push(`The ${where}.${field} is not available on an account page or account block.`);
+    }
+    if (block.schema !== undefined && block.schema !== null && !(Array.isArray(block.schema) && block.schema.length === 0)) {
+      problems.push(`The ${where}.schema is not available on an account page or account block.`);
+    }
+    if (isPage) {
+      pages += 1;
+      problems.push(...accountPageProblems(block, targets, where));
+      return;
+    }
+    if (targets.includes(ACCOUNT_PAGE_TARGET)) {
+      problems.push(`The ${where} target ${ACCOUNT_PAGE_TARGET} needs the block type ${ACCOUNT_PAGE_TYPE}.`);
+      return;
+    }
+    accountBlocks += 1;
+    if ((block.type ?? 'app_block') !== 'app_block' || targets.join() !== ACCOUNT_BLOCK_TARGETS.join()) {
+      problems.push(`The ${where} with the ${ACCOUNT_BLOCK_TARGETS.join(', ')} target must be an app_block with exactly that target.`);
+    }
+  });
+  if (pages > ACCOUNT_PAGES_MAX) problems.push(`A manifest may declare at most ${ACCOUNT_PAGES_MAX} account page.`);
+  if (accountBlocks > ACCOUNT_BLOCKS_MAX) problems.push(`A manifest may declare at most ${ACCOUNT_BLOCKS_MAX} account order block.`);
+  const share = isRecord(extensions.proxy) ? extensions.proxy.share_customer_id : undefined;
+  if (needsCustomerId && ![true, 1, '1'].includes(share as boolean | number | string)) {
+    problems.push('An account page or account block needs extensions.proxy with share_customer_id: true.');
+  }
+  return problems;
+}
+
+/**
+ * The `app_page` block: exactly the account-page target and an own-domain https
+ * url with no fragment or credentials. The API also resolves the host (SSRF
+ * guard), which stays server-side; the Queek-origin check uses the same static
+ * host list as the storefront embed url.
+ */
+function accountPageProblems(block: Record<string, unknown>, targets: string[], where: string): string[] {
+  const problems: string[] = [];
+  if (targets.length !== 1 || targets[0] !== ACCOUNT_PAGE_TARGET) problems.push(`The ${where} app_page must have exactly the ${ACCOUNT_PAGE_TARGET} target.`);
+  const url = typeof block.url === 'string' ? block.url : '';
+  if (url === '') return [...problems, `The ${where}.url is required on an app_page.`];
+  if (url.includes('#')) problems.push(`The ${where}.url must not contain a fragment.`);
+  if (/^[a-z][a-z0-9+.-]*:\/\/[^/?#]*@/i.test(url)) problems.push(`The ${where}.url must not contain credentials.`);
+  if (!url.toLowerCase().startsWith('https://')) return [...problems, `The ${where}.url must be an https URL.`];
+  if (sharesKnownQueekOrigin(url)) problems.push(`The ${where}.url must be on the app's own domain — never a Queek domain or one that shares its cookies.`);
+  return problems;
 }
 
 /**
