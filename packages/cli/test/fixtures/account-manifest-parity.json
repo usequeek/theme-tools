@@ -1878,6 +1878,142 @@
     }
    ],
    "contains": "link_url must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "page url accepts an upper-case scheme",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "HTTPS://apps.example.com/"
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "page url accepts a mixed-case scheme and a path backslash",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "Https://Apps.Example.com/a\\b"
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "page url: an upper-case scheme and a backslash host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "HTTPS://usequeek.com\\x"
+    }
+   ],
+   "contains": "backslash in the host"
+  },
+  {
+   "name": "page url: an upper-case scheme on a Queek host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "HTTPS://dashboard.usequeek.com/a"
+    }
+   ],
+   "contains": "own domain"
+  },
+  {
+   "name": "product block link_url accepts an upper-case scheme",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "promo",
+     "title": "Promo",
+     "targets": [
+      "product"
+     ],
+     "link_url": "HTTPS://apps.example.com/a"
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "embed url accepts an upper-case scheme",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a"
+    }
+   ],
+   "embeds": [
+    {
+     "key": "chat",
+     "title": "Chat",
+     "target": "body",
+     "url": "HTTPS://apps.example.com/chat",
+     "capabilities": [
+      "chat-bubble"
+     ]
+    }
+   ],
+   "contains": null
   }
  ],
  "titles": [
@@ -2130,6 +2266,372 @@
    "name": "unassigned tag block U+E0002",
    "title": "My\udb40\udc02bookings",
    "valid": false
+  }
+ ],
+ "fields": [
+  {
+   "name": "logo_url: plain https",
+   "field": "logo_url",
+   "value": "https://apps.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: upper-case scheme",
+   "field": "logo_url",
+   "value": "HTTPS://apps.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: query string",
+   "field": "logo_url",
+   "value": "https://apps.example.com/x?a=1&b=a%20b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: no length cap (3000 characters)",
+   "field": "logo_url",
+   "value": "https://apps.example.com/x/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: backslash in the path",
+   "field": "logo_url",
+   "value": "https://apps.example.com/a\\b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: an internationalised host",
+   "field": "logo_url",
+   "value": "https://b\u00fccher.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: http scheme",
+   "field": "logo_url",
+   "value": "http://apps.example.com/x",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "logo_url: no scheme",
+   "field": "logo_url",
+   "value": "apps.example.com/x",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "logo_url: empty string",
+   "field": "logo_url",
+   "value": "",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "logo_url: space in the path",
+   "field": "logo_url",
+   "value": "https://apps.example.com/a b",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "logo_url: tab",
+   "field": "logo_url",
+   "value": "https://apps.example.com/a\tb",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "logo_url: raw zero-width joiner",
+   "field": "logo_url",
+   "value": "https://apps.example.com/a\u200db",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "logo_url: backslash in the host",
+   "field": "logo_url",
+   "value": "https://apps.example.com\\.evil.example/",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "developer_url: plain https",
+   "field": "developer_url",
+   "value": "https://apps.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: upper-case scheme",
+   "field": "developer_url",
+   "value": "HTTPS://apps.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: query string",
+   "field": "developer_url",
+   "value": "https://apps.example.com/x?a=1&b=a%20b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: no length cap (3000 characters)",
+   "field": "developer_url",
+   "value": "https://apps.example.com/x/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: backslash in the path",
+   "field": "developer_url",
+   "value": "https://apps.example.com/a\\b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: an internationalised host",
+   "field": "developer_url",
+   "value": "https://b\u00fccher.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: http scheme",
+   "field": "developer_url",
+   "value": "http://apps.example.com/x",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "developer_url: no scheme",
+   "field": "developer_url",
+   "value": "apps.example.com/x",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "developer_url: empty string",
+   "field": "developer_url",
+   "value": "",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "developer_url: space in the path",
+   "field": "developer_url",
+   "value": "https://apps.example.com/a b",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "developer_url: tab",
+   "field": "developer_url",
+   "value": "https://apps.example.com/a\tb",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "developer_url: raw zero-width joiner",
+   "field": "developer_url",
+   "value": "https://apps.example.com/a\u200db",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "developer_url: backslash in the host",
+   "field": "developer_url",
+   "value": "https://apps.example.com\\.evil.example/",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "privacy_url: plain https",
+   "field": "privacy_url",
+   "value": "https://apps.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: upper-case scheme",
+   "field": "privacy_url",
+   "value": "HTTPS://apps.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: query string",
+   "field": "privacy_url",
+   "value": "https://apps.example.com/x?a=1&b=a%20b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: no length cap (3000 characters)",
+   "field": "privacy_url",
+   "value": "https://apps.example.com/x/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: backslash in the path",
+   "field": "privacy_url",
+   "value": "https://apps.example.com/a\\b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: an internationalised host",
+   "field": "privacy_url",
+   "value": "https://b\u00fccher.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: http scheme",
+   "field": "privacy_url",
+   "value": "http://apps.example.com/x",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "privacy_url: no scheme",
+   "field": "privacy_url",
+   "value": "apps.example.com/x",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "privacy_url: empty string",
+   "field": "privacy_url",
+   "value": "",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "privacy_url: space in the path",
+   "field": "privacy_url",
+   "value": "https://apps.example.com/a b",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "privacy_url: tab",
+   "field": "privacy_url",
+   "value": "https://apps.example.com/a\tb",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "privacy_url: raw zero-width joiner",
+   "field": "privacy_url",
+   "value": "https://apps.example.com/a\u200db",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "privacy_url: backslash in the host",
+   "field": "privacy_url",
+   "value": "https://apps.example.com\\.evil.example/",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "support_url: plain https",
+   "field": "support_url",
+   "value": "https://apps.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: upper-case scheme",
+   "field": "support_url",
+   "value": "HTTPS://apps.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: query string",
+   "field": "support_url",
+   "value": "https://apps.example.com/x?a=1&b=a%20b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: no length cap (3000 characters)",
+   "field": "support_url",
+   "value": "https://apps.example.com/x/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: backslash in the path",
+   "field": "support_url",
+   "value": "https://apps.example.com/a\\b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: an internationalised host",
+   "field": "support_url",
+   "value": "https://b\u00fccher.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: http scheme",
+   "field": "support_url",
+   "value": "http://apps.example.com/x",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "support_url: no scheme",
+   "field": "support_url",
+   "value": "apps.example.com/x",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "support_url: empty string",
+   "field": "support_url",
+   "value": "",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "support_url: space in the path",
+   "field": "support_url",
+   "value": "https://apps.example.com/a b",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "support_url: tab",
+   "field": "support_url",
+   "value": "https://apps.example.com/a\tb",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "support_url: raw zero-width joiner",
+   "field": "support_url",
+   "value": "https://apps.example.com/a\u200db",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  },
+  {
+   "name": "support_url: backslash in the host",
+   "field": "support_url",
+   "value": "https://apps.example.com\\.evil.example/",
+   "valid": false,
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   }
  ]
 }

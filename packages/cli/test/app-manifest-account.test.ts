@@ -8,9 +8,10 @@ import { APP_TOML, loadApp, loadTomlFile, toManifest } from '../src/lib/app-mani
 // mirrored from the API's validator. The rows live in a CLI-side fixture so the
 // shared line-text-parity fixture stays untouched.
 
-interface Row { name: string; valid: boolean; proxy: Record<string, unknown> | null; blocks: Record<string, unknown>[]; contains: string | null; count?: number }
+interface Row { name: string; valid: boolean; proxy: Record<string, unknown> | null; blocks: Record<string, unknown>[]; embeds?: Record<string, unknown>[]; contains: string | null; count?: number }
+interface FieldRow { name: string; field: string; value: string; valid: boolean; contains: string | null }
 interface TitleRow { name: string; title: string; valid: boolean }
-const parity = JSON.parse(readFileSync(new URL('./fixtures/account-manifest-parity.json', import.meta.url), 'utf8')) as { rows: Row[]; titles: TitleRow[] };
+const parity = JSON.parse(readFileSync(new URL('./fixtures/account-manifest-parity.json', import.meta.url), 'utf8')) as { rows: Row[]; titles: TitleRow[]; fields: FieldRow[] };
 
 const BASE = `
 slug = "bookings"
@@ -36,9 +37,9 @@ function stage(toml: string): string {
   return dir;
 }
 
-function docFor(proxy: Record<string, unknown> | null, blocks: unknown[]): Record<string, unknown> {
+function docFor(proxy: Record<string, unknown> | null, blocks: unknown[], embeds?: unknown[]): Record<string, unknown> {
   const doc = loadTomlFile(join(stage(BASE), APP_TOML)).doc;
-  doc.extensions = { ...(proxy ? { proxy } : {}), blocks };
+  doc.extensions = { ...(proxy ? { proxy } : {}), blocks, ...(embeds ? { embeds } : {}) };
   return doc;
 }
 
@@ -63,7 +64,7 @@ describe('shopper account manifest parity fixture', () => {
   });
 
   it.each(parity.rows.map((row) => [row.name, row] as const))('row: %s', (_name, row) => {
-    const message = failure(docFor(row.proxy, row.blocks));
+    const message = failure(docFor(row.proxy, row.blocks, row.embeds));
     if (row.valid) {
       expect(message).toBeNull();
       return;
@@ -71,6 +72,23 @@ describe('shopper account manifest parity fixture', () => {
     expect(message).not.toBeNull();
     expect(message).toContain(row.contains as string);
     if (row.count !== undefined) expect((message as string).split('\n')).toHaveLength(row.count);
+  });
+
+  it.each(parity.fields.map((row) => [row.name, row] as const))('listing field: %s', (_name, row) => {
+    const doc = loadTomlFile(join(stage(BASE), APP_TOML)).doc;
+    doc.listing = { [row.field]: row.value };
+    const message = failure(doc);
+    if (row.valid) {
+      expect(message).toBeNull();
+      return;
+    }
+    expect(message).toContain(`The ${row.field} ${row.contains as string}`);
+  });
+
+  it('refuses a non-string logo_url or link, as the API string rule does', () => {
+    const doc = loadTomlFile(join(stage(BASE), APP_TOML)).doc;
+    doc.listing = { support_url: 5 };
+    expect(failure(doc)).toBe('The support_url field must be a string.');
   });
 
   describe.each([

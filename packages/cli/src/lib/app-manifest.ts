@@ -169,7 +169,7 @@ const hasUnsafeUrlCharacter = (url: string): boolean => UNSAFE_URL_CHARACTER_RE.
 const unsafeUrlProblem = (field: string): string => `The ${field} must not contain control characters, whitespace, invisible characters or a backslash in the host.`;
 
 function httpsProblem(field: string, value: unknown): string | null {
-  if (typeof value !== 'string' || !value.startsWith('https://')) {
+  if (typeof value !== 'string' || !/^https:\/\//i.test(value)) {
     return `The ${field} must be an https URL.`;
   }
   if (hasUnsafeUrlCharacter(value)) return unsafeUrlProblem(field);
@@ -471,6 +471,13 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   // host is a NAMED allowlist (YouTube/Vimeo — the store page embeds it).
   // Checked here too so a mistake fails on the developer's machine, with the
   // same error text.
+  // logo_url and the three link fields: a plain string the API never caps, but
+  // runs through the same https and unsafe-character guard as every app url.
+  for (const key of ['logo_url', 'developer_url', 'privacy_url', 'support_url']) {
+    if (listingOut[key] === undefined) continue;
+    if (typeof listingOut[key] !== 'string') throw fail(`The ${key} field must be a string.`);
+    checkUrl(listingOut[key], key, fail);
+  }
   if (listingOut.demo_url !== undefined) checkCappedUrl(listingOut.demo_url, 'demo_url', fail);
   if (listingOut.video_url !== undefined) {
     checkCappedUrl(listingOut.video_url, 'video_url', fail);
