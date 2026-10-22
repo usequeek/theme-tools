@@ -57,14 +57,14 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.8.1",
-    "@oclif/core": "^5.0.0",
-    "@oclif/plugin-warn-if-update-available": "^4.0.0",
+    "@oclif/core": "^5.1.8",
+    "@oclif/plugin-warn-if-update-available": "^4.0.3",
     "@usequeek/create-app": "workspace:^",
     "@usequeek/create-theme": "workspace:^",
     "@usequeek/theme-check": "workspace:^",
     "openapi-typescript": "7.13.0",
-    "playwright-core": "^1.59.1",
-    "smol-toml": "^1.9.0",
+    "playwright-core": "^1.64.1",
+    "smol-toml": "^1.9.1",
     "yazl": "^3.3.1"
   },
   "devDependencies": {
