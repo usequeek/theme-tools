@@ -154,10 +154,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+/**
+ * Parity constant, mirrors the API: a URL carrying a control character, any
+ * whitespace or separator, an invisible format character or a backslash is
+ * refused, tested on the RAW string. WHATWG `new URL` strips tabs and newlines
+ * and turns a backslash into a slash, so a host that reads as unrelated to a
+ * Queek domain here could resolve to one in a browser.
+ */
+const UNSAFE_URL_CHARACTER_RE = /[\p{Cc}\p{Z}\p{Cf}\\]/u;
+const unsafeUrlProblem = (field: string): string => `The ${field} must not contain control characters, whitespace, invisible characters or a backslash.`;
+
 function httpsProblem(field: string, value: unknown): string | null {
   if (typeof value !== 'string' || !value.startsWith('https://')) {
     return `The ${field} must be an https URL.`;
   }
+  if (UNSAFE_URL_CHARACTER_RE.test(value)) return unsafeUrlProblem(field);
   return null;
 }
 
@@ -732,6 +743,7 @@ function accountPageProblems(block: Record<string, unknown>, targets: string[], 
   if (targets.length !== 1 || targets[0] !== ACCOUNT_PAGE_TARGET) problems.push(`The ${where} app_page must have exactly the ${ACCOUNT_PAGE_TARGET} target.`);
   const url = typeof block.url === 'string' ? block.url : '';
   if (url === '') return [...problems, `The ${where}.url is required on an app_page.`];
+  if (UNSAFE_URL_CHARACTER_RE.test(url)) return [...problems, unsafeUrlProblem(`${where}.url`)];
   if (url.includes('#')) problems.push(`The ${where}.url must not contain a fragment.`);
   if (/^[a-z][a-z0-9+.-]*:\/\/[^/?#]*@/i.test(url)) problems.push(`The ${where}.url must not contain credentials.`);
   if (!url.toLowerCase().startsWith('https://')) return [...problems, `The ${where}.url must be an https URL.`];

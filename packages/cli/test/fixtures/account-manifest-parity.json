@@ -1167,6 +1167,467 @@
     }
    ],
    "contains": null
+  },
+  {
+   "name": "page url: tab inside the host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://us\tequeek.com/"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: line feed inside the host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://us\nequeek.com/"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: carriage return inside the host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://us\requeek.com/"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: space in the path",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a b"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: trailing space",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a "
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: no-break space in the path",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a\u00a0b"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: line separator U+2028 in the path",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a\u2028b"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: paragraph separator U+2029 in the path",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a\u2029b"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: zero-width space in the path",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a\u200bb"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: raw zero-width joiner in the path",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a\u200db"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: right-to-left override in the path",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a\u202eb"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: NUL in the path",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a\u0000b"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: soft hyphen in the host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps\u00ad.example.com/a"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: backslash dressing a Queek host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com\\@dashboard.usequeek.com/"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url: backslash after the host",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://dashboard.usequeek.com\\.apps.example.com/"
+    }
+   ],
+   "contains": "must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "page url accepts an internationalised host",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://b\u00fccher.example.com/konto"
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "page url accepts a query string and encoded characters",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a?x=1&y=a%20b&z=%E2%80%8D"
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "page url accepts a port and a path",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com:8443/bookings/account/"
+    }
+   ],
+   "contains": null
+  },
+  {
+   "name": "proxy url with a space",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/book ings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a"
+    }
+   ],
+   "contains": "extensions.proxy.url must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "product block link_url with a zero-width joiner",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "promo",
+     "title": "Promo",
+     "targets": [
+      "product"
+     ],
+     "link_url": "https://apps.example.com/a\u200db"
+    }
+   ],
+   "contains": "link_url must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "product block image url with a space",
+   "valid": false,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "promo",
+     "title": "Promo",
+     "targets": [
+      "product"
+     ],
+     "image": {
+      "url": "https://apps.example.com/a b.png"
+     }
+    }
+   ],
+   "contains": "image.url must not contain control characters, whitespace, invisible characters or a backslash"
+  },
+  {
+   "name": "product block link_url with a query string passes",
+   "valid": true,
+   "proxy": {
+    "url": "https://apps.example.com/bookings/proxy",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "blocks": [
+    {
+     "key": "promo",
+     "title": "Promo",
+     "targets": [
+      "product"
+     ],
+     "link_url": "https://apps.example.com/a?x=1&y=2"
+    }
+   ],
+   "contains": null
   }
  ],
  "titles": [

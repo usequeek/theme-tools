@@ -172,6 +172,58 @@ describe('shopper account manifest messages', () => {
   });
 });
 
+describe('urls with control characters, whitespace, invisible characters or a backslash', () => {
+  const UNSAFE = 'must not contain control characters, whitespace, invisible characters or a backslash.';
+  const bad = 'https://apps.example.com/a b';
+  const ext = (doc: Record<string, unknown>): Record<string, unknown> => doc.extensions as Record<string, unknown>;
+  const withDoc = (mutate: (doc: Record<string, unknown>) => void): string | null => {
+    const doc = docFor(PROXY, []);
+    mutate(doc);
+    return failure(doc);
+  };
+
+  it('refuses it on every top-level url field the CLI checks, naming the field', () => {
+    const cases: [string, string][] = [
+      ['install_url', BASE.replace('https://apps.example.com/bookings/install', bad)],
+      ['uninstall_url', BASE.replace('https://apps.example.com/bookings/uninstall', bad)],
+      ['settings_url', BASE.replace('[app]\n', `[app]\nsettings_url = "${bad}"\n`)],
+      ['webhook_url', `${BASE}\n[webhooks]\nurl = "${bad}"\n`],
+      ['demo_url', `${BASE}\n[listing]\ndemo_url = "${bad}"\n`],
+      ['extensions.merchant_page_url', `${BASE}\n[extensions]\nmerchant_page_url = "${bad}"\n`],
+    ];
+    for (const [field, source] of cases) {
+      expect(() => loadApp(stage(source)), field).toThrow(`The ${field} ${UNSAFE}`);
+    }
+  });
+
+  it('refuses it on the embed, the block image and link, the proxy and a dashboard action', () => {
+    const embed = { key: 'chat', title: 'Chat', target: 'body', url: 'https://apps.example.com/chat‍x', capabilities: ['chat-bubble'] };
+    expect(withDoc((doc) => { ext(doc).embeds = [embed]; })).toBe(`The manifest.extensions.embeds[0].url ${UNSAFE}`);
+    expect(withDoc((doc) => { ext(doc).proxy = { ...PROXY, url: 'https://apps.example.com/p\tq' }; })).toBe(`The extensions.proxy.url ${UNSAFE}`);
+    expect(withDoc((doc) => { ext(doc).blocks = [{ key: 'p', title: 'P', targets: ['product'], link_url: bad }]; })).toBe(`The manifest.extensions.blocks[0].link_url ${UNSAFE}`);
+    expect(withDoc((doc) => { ext(doc).blocks = [{ key: 'p', title: 'P', targets: ['product'], image: { url: bad } }]; })).toBe(`The manifest.extensions.blocks[0].image.url ${UNSAFE}`);
+    const message = withDoc((doc) => {
+      delete doc.extensions;
+      doc.dashboard = { actions: [{ key: 'a', title: 'A', target: 'order-details', scope: 'merchant-business_profile-read', effect: 'order_appointment', notify_url: bad }] };
+    });
+    expect(message).toContain(`notify_url ${UNSAFE}`);
+  });
+
+  it('keeps the https refusal first on a generic field and the unsafe refusal first on the page url, as the API does', () => {
+    expect(withDoc((doc) => { ext(doc).proxy = { ...PROXY, url: 'http://apps.example.com/a b' }; })).toBe('The extensions.proxy.url must be an https URL.');
+    expect(failure(docFor(PROXY, [page({ url: 'http://apps.example.com/a b' })]))).toBe(`The manifest.extensions.blocks[0].url ${UNSAFE}`);
+  });
+
+  it('refuses a backslash on a page url (the API refuses any backslash; the path form is the one open question)', () => {
+    expect(failure(docFor(PROXY, [page({ url: 'https://apps.example.com/a\\b' })]))).toBe(`The manifest.extensions.blocks[0].url ${UNSAFE}`);
+  });
+
+  it('accepts an internationalised host, a query string and a plain https url', () => {
+    expect(failure(docFor(PROXY, [page({ url: 'https://bücher.example.com/konto?x=1&y=a%20b' })]))).toBeNull();
+    expect(withDoc((doc) => { ext(doc).blocks = [{ key: 'p', title: 'P', targets: ['product'], link_url: 'https://apps.example.com/a?x=1' }]; })).toBeNull();
+  });
+});
+
 describe('queek.app.toml with a shopper account page', () => {
   const ACCOUNT_TOML = `${BASE}
 [extensions.proxy]
