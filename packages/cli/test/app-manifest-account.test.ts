@@ -11,10 +11,11 @@ import { APP_TOML, fromManifest, loadApp, loadTomlFile, serverString, toManifest
 
 interface Row { name: string; valid: boolean; proxy: Record<string, unknown> | null; blocks: Record<string, unknown>[]; embeds?: Record<string, unknown>[]; contains: string | null; count?: number }
 interface VerdictRow { name: string; path: string; value: string; valid: boolean; contains: string | null }
-interface ManifestVerdict { name: string; path: string; value: string | { prefix: string; unit: string; count: number; suffix: string }; valid: boolean }
+type Spec = string | number | boolean | unknown[] | { prefix: string; unit: string; count: number; suffix: string };
+interface ManifestVerdict { name: string; path: string; value: Spec; valid: boolean }
 interface FieldRow { name: string; field: string; value: string; valid: boolean; contains: string | null }
 interface TitleRow { name: string; title: string; valid: boolean }
-const parity = JSON.parse(readFileSync(new URL('./fixtures/account-manifest-parity.json', import.meta.url), 'utf8')) as { rows: Row[]; titles: TitleRow[]; fields: FieldRow[]; serverVerdicts: VerdictRow[]; serverTrimmedCodePoints: number[]; manifestBase: Record<string, unknown>; manifestVerdicts: ManifestVerdict[] };
+const parity = JSON.parse(readFileSync(new URL('./fixtures/account-manifest-parity.json', import.meta.url), 'utf8')) as { rows: Row[]; titles: TitleRow[]; fields: FieldRow[]; serverVerdicts: VerdictRow[]; serverTrimmedCodePoints: number[]; manifestBase: Record<string, unknown>; manifestVerdicts: ManifestVerdict[]; ruleBase: Record<string, unknown>; ruleVerdicts: ManifestVerdict[] };
 
 const BASE = `
 slug = "bookings"
@@ -182,12 +183,15 @@ describe('every string is read the way the API reads it (trimmed, empty is unset
     });
     node[parts[parts.length - 1]] = value;
   };
-  const resolve = (value: ManifestVerdict['value']): string => (typeof value === 'string' ? value : `${value.prefix}${value.unit.repeat(value.count)}${value.suffix}`);
-  const answer = (path: string, value: string): string | null => {
-    const manifest = structuredClone(parity.manifestBase);
+  const isSpec = (value: Spec): value is Extract<Spec, { unit: string }> => typeof value === 'object' && !Array.isArray(value) && 'unit' in value && 'prefix' in value;
+  const resolve = (value: Spec): unknown => (isSpec(value) ? `${value.prefix}${value.unit.repeat(value.count)}${value.suffix}` : value);
+  const answerFrom = (base: Record<string, unknown>, path: string, value: unknown): string | null => {
+    const manifest = structuredClone(base);
     if (path) setPath(manifest, path, value);
     return failure(parseToml(fromManifest(manifest)) as Record<string, unknown>);
   };
+  const answer = (path: string, value: unknown): string | null => answerFrom(parity.manifestBase, path, value);
+  const rule2 = (path: string, value: unknown): string | null => answerFrom(parity.ruleBase, path, value);
 
   it('accepts the unchanged base manifest and has the full API verdict table', () => {
     expect(answer('', '')).toBeNull();
@@ -200,6 +204,62 @@ describe('every string is read the way the API reads it (trimmed, empty is unset
     const message = answer(row.path, resolve(row.value));
     if (row.valid) expect(message).toBeNull();
     else expect(message).not.toBeNull();
+  });
+
+  it('accepts the unchanged rule base and has its full API verdict table', () => {
+    expect(answerFrom(parity.ruleBase, '', '')).toBeNull();
+    expect(parity.ruleVerdicts.length).toBeGreaterThanOrEqual(490);
+    expect(parity.ruleVerdicts.some((row) => row.valid)).toBe(true);
+    expect(parity.ruleVerdicts.some((row) => !row.valid)).toBe(true);
+  });
+
+  it.each(parity.ruleVerdicts.map((row) => [row.name, row] as const))('API rule verdict: %s', (_name, row) => {
+    const message = answerFrom(parity.ruleBase, row.path, resolve(row.value));
+    if (row.valid) expect(message).toBeNull();
+    else expect(message).not.toBeNull();
+  });
+
+  it('words each new refusal like the API, with the field named', () => {
+    const rule = (path: string, value: unknown): string | null => answerFrom(parity.ruleBase, path, value);
+    expect(rule('description', 'a'.repeat(2001))).toBe('The description field must not be greater than 2000 characters.');
+    expect(rule('developer', 'a'.repeat(121))).toBe('The developer field must not be greater than 120 characters.');
+    expect(rule('tagline', 'a'.repeat(81))).toBe('The tagline field must not be greater than 80 characters.');
+    expect(rule('pricing.note', 'a'.repeat(81))).toBe('The pricing.note field must not be greater than 80 characters.');
+    expect(rule('highlights.0', 'a'.repeat(91))).toBe('The highlights[0] field must not be greater than 90 characters.');
+    expect(rule('highlights', ['a', 'b', 'c', 'd', 'e', 'f'])).toBe('The highlights field must not have more than 5 items.');
+    expect(rule('pricing.model', 'freemium')).toBe('The pricing model must be one of: free, free_trial, paid.');
+    expect(rule('pricing.extra', 'x')).toBe("Unknown field 'extra' in manifest.pricing.");
+    expect(rule('category', 'bogus')).toBe('The category must be one of: sales_channels, delivery, marketing, accounting, operations.');
+    expect(rule('description', 5)).toBe('The description field must be a string.');
+    expect(rule('dashboard.print.0.fields.0.label', 'a'.repeat(81))).toBe('The manifest.dashboard.print[0].fields[0].label field is required (max 80).');
+    expect(rule('dashboard.print.0.fields.0.key', 'Bad Key')).toBe('The manifest.dashboard.print[0].fields[0].key must match [a-z0-9_]{1,64}.');
+    expect(rule('settings.0.required', 'yes')).toBe('The settings[0].required field must be true or false.');
+    expect(rule('extensions.blocks.1.schema.0.required', 'yes')).toContain('required must be true or false.');
+    expect(rule('extensions.blocks.1.image', 'x')).toBe('The manifest.extensions.blocks[1].image field must be an array.');
+    expect(rule('dashboard.blocks.0.when', 'x')).toContain('when field must be an array.');
+    expect(rule('dashboard.actions.0.when', 'x')).toContain('when field must be an array.');
+    expect(rule('webhook_topics', '')).toBe('The webhooks.topics field must be an array.');
+    expect(rule('extensions.proxy.allow_post', ' ')).toBe('The extensions.proxy.allow_post field must be true or false.');
+  });
+
+  it('reads allow_post like a Laravel boolean: 1 and "1" enable it, 0 and "0" leave it off, and the submit rule follows', () => {
+    const sentProxy = (value: unknown): Record<string, unknown> | undefined => {
+      const manifest = structuredClone(parity.ruleBase);
+      setPath(manifest, 'extensions.proxy.allow_post', value);
+      const { manifest: sent } = toManifest(parseToml(fromManifest(manifest)) as Record<string, unknown>);
+      return (sent.extensions as { proxy?: Record<string, unknown> }).proxy;
+    };
+    expect(sentProxy(1)?.allow_post).toBe(true);
+    expect(sentProxy('1')?.allow_post).toBe(true);
+    expect(sentProxy(0)).not.toHaveProperty('allow_post');
+    expect(sentProxy('0')).not.toHaveProperty('allow_post');
+  });
+
+  it('counts a url cap in code points', () => {
+    expect(rule2('extensions.blocks.1.link_url', `https://apps.example.com/${'\u{1F4C5}'.repeat(2023)}`)).toBeNull();
+    expect(rule2('extensions.blocks.1.link_url', `https://apps.example.com/${'\u{1F4C5}'.repeat(2024)}`)).toContain('longer than 2048 characters');
+    expect(failure(docFor(PROXY, [page({ url: `https://apps.example.com/${'\u{1F4C5}'.repeat(2023)}` })]))).toBeNull();
+    expect(failure(docFor(PROXY, [page({ url: `https://apps.example.com/${'\u{1F4C5}'.repeat(2024)}` })]))).toContain('longer than 2048 characters');
   });
 
   it('reports a cap breach with the field named, and an empty required field as missing', () => {

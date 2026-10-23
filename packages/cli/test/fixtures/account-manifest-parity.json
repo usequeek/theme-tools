@@ -1,5 +1,5 @@
 {
- "note": "CLI-side parity rows for the shopper account manifest contract, mirrored from the API's account manifest test. Rows mirrored from the API's validator. Messages are matched by substring: the CLI names a field with the manifest. prefix, the API does not. Rows that depend on the API's configured Queek hosts use the public Queek hosts here. serverVerdicts: each input was run through the API's request middleware (trim, empty to null) and then its validator; the verdict is the API's. serverTrimmedCodePoints: every code point the API's trim strips from the ends of a string. manifestVerdicts: API-shaped manifests (manifestBase with one value set at a dotted path) run through the API's request middleware and its validator; the CLI answers them through the toml round trip. Rows where the CLI is still looser than the API (description, developer, tagline, pricing note and highlight caps, print field key and label) are left out.",
+ "note": "CLI-side parity rows for the shopper account manifest contract, mirrored from the API's account manifest test. Rows mirrored from the API's validator. Messages are matched by substring: the CLI names a field with the manifest. prefix, the API does not. Rows that depend on the API's configured Queek hosts use the public Queek hosts here. serverVerdicts: each input was run through the API's request middleware (trim, empty to null) and then its validator; the verdict is the API's. serverTrimmedCodePoints: every code point the API's trim strips from the ends of a string. manifestVerdicts: API-shaped manifests (manifestBase with one value set at a dotted path) run through the API's request middleware and its validator; the CLI answers them through the toml round trip. Rows where the CLI is still looser than the API (description, developer, tagline, pricing note and highlight caps, print field key and label) are left out. ruleVerdicts: the same, from a manifest that declares every optional section; every key of it is also set to an empty and to a blank string, plus the cap, type and enum rows of the listing fields.",
  "rows": [
   {
    "name": "page and order block",
@@ -5942,6 +5942,3352 @@
    "path": "extensions.blocks.1.description",
    "value": " \t\u200b",
    "valid": true
+  }
+ ],
+ "ruleBase": {
+  "slug": "bookings",
+  "name": "Bookings",
+  "description": "Bookings.",
+  "icon": "storefront",
+  "developer": "Dev Ltd",
+  "category": "operations",
+  "distribution": "public",
+  "tagline": "Book it",
+  "description_long": "Long text.",
+  "highlights": [
+   "Fast",
+   "Simple"
+  ],
+  "pricing": {
+   "model": "free",
+   "note": "Free"
+  },
+  "logo_url": "https://apps.example.com/logo.png",
+  "developer_url": "https://apps.example.com/dev",
+  "privacy_url": "https://apps.example.com/privacy",
+  "support_url": "https://apps.example.com/support",
+  "scopes": [
+   "merchant-orders-read"
+  ],
+  "optional_scopes": [
+   "merchant-collections-read"
+  ],
+  "webhook_topics": [
+   "orders/create"
+  ],
+  "webhook_url": "https://apps.example.com/hook",
+  "settings": [
+   {
+    "key": "greeting",
+    "label": "Greeting",
+    "type": "string",
+    "help": "Say hi",
+    "required": true
+   },
+   {
+    "key": "size",
+    "label": "Size",
+    "type": "select",
+    "options": [
+     "S",
+     "M"
+    ]
+   }
+  ],
+  "install_url": "https://apps.example.com/i",
+  "uninstall_url": "https://apps.example.com/u",
+  "settings_url": "https://apps.example.com/s",
+  "extensions": {
+   "proxy": {
+    "url": "https://apps.example.com/p",
+    "subpath": "bookings",
+    "share_customer_id": true,
+    "allow_post": true
+   },
+   "merchant_page_url": "https://apps.example.com/m",
+   "nav": [
+    {
+     "label": "Docs",
+     "path": "/m/docs"
+    }
+   ],
+   "embeds": [
+    {
+     "key": "chat",
+     "title": "Chat",
+     "target": "body",
+     "url": "https://apps.example.com/chat",
+     "capabilities": [
+      "chat-bubble"
+     ],
+     "settings": [
+      "greeting"
+     ]
+    }
+   ],
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a"
+    },
+    {
+     "key": "promo",
+     "type": "app_block",
+     "title": "Promo",
+     "description": "Desc",
+     "targets": [
+      "product"
+     ],
+     "available_if": "declared_products",
+     "link_url": "https://apps.example.com/l",
+     "image": {
+      "media_id": "abc123",
+      "url": "https://apps.example.com/i.png"
+     },
+     "schema": [
+      {
+       "key": "when",
+       "label": "When",
+       "type": "date",
+       "required": true
+      },
+      {
+       "key": "size",
+       "label": "Size",
+       "type": "select",
+       "options": [
+        "S",
+        "M"
+       ],
+       "required": false
+      }
+     ]
+    },
+    {
+     "key": "engrave",
+     "title": "Engrave",
+     "targets": [
+      "product"
+     ],
+     "available_if": "declared_products",
+     "schema": [
+      {
+       "key": "text",
+       "label": "Text",
+       "type": "line_text",
+       "max_length": 30,
+       "required": true
+      }
+     ]
+    }
+   ]
+  },
+  "dashboard": {
+   "blocks": [
+    {
+     "key": "b",
+     "title": "B",
+     "target": "order-details",
+     "link_url": "https://apps.example.com/bl",
+     "image": {
+      "media_id": "xyz",
+      "url": "https://apps.example.com/bi.png"
+     },
+     "schema": [
+      {
+       "key": "d",
+       "label": "D",
+       "type": "date",
+       "required": true
+      }
+     ],
+     "when": [
+      "order.is_paid"
+     ]
+    }
+   ],
+   "actions": [
+    {
+     "key": "a",
+     "title": "A",
+     "target": "order-details",
+     "scope": "merchant-orders-read",
+     "effect": "order_appointment",
+     "notify_url": "https://apps.example.com/n",
+     "schema": [
+      {
+       "key": "d",
+       "label": "D",
+       "type": "date",
+       "required": false
+      }
+     ],
+     "when": [
+      "order.has_appointment"
+     ]
+    }
+   ],
+   "print": [
+    {
+     "key": "p",
+     "title": "P",
+     "target": "order-print",
+     "fields": [
+      {
+       "key": "f",
+       "label": "F"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "ruleVerdicts": [
+  {
+   "name": "slug set to empty",
+   "path": "slug",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "slug set to blank",
+   "path": "slug",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "name set to empty",
+   "path": "name",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "name set to blank",
+   "path": "name",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "description set to empty",
+   "path": "description",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "description set to blank",
+   "path": "description",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "icon set to empty",
+   "path": "icon",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "icon set to blank",
+   "path": "icon",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "developer set to empty",
+   "path": "developer",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "developer set to blank",
+   "path": "developer",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "category set to empty",
+   "path": "category",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "category set to blank",
+   "path": "category",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "distribution set to empty",
+   "path": "distribution",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "distribution set to blank",
+   "path": "distribution",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "tagline set to empty",
+   "path": "tagline",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "tagline set to blank",
+   "path": "tagline",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "description_long set to empty",
+   "path": "description_long",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "description_long set to blank",
+   "path": "description_long",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "highlights set to empty",
+   "path": "highlights",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "highlights set to blank",
+   "path": "highlights",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 set to empty",
+   "path": "highlights.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "highlights.0 set to blank",
+   "path": "highlights.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "highlights.1 set to empty",
+   "path": "highlights.1",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "highlights.1 set to blank",
+   "path": "highlights.1",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "pricing set to empty",
+   "path": "pricing",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "pricing set to blank",
+   "path": "pricing",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "pricing.model set to empty",
+   "path": "pricing.model",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "pricing.model set to blank",
+   "path": "pricing.model",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "pricing.note set to empty",
+   "path": "pricing.note",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "pricing.note set to blank",
+   "path": "pricing.note",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "logo_url set to empty",
+   "path": "logo_url",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "logo_url set to blank",
+   "path": "logo_url",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "developer_url set to empty",
+   "path": "developer_url",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "developer_url set to blank",
+   "path": "developer_url",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "privacy_url set to empty",
+   "path": "privacy_url",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "privacy_url set to blank",
+   "path": "privacy_url",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "support_url set to empty",
+   "path": "support_url",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "support_url set to blank",
+   "path": "support_url",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "scopes set to empty",
+   "path": "scopes",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "scopes set to blank",
+   "path": "scopes",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "scopes.0 set to empty",
+   "path": "scopes.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "scopes.0 set to blank",
+   "path": "scopes.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "optional_scopes set to empty",
+   "path": "optional_scopes",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "optional_scopes set to blank",
+   "path": "optional_scopes",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "optional_scopes.0 set to empty",
+   "path": "optional_scopes.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "optional_scopes.0 set to blank",
+   "path": "optional_scopes.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "webhook_topics set to empty",
+   "path": "webhook_topics",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "webhook_topics set to blank",
+   "path": "webhook_topics",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "webhook_topics.0 set to empty",
+   "path": "webhook_topics.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "webhook_topics.0 set to blank",
+   "path": "webhook_topics.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "webhook_url set to empty",
+   "path": "webhook_url",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "webhook_url set to blank",
+   "path": "webhook_url",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings set to empty",
+   "path": "settings",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings set to blank",
+   "path": "settings",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.0 set to empty",
+   "path": "settings.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.0 set to blank",
+   "path": "settings.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.0.key set to empty",
+   "path": "settings.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.0.key set to blank",
+   "path": "settings.0.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.0.label set to empty",
+   "path": "settings.0.label",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.0.label set to blank",
+   "path": "settings.0.label",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.0.type set to empty",
+   "path": "settings.0.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.0.type set to blank",
+   "path": "settings.0.type",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.0.help set to empty",
+   "path": "settings.0.help",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "settings.0.help set to blank",
+   "path": "settings.0.help",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "settings.0.required set to empty",
+   "path": "settings.0.required",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.0.required set to blank",
+   "path": "settings.0.required",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.1 set to empty",
+   "path": "settings.1",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.1 set to blank",
+   "path": "settings.1",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.1.key set to empty",
+   "path": "settings.1.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.1.key set to blank",
+   "path": "settings.1.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.1.label set to empty",
+   "path": "settings.1.label",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.1.label set to blank",
+   "path": "settings.1.label",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.1.type set to empty",
+   "path": "settings.1.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.1.type set to blank",
+   "path": "settings.1.type",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.1.options set to empty",
+   "path": "settings.1.options",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.1.options set to blank",
+   "path": "settings.1.options",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.1.options.0 set to empty",
+   "path": "settings.1.options.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.1.options.0 set to blank",
+   "path": "settings.1.options.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.1.options.1 set to empty",
+   "path": "settings.1.options.1",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.1.options.1 set to blank",
+   "path": "settings.1.options.1",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "install_url set to empty",
+   "path": "install_url",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "install_url set to blank",
+   "path": "install_url",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "uninstall_url set to empty",
+   "path": "uninstall_url",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "uninstall_url set to blank",
+   "path": "uninstall_url",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings_url set to empty",
+   "path": "settings_url",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "settings_url set to blank",
+   "path": "settings_url",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "extensions set to empty",
+   "path": "extensions",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions set to blank",
+   "path": "extensions",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy set to empty",
+   "path": "extensions.proxy",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy set to blank",
+   "path": "extensions.proxy",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.url set to empty",
+   "path": "extensions.proxy.url",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.url set to blank",
+   "path": "extensions.proxy.url",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.subpath set to empty",
+   "path": "extensions.proxy.subpath",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.subpath set to blank",
+   "path": "extensions.proxy.subpath",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.share_customer_id set to empty",
+   "path": "extensions.proxy.share_customer_id",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.share_customer_id set to blank",
+   "path": "extensions.proxy.share_customer_id",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.allow_post set to empty",
+   "path": "extensions.proxy.allow_post",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.allow_post set to blank",
+   "path": "extensions.proxy.allow_post",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.merchant_page_url set to empty",
+   "path": "extensions.merchant_page_url",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.merchant_page_url set to blank",
+   "path": "extensions.merchant_page_url",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav set to empty",
+   "path": "extensions.nav",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav set to blank",
+   "path": "extensions.nav",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0 set to empty",
+   "path": "extensions.nav.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0 set to blank",
+   "path": "extensions.nav.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0.label set to empty",
+   "path": "extensions.nav.0.label",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0.label set to blank",
+   "path": "extensions.nav.0.label",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0.path set to empty",
+   "path": "extensions.nav.0.path",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0.path set to blank",
+   "path": "extensions.nav.0.path",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds set to empty",
+   "path": "extensions.embeds",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds set to blank",
+   "path": "extensions.embeds",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0 set to empty",
+   "path": "extensions.embeds.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0 set to blank",
+   "path": "extensions.embeds.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.key set to empty",
+   "path": "extensions.embeds.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.key set to blank",
+   "path": "extensions.embeds.0.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.title set to empty",
+   "path": "extensions.embeds.0.title",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.title set to blank",
+   "path": "extensions.embeds.0.title",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.target set to empty",
+   "path": "extensions.embeds.0.target",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.target set to blank",
+   "path": "extensions.embeds.0.target",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.url set to empty",
+   "path": "extensions.embeds.0.url",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.url set to blank",
+   "path": "extensions.embeds.0.url",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.capabilities set to empty",
+   "path": "extensions.embeds.0.capabilities",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.capabilities set to blank",
+   "path": "extensions.embeds.0.capabilities",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.capabilities.0 set to empty",
+   "path": "extensions.embeds.0.capabilities.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.capabilities.0 set to blank",
+   "path": "extensions.embeds.0.capabilities.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.settings set to empty",
+   "path": "extensions.embeds.0.settings",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.settings set to blank",
+   "path": "extensions.embeds.0.settings",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.settings.0 set to empty",
+   "path": "extensions.embeds.0.settings.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.settings.0 set to blank",
+   "path": "extensions.embeds.0.settings.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks set to empty",
+   "path": "extensions.blocks",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks set to blank",
+   "path": "extensions.blocks",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0 set to empty",
+   "path": "extensions.blocks.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0 set to blank",
+   "path": "extensions.blocks.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.key set to empty",
+   "path": "extensions.blocks.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.key set to blank",
+   "path": "extensions.blocks.0.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.type set to empty",
+   "path": "extensions.blocks.0.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.type set to blank",
+   "path": "extensions.blocks.0.type",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.title set to empty",
+   "path": "extensions.blocks.0.title",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.title set to blank",
+   "path": "extensions.blocks.0.title",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.targets set to empty",
+   "path": "extensions.blocks.0.targets",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.targets set to blank",
+   "path": "extensions.blocks.0.targets",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.targets.0 set to empty",
+   "path": "extensions.blocks.0.targets.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.targets.0 set to blank",
+   "path": "extensions.blocks.0.targets.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.url set to empty",
+   "path": "extensions.blocks.0.url",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.url set to blank",
+   "path": "extensions.blocks.0.url",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1 set to empty",
+   "path": "extensions.blocks.1",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1 set to blank",
+   "path": "extensions.blocks.1",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.key set to empty",
+   "path": "extensions.blocks.1.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.key set to blank",
+   "path": "extensions.blocks.1.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.type set to empty",
+   "path": "extensions.blocks.1.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.type set to blank",
+   "path": "extensions.blocks.1.type",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.title set to empty",
+   "path": "extensions.blocks.1.title",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.title set to blank",
+   "path": "extensions.blocks.1.title",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.description set to empty",
+   "path": "extensions.blocks.1.description",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description set to blank",
+   "path": "extensions.blocks.1.description",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.targets set to empty",
+   "path": "extensions.blocks.1.targets",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.targets set to blank",
+   "path": "extensions.blocks.1.targets",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.targets.0 set to empty",
+   "path": "extensions.blocks.1.targets.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.targets.0 set to blank",
+   "path": "extensions.blocks.1.targets.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.available_if set to empty",
+   "path": "extensions.blocks.1.available_if",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.available_if set to blank",
+   "path": "extensions.blocks.1.available_if",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.link_url set to empty",
+   "path": "extensions.blocks.1.link_url",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.link_url set to blank",
+   "path": "extensions.blocks.1.link_url",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.image set to empty",
+   "path": "extensions.blocks.1.image",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image set to blank",
+   "path": "extensions.blocks.1.image",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image.media_id set to empty",
+   "path": "extensions.blocks.1.image.media_id",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image.media_id set to blank",
+   "path": "extensions.blocks.1.image.media_id",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image.url set to empty",
+   "path": "extensions.blocks.1.image.url",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image.url set to blank",
+   "path": "extensions.blocks.1.image.url",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema set to empty",
+   "path": "extensions.blocks.1.schema",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema set to blank",
+   "path": "extensions.blocks.1.schema",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0 set to empty",
+   "path": "extensions.blocks.1.schema.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0 set to blank",
+   "path": "extensions.blocks.1.schema.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.key set to empty",
+   "path": "extensions.blocks.1.schema.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.key set to blank",
+   "path": "extensions.blocks.1.schema.0.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label set to empty",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label set to blank",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.type set to empty",
+   "path": "extensions.blocks.1.schema.0.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.type set to blank",
+   "path": "extensions.blocks.1.schema.0.type",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.required set to empty",
+   "path": "extensions.blocks.1.schema.0.required",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.required set to blank",
+   "path": "extensions.blocks.1.schema.0.required",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1 set to empty",
+   "path": "extensions.blocks.1.schema.1",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1 set to blank",
+   "path": "extensions.blocks.1.schema.1",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.key set to empty",
+   "path": "extensions.blocks.1.schema.1.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.key set to blank",
+   "path": "extensions.blocks.1.schema.1.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.label set to empty",
+   "path": "extensions.blocks.1.schema.1.label",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.label set to blank",
+   "path": "extensions.blocks.1.schema.1.label",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.type set to empty",
+   "path": "extensions.blocks.1.schema.1.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.type set to blank",
+   "path": "extensions.blocks.1.schema.1.type",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.options set to empty",
+   "path": "extensions.blocks.1.schema.1.options",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.options set to blank",
+   "path": "extensions.blocks.1.schema.1.options",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.options.0 set to empty",
+   "path": "extensions.blocks.1.schema.1.options.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.options.0 set to blank",
+   "path": "extensions.blocks.1.schema.1.options.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.options.1 set to empty",
+   "path": "extensions.blocks.1.schema.1.options.1",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.options.1 set to blank",
+   "path": "extensions.blocks.1.schema.1.options.1",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.required set to empty",
+   "path": "extensions.blocks.1.schema.1.required",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.required set to blank",
+   "path": "extensions.blocks.1.schema.1.required",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2 set to empty",
+   "path": "extensions.blocks.2",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2 set to blank",
+   "path": "extensions.blocks.2",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.key set to empty",
+   "path": "extensions.blocks.2.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.key set to blank",
+   "path": "extensions.blocks.2.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.title set to empty",
+   "path": "extensions.blocks.2.title",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.title set to blank",
+   "path": "extensions.blocks.2.title",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.targets set to empty",
+   "path": "extensions.blocks.2.targets",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.targets set to blank",
+   "path": "extensions.blocks.2.targets",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.targets.0 set to empty",
+   "path": "extensions.blocks.2.targets.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.targets.0 set to blank",
+   "path": "extensions.blocks.2.targets.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.available_if set to empty",
+   "path": "extensions.blocks.2.available_if",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.available_if set to blank",
+   "path": "extensions.blocks.2.available_if",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema set to empty",
+   "path": "extensions.blocks.2.schema",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema set to blank",
+   "path": "extensions.blocks.2.schema",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0 set to empty",
+   "path": "extensions.blocks.2.schema.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0 set to blank",
+   "path": "extensions.blocks.2.schema.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.key set to empty",
+   "path": "extensions.blocks.2.schema.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.key set to blank",
+   "path": "extensions.blocks.2.schema.0.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.label set to empty",
+   "path": "extensions.blocks.2.schema.0.label",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.label set to blank",
+   "path": "extensions.blocks.2.schema.0.label",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.type set to empty",
+   "path": "extensions.blocks.2.schema.0.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.type set to blank",
+   "path": "extensions.blocks.2.schema.0.type",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.max_length set to empty",
+   "path": "extensions.blocks.2.schema.0.max_length",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.max_length set to blank",
+   "path": "extensions.blocks.2.schema.0.max_length",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.required set to empty",
+   "path": "extensions.blocks.2.schema.0.required",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.required set to blank",
+   "path": "extensions.blocks.2.schema.0.required",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard set to empty",
+   "path": "dashboard",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard set to blank",
+   "path": "dashboard",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks set to empty",
+   "path": "dashboard.blocks",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks set to blank",
+   "path": "dashboard.blocks",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0 set to empty",
+   "path": "dashboard.blocks.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0 set to blank",
+   "path": "dashboard.blocks.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.key set to empty",
+   "path": "dashboard.blocks.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.key set to blank",
+   "path": "dashboard.blocks.0.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.title set to empty",
+   "path": "dashboard.blocks.0.title",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.title set to blank",
+   "path": "dashboard.blocks.0.title",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.target set to empty",
+   "path": "dashboard.blocks.0.target",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.target set to blank",
+   "path": "dashboard.blocks.0.target",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.link_url set to empty",
+   "path": "dashboard.blocks.0.link_url",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.link_url set to blank",
+   "path": "dashboard.blocks.0.link_url",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.image set to empty",
+   "path": "dashboard.blocks.0.image",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image set to blank",
+   "path": "dashboard.blocks.0.image",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image.media_id set to empty",
+   "path": "dashboard.blocks.0.image.media_id",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image.media_id set to blank",
+   "path": "dashboard.blocks.0.image.media_id",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image.url set to empty",
+   "path": "dashboard.blocks.0.image.url",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image.url set to blank",
+   "path": "dashboard.blocks.0.image.url",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema set to empty",
+   "path": "dashboard.blocks.0.schema",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema set to blank",
+   "path": "dashboard.blocks.0.schema",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0 set to empty",
+   "path": "dashboard.blocks.0.schema.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0 set to blank",
+   "path": "dashboard.blocks.0.schema.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.key set to empty",
+   "path": "dashboard.blocks.0.schema.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.key set to blank",
+   "path": "dashboard.blocks.0.schema.0.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.label set to empty",
+   "path": "dashboard.blocks.0.schema.0.label",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.label set to blank",
+   "path": "dashboard.blocks.0.schema.0.label",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.type set to empty",
+   "path": "dashboard.blocks.0.schema.0.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.type set to blank",
+   "path": "dashboard.blocks.0.schema.0.type",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.required set to empty",
+   "path": "dashboard.blocks.0.schema.0.required",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.required set to blank",
+   "path": "dashboard.blocks.0.schema.0.required",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when set to empty",
+   "path": "dashboard.blocks.0.when",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when set to blank",
+   "path": "dashboard.blocks.0.when",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when.0 set to empty",
+   "path": "dashboard.blocks.0.when.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when.0 set to blank",
+   "path": "dashboard.blocks.0.when.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions set to empty",
+   "path": "dashboard.actions",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions set to blank",
+   "path": "dashboard.actions",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0 set to empty",
+   "path": "dashboard.actions.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0 set to blank",
+   "path": "dashboard.actions.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.key set to empty",
+   "path": "dashboard.actions.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.key set to blank",
+   "path": "dashboard.actions.0.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.title set to empty",
+   "path": "dashboard.actions.0.title",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.title set to blank",
+   "path": "dashboard.actions.0.title",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.target set to empty",
+   "path": "dashboard.actions.0.target",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.target set to blank",
+   "path": "dashboard.actions.0.target",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.scope set to empty",
+   "path": "dashboard.actions.0.scope",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.scope set to blank",
+   "path": "dashboard.actions.0.scope",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.effect set to empty",
+   "path": "dashboard.actions.0.effect",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.effect set to blank",
+   "path": "dashboard.actions.0.effect",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.notify_url set to empty",
+   "path": "dashboard.actions.0.notify_url",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.notify_url set to blank",
+   "path": "dashboard.actions.0.notify_url",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema set to empty",
+   "path": "dashboard.actions.0.schema",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema set to blank",
+   "path": "dashboard.actions.0.schema",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0 set to empty",
+   "path": "dashboard.actions.0.schema.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0 set to blank",
+   "path": "dashboard.actions.0.schema.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.key set to empty",
+   "path": "dashboard.actions.0.schema.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.key set to blank",
+   "path": "dashboard.actions.0.schema.0.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.label set to empty",
+   "path": "dashboard.actions.0.schema.0.label",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.label set to blank",
+   "path": "dashboard.actions.0.schema.0.label",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.type set to empty",
+   "path": "dashboard.actions.0.schema.0.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.type set to blank",
+   "path": "dashboard.actions.0.schema.0.type",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.required set to empty",
+   "path": "dashboard.actions.0.schema.0.required",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.required set to blank",
+   "path": "dashboard.actions.0.schema.0.required",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.when set to empty",
+   "path": "dashboard.actions.0.when",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.when set to blank",
+   "path": "dashboard.actions.0.when",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.when.0 set to empty",
+   "path": "dashboard.actions.0.when.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.when.0 set to blank",
+   "path": "dashboard.actions.0.when.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print set to empty",
+   "path": "dashboard.print",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print set to blank",
+   "path": "dashboard.print",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0 set to empty",
+   "path": "dashboard.print.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0 set to blank",
+   "path": "dashboard.print.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.key set to empty",
+   "path": "dashboard.print.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.key set to blank",
+   "path": "dashboard.print.0.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.title set to empty",
+   "path": "dashboard.print.0.title",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.title set to blank",
+   "path": "dashboard.print.0.title",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.target set to empty",
+   "path": "dashboard.print.0.target",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.target set to blank",
+   "path": "dashboard.print.0.target",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields set to empty",
+   "path": "dashboard.print.0.fields",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields set to blank",
+   "path": "dashboard.print.0.fields",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0 set to empty",
+   "path": "dashboard.print.0.fields.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0 set to blank",
+   "path": "dashboard.print.0.fields.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key set to empty",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key set to blank",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label set to empty",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label set to blank",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "description at the cap of 2000",
+   "path": "description",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 2000,
+    "suffix": ""
+   },
+   "valid": true
+  },
+  {
+   "name": "description over the cap by one",
+   "path": "description",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 2001,
+    "suffix": ""
+   },
+   "valid": false
+  },
+  {
+   "name": "description at the cap plus newline",
+   "path": "description",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 2000,
+    "suffix": "\n"
+   },
+   "valid": true
+  },
+  {
+   "name": "description at the cap in emoji",
+   "path": "description",
+   "value": {
+    "prefix": "",
+    "unit": "\ud83d\udcc5",
+    "count": 2000,
+    "suffix": ""
+   },
+   "valid": true
+  },
+  {
+   "name": "description over the cap in emoji",
+   "path": "description",
+   "value": {
+    "prefix": "",
+    "unit": "\ud83d\udcc5",
+    "count": 2001,
+    "suffix": ""
+   },
+   "valid": false
+  },
+  {
+   "name": "developer at the cap of 120",
+   "path": "developer",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "developer over the cap by one",
+   "path": "developer",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "developer at the cap plus newline",
+   "path": "developer",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "developer at the cap in emoji",
+   "path": "developer",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "developer over the cap in emoji",
+   "path": "developer",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "tagline at the cap of 80",
+   "path": "tagline",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "tagline over the cap by one",
+   "path": "tagline",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "tagline at the cap plus newline",
+   "path": "tagline",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "tagline at the cap in emoji",
+   "path": "tagline",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "tagline over the cap in emoji",
+   "path": "tagline",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "pricing.note at the cap of 80",
+   "path": "pricing.note",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "pricing.note over the cap by one",
+   "path": "pricing.note",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "pricing.note at the cap plus newline",
+   "path": "pricing.note",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "pricing.note at the cap in emoji",
+   "path": "pricing.note",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "pricing.note over the cap in emoji",
+   "path": "pricing.note",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "highlights.0 at the cap of 90",
+   "path": "highlights.0",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 over the cap by one",
+   "path": "highlights.0",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "highlights.0 at the cap plus newline",
+   "path": "highlights.0",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 at the cap in emoji",
+   "path": "highlights.0",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 over the cap in emoji",
+   "path": "highlights.0",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label at the cap of 80",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label over the cap by one",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label at the cap plus newline",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label at the cap in emoji",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label over the cap in emoji",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "description as a number",
+   "path": "description",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "description as a list",
+   "path": "description",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "description as true",
+   "path": "description",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "developer as a number",
+   "path": "developer",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "developer as a list",
+   "path": "developer",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "developer as true",
+   "path": "developer",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "tagline as a number",
+   "path": "tagline",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "tagline as a list",
+   "path": "tagline",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "tagline as true",
+   "path": "tagline",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "pricing.note as a number",
+   "path": "pricing.note",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "pricing.note as a list",
+   "path": "pricing.note",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "pricing.note as true",
+   "path": "pricing.note",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "highlights.0 as a number",
+   "path": "highlights.0",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "highlights.0 as a list",
+   "path": "highlights.0",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "highlights.0 as true",
+   "path": "highlights.0",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "category as a number",
+   "path": "category",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "category as a list",
+   "path": "category",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "category as true",
+   "path": "category",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "icon as a number",
+   "path": "icon",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "icon as a list",
+   "path": "icon",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "icon as true",
+   "path": "icon",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label as a number",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label as a list",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label as true",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key as a number",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key as a list",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key as true",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "highlights five entries",
+   "path": "highlights",
+   "value": [
+    "a",
+    "b",
+    "c",
+    "d",
+    "e"
+   ],
+   "valid": true
+  },
+  {
+   "name": "highlights six entries",
+   "path": "highlights",
+   "value": [
+    "a",
+    "b",
+    "c",
+    "d",
+    "e",
+    "f"
+   ],
+   "valid": false
+  },
+  {
+   "name": "highlights as a string",
+   "path": "highlights",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "highlights as an object",
+   "path": "highlights",
+   "value": {
+    "k": "v"
+   },
+   "valid": true
+  },
+  {
+   "name": "category sales_channels",
+   "path": "category",
+   "value": "sales_channels",
+   "valid": true
+  },
+  {
+   "name": "category delivery",
+   "path": "category",
+   "value": "delivery",
+   "valid": true
+  },
+  {
+   "name": "category marketing",
+   "path": "category",
+   "value": "marketing",
+   "valid": true
+  },
+  {
+   "name": "category accounting",
+   "path": "category",
+   "value": "accounting",
+   "valid": true
+  },
+  {
+   "name": "category operations",
+   "path": "category",
+   "value": "operations",
+   "valid": true
+  },
+  {
+   "name": "category bogus",
+   "path": "category",
+   "value": "bogus",
+   "valid": false
+  },
+  {
+   "name": "category Operations",
+   "path": "category",
+   "value": "Operations",
+   "valid": false
+  },
+  {
+   "name": "category sales channels",
+   "path": "category",
+   "value": "sales channels",
+   "valid": false
+  },
+  {
+   "name": "pricing model free",
+   "path": "pricing.model",
+   "value": "free",
+   "valid": true
+  },
+  {
+   "name": "pricing model free_trial",
+   "path": "pricing.model",
+   "value": "free_trial",
+   "valid": true
+  },
+  {
+   "name": "pricing model paid",
+   "path": "pricing.model",
+   "value": "paid",
+   "valid": true
+  },
+  {
+   "name": "pricing model bogus",
+   "path": "pricing.model",
+   "value": "bogus",
+   "valid": false
+  },
+  {
+   "name": "pricing model Free",
+   "path": "pricing.model",
+   "value": "Free",
+   "valid": false
+  },
+  {
+   "name": "pricing model freemium",
+   "path": "pricing.model",
+   "value": "freemium",
+   "valid": false
+  },
+  {
+   "name": "pricing unknown key",
+   "path": "pricing.extra",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "pricing with only a note",
+   "path": "pricing",
+   "value": {
+    "note": "n"
+   },
+   "valid": false
+  },
+  {
+   "name": "pricing empty table",
+   "path": "pricing",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "pricing as a string",
+   "path": "pricing",
+   "value": "free",
+   "valid": false
+  },
+  {
+   "name": "pricing as a list",
+   "path": "pricing",
+   "value": [
+    "free"
+   ],
+   "valid": false
+  },
+  {
+   "name": "pricing model as a list",
+   "path": "pricing.model",
+   "value": [
+    "free"
+   ],
+   "valid": false
+  },
+  {
+   "name": "pricing note as a list",
+   "path": "pricing.note",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key = 6:ok_key",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": "ok_key",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key = 64:kkkkkkkkkkkk",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key = 65:kkkkkkkkkkkk",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key = 7:Bad Key",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": "Bad Key",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key = 5:UPPER",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": "UPPER",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key = 3:a-b",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": "a-b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key = 5:\u00fcn\u00ef",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": "\u00fcn\u00ef",
+   "valid": false
+  },
+  {
+   "name": "print field unknown key",
+   "path": "dashboard.print.0.fields.0.extra",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "print fields twenty-one",
+   "path": "dashboard.print.0.fields",
+   "value": [
+    {
+     "key": "f1",
+     "label": "F1"
+    },
+    {
+     "key": "f2",
+     "label": "F2"
+    },
+    {
+     "key": "f3",
+     "label": "F3"
+    },
+    {
+     "key": "f4",
+     "label": "F4"
+    },
+    {
+     "key": "f5",
+     "label": "F5"
+    },
+    {
+     "key": "f6",
+     "label": "F6"
+    },
+    {
+     "key": "f7",
+     "label": "F7"
+    },
+    {
+     "key": "f8",
+     "label": "F8"
+    },
+    {
+     "key": "f9",
+     "label": "F9"
+    },
+    {
+     "key": "f10",
+     "label": "F10"
+    },
+    {
+     "key": "f11",
+     "label": "F11"
+    },
+    {
+     "key": "f12",
+     "label": "F12"
+    },
+    {
+     "key": "f13",
+     "label": "F13"
+    },
+    {
+     "key": "f14",
+     "label": "F14"
+    },
+    {
+     "key": "f15",
+     "label": "F15"
+    },
+    {
+     "key": "f16",
+     "label": "F16"
+    },
+    {
+     "key": "f17",
+     "label": "F17"
+    },
+    {
+     "key": "f18",
+     "label": "F18"
+    },
+    {
+     "key": "f19",
+     "label": "F19"
+    },
+    {
+     "key": "f20",
+     "label": "F20"
+    },
+    {
+     "key": "f21",
+     "label": "F21"
+    }
+   ],
+   "valid": false
+  },
+  {
+   "name": "settings.0.required = true",
+   "path": "settings.0.required",
+   "value": true,
+   "valid": true
+  },
+  {
+   "name": "settings.0.required = false",
+   "path": "settings.0.required",
+   "value": false,
+   "valid": true
+  },
+  {
+   "name": "settings.0.required = 1",
+   "path": "settings.0.required",
+   "value": 1,
+   "valid": true
+  },
+  {
+   "name": "settings.0.required = 0",
+   "path": "settings.0.required",
+   "value": 0,
+   "valid": true
+  },
+  {
+   "name": "settings.0.required = \"1\"",
+   "path": "settings.0.required",
+   "value": "1",
+   "valid": true
+  },
+  {
+   "name": "settings.0.required = \"0\"",
+   "path": "settings.0.required",
+   "value": "0",
+   "valid": true
+  },
+  {
+   "name": "settings.0.required = \"yes\"",
+   "path": "settings.0.required",
+   "value": "yes",
+   "valid": false
+  },
+  {
+   "name": "settings.0.required = \"true\"",
+   "path": "settings.0.required",
+   "value": "true",
+   "valid": false
+  },
+  {
+   "name": "settings.0.required = 2",
+   "path": "settings.0.required",
+   "value": 2,
+   "valid": false
+  },
+  {
+   "name": "settings.0.required = [\"x\"]",
+   "path": "settings.0.required",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.required = true",
+   "path": "extensions.blocks.1.schema.0.required",
+   "value": true,
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.required = false",
+   "path": "extensions.blocks.1.schema.0.required",
+   "value": false,
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.required = 1",
+   "path": "extensions.blocks.1.schema.0.required",
+   "value": 1,
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.required = 0",
+   "path": "extensions.blocks.1.schema.0.required",
+   "value": 0,
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.required = \"1\"",
+   "path": "extensions.blocks.1.schema.0.required",
+   "value": "1",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.required = \"0\"",
+   "path": "extensions.blocks.1.schema.0.required",
+   "value": "0",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.required = \"yes\"",
+   "path": "extensions.blocks.1.schema.0.required",
+   "value": "yes",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.required = \"true\"",
+   "path": "extensions.blocks.1.schema.0.required",
+   "value": "true",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.required = 2",
+   "path": "extensions.blocks.1.schema.0.required",
+   "value": 2,
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.required = [\"x\"]",
+   "path": "extensions.blocks.1.schema.0.required",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.required = true",
+   "path": "extensions.blocks.1.schema.1.required",
+   "value": true,
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.required = false",
+   "path": "extensions.blocks.1.schema.1.required",
+   "value": false,
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.required = 1",
+   "path": "extensions.blocks.1.schema.1.required",
+   "value": 1,
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.required = 0",
+   "path": "extensions.blocks.1.schema.1.required",
+   "value": 0,
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.required = \"1\"",
+   "path": "extensions.blocks.1.schema.1.required",
+   "value": "1",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.required = \"0\"",
+   "path": "extensions.blocks.1.schema.1.required",
+   "value": "0",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.required = \"yes\"",
+   "path": "extensions.blocks.1.schema.1.required",
+   "value": "yes",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.required = \"true\"",
+   "path": "extensions.blocks.1.schema.1.required",
+   "value": "true",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.required = 2",
+   "path": "extensions.blocks.1.schema.1.required",
+   "value": 2,
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.required = [\"x\"]",
+   "path": "extensions.blocks.1.schema.1.required",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.required = true",
+   "path": "dashboard.blocks.0.schema.0.required",
+   "value": true,
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.required = false",
+   "path": "dashboard.blocks.0.schema.0.required",
+   "value": false,
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.required = 1",
+   "path": "dashboard.blocks.0.schema.0.required",
+   "value": 1,
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.required = 0",
+   "path": "dashboard.blocks.0.schema.0.required",
+   "value": 0,
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.required = \"1\"",
+   "path": "dashboard.blocks.0.schema.0.required",
+   "value": "1",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.required = \"0\"",
+   "path": "dashboard.blocks.0.schema.0.required",
+   "value": "0",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.required = \"yes\"",
+   "path": "dashboard.blocks.0.schema.0.required",
+   "value": "yes",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.required = \"true\"",
+   "path": "dashboard.blocks.0.schema.0.required",
+   "value": "true",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.required = 2",
+   "path": "dashboard.blocks.0.schema.0.required",
+   "value": 2,
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.required = [\"x\"]",
+   "path": "dashboard.blocks.0.schema.0.required",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.required = true",
+   "path": "dashboard.actions.0.schema.0.required",
+   "value": true,
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.required = false",
+   "path": "dashboard.actions.0.schema.0.required",
+   "value": false,
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.required = 1",
+   "path": "dashboard.actions.0.schema.0.required",
+   "value": 1,
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.required = 0",
+   "path": "dashboard.actions.0.schema.0.required",
+   "value": 0,
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.required = \"1\"",
+   "path": "dashboard.actions.0.schema.0.required",
+   "value": "1",
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.required = \"0\"",
+   "path": "dashboard.actions.0.schema.0.required",
+   "value": "0",
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.required = \"yes\"",
+   "path": "dashboard.actions.0.schema.0.required",
+   "value": "yes",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.required = \"true\"",
+   "path": "dashboard.actions.0.schema.0.required",
+   "value": "true",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.required = 2",
+   "path": "dashboard.actions.0.schema.0.required",
+   "value": 2,
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.schema.0.required = [\"x\"]",
+   "path": "dashboard.actions.0.schema.0.required",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.allow_post = true",
+   "path": "extensions.proxy.allow_post",
+   "value": true,
+   "valid": true
+  },
+  {
+   "name": "extensions.proxy.allow_post = false",
+   "path": "extensions.proxy.allow_post",
+   "value": false,
+   "valid": true
+  },
+  {
+   "name": "extensions.proxy.allow_post = 1",
+   "path": "extensions.proxy.allow_post",
+   "value": 1,
+   "valid": true
+  },
+  {
+   "name": "extensions.proxy.allow_post = 0",
+   "path": "extensions.proxy.allow_post",
+   "value": 0,
+   "valid": true
+  },
+  {
+   "name": "extensions.proxy.allow_post = \"1\"",
+   "path": "extensions.proxy.allow_post",
+   "value": "1",
+   "valid": true
+  },
+  {
+   "name": "extensions.proxy.allow_post = \"0\"",
+   "path": "extensions.proxy.allow_post",
+   "value": "0",
+   "valid": true
+  },
+  {
+   "name": "extensions.proxy.allow_post = \"yes\"",
+   "path": "extensions.proxy.allow_post",
+   "value": "yes",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.allow_post = \"true\"",
+   "path": "extensions.proxy.allow_post",
+   "value": "true",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.allow_post = 2",
+   "path": "extensions.proxy.allow_post",
+   "value": 2,
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.allow_post = [\"x\"]",
+   "path": "extensions.proxy.allow_post",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.share_customer_id = true",
+   "path": "extensions.proxy.share_customer_id",
+   "value": true,
+   "valid": true
+  },
+  {
+   "name": "extensions.proxy.share_customer_id = false",
+   "path": "extensions.proxy.share_customer_id",
+   "value": false,
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.share_customer_id = 1",
+   "path": "extensions.proxy.share_customer_id",
+   "value": 1,
+   "valid": true
+  },
+  {
+   "name": "extensions.proxy.share_customer_id = 0",
+   "path": "extensions.proxy.share_customer_id",
+   "value": 0,
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.share_customer_id = \"1\"",
+   "path": "extensions.proxy.share_customer_id",
+   "value": "1",
+   "valid": true
+  },
+  {
+   "name": "extensions.proxy.share_customer_id = \"0\"",
+   "path": "extensions.proxy.share_customer_id",
+   "value": "0",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.share_customer_id = \"yes\"",
+   "path": "extensions.proxy.share_customer_id",
+   "value": "yes",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.share_customer_id = \"true\"",
+   "path": "extensions.proxy.share_customer_id",
+   "value": "true",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.share_customer_id = 2",
+   "path": "extensions.proxy.share_customer_id",
+   "value": 2,
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.share_customer_id = [\"x\"]",
+   "path": "extensions.proxy.share_customer_id",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.required = true",
+   "path": "extensions.blocks.2.schema.0.required",
+   "value": true,
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.required = false",
+   "path": "extensions.blocks.2.schema.0.required",
+   "value": false,
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.required = 1",
+   "path": "extensions.blocks.2.schema.0.required",
+   "value": 1,
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.required = 0",
+   "path": "extensions.blocks.2.schema.0.required",
+   "value": 0,
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.required = \"1\"",
+   "path": "extensions.blocks.2.schema.0.required",
+   "value": "1",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.required = \"yes\"",
+   "path": "extensions.blocks.2.schema.0.required",
+   "value": "yes",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.2.schema.0.required = \"true\"",
+   "path": "extensions.blocks.2.schema.0.required",
+   "value": "true",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image as a non-empty string",
+   "path": "extensions.blocks.1.image",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image as a number",
+   "path": "extensions.blocks.1.image",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image as a non-empty string",
+   "path": "dashboard.blocks.0.image",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image as a number",
+   "path": "dashboard.blocks.0.image",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when as a non-empty string",
+   "path": "dashboard.blocks.0.when",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when as a number",
+   "path": "dashboard.blocks.0.when",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.when as a non-empty string",
+   "path": "dashboard.actions.0.when",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.when as a number",
+   "path": "dashboard.actions.0.when",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema as a non-empty string",
+   "path": "extensions.blocks.1.schema",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema as a number",
+   "path": "extensions.blocks.1.schema",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "webhook_topics as a non-empty string",
+   "path": "webhook_topics",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "webhook_topics as a number",
+   "path": "webhook_topics",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "optional_scopes as a non-empty string",
+   "path": "optional_scopes",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "optional_scopes as a number",
+   "path": "optional_scopes",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "extensions.nav as a non-empty string",
+   "path": "extensions.nav",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav as a number",
+   "path": "extensions.nav",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds as a non-empty string",
+   "path": "extensions.embeds",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds as a number",
+   "path": "extensions.embeds",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.settings as a non-empty string",
+   "path": "extensions.embeds.0.settings",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.settings as a number",
+   "path": "extensions.embeds.0.settings",
+   "value": 5,
+   "valid": false
   }
  ]
 }

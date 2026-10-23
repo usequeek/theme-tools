@@ -194,21 +194,51 @@ export function serverString(value: unknown): unknown {
 }
 
 /**
- * Fields the API declares `sometimes` + `string` without `nullable`: written
- * empty they read as null there, and the `string` rule refuses null. Patterns
- * use `*` for a list index.
+ * Fields the API declares `sometimes` and not `nullable`: written empty they read
+ * as null there, and the field's own type rule refuses null ("must be a string",
+ * "must be an array", "must be true or false"). Patterns use `*` for a list index.
+ * Every other empty value is dropped: nullable fields read as unset, required ones
+ * as missing.
  */
-const NOT_NULLABLE_WHEN_PRESENT = new Set([
-  'distribution',
-  'extensions.blocks.*.type',
-  'extensions.blocks.*.url',
-  'extensions.blocks.*.available_if',
-  'extensions.blocks.*.image.url',
-  'extensions.blocks.*.image.media_id',
-  'extensions.blocks.*.schema.*.max_length',
-  'dashboard.blocks.*.image.url',
-  'dashboard.blocks.*.image.media_id',
+const NOT_NULLABLE_WHEN_PRESENT = new Map<string, 'string' | 'array' | 'boolean'>([
+  ['distribution', 'string'],
+  ['extensions.blocks.*.type', 'string'],
+  ['extensions.blocks.*.url', 'string'],
+  ['extensions.blocks.*.available_if', 'string'],
+  ['extensions.blocks.*.image.url', 'string'],
+  ['extensions.blocks.*.image.media_id', 'string'],
+  ['extensions.blocks.*.schema.*.max_length', 'string'],
+  ['dashboard.blocks.*.image.url', 'string'],
+  ['dashboard.blocks.*.image.media_id', 'string'],
+  ['access.optional_scopes', 'array'],
+  ['webhooks.topics', 'array'],
+  ['settings', 'array'],
+  ['extensions', 'array'],
+  ['extensions.proxy', 'array'],
+  ['extensions.nav', 'array'],
+  ['extensions.embeds', 'array'],
+  ['extensions.embeds.*.settings', 'array'],
+  ['extensions.blocks', 'array'],
+  ['extensions.blocks.*.schema', 'array'],
+  ['extensions.blocks.*.image', 'array'],
+  ['dashboard', 'array'],
+  ['dashboard.blocks', 'array'],
+  ['dashboard.blocks.*.schema', 'array'],
+  ['dashboard.blocks.*.when', 'array'],
+  ['dashboard.blocks.*.image', 'array'],
+  ['dashboard.actions', 'array'],
+  ['dashboard.actions.*.schema', 'array'],
+  ['dashboard.actions.*.when', 'array'],
+  ['dashboard.print', 'array'],
+  ['dashboard.print.*.fields', 'array'],
+  ['settings.*.required', 'boolean'],
+  ['extensions.proxy.share_customer_id', 'boolean'],
+  ['extensions.proxy.allow_post', 'boolean'],
+  ['extensions.blocks.*.schema.*.required', 'boolean'],
+  ['dashboard.blocks.*.schema.*.required', 'boolean'],
+  ['dashboard.actions.*.schema.*.required', 'boolean'],
 ]);
+const NOT_NULLABLE_MESSAGE = { string: 'must be a string', array: 'must be an array', boolean: 'must be true or false' } as const;
 
 /** Length as the API counts it: code points, not UTF-16 units (an emoji is one). */
 const charCount = (value: string): number => [...value].length;
@@ -251,8 +281,9 @@ function normalizeStrings(node: unknown, display: string): unknown {
         // The key stays (as undefined): the API sees it present with a null value, so an unknown
         // field is still refused and a nullable one reads as unset. A field that cannot be null is refused.
         const url = pattern === 'extensions.blocks.*.url';
-        if (NOT_NULLABLE_WHEN_PRESENT.has(pattern) && (!url || node.type === ACCOUNT_PAGE_TYPE)) {
-          throw new TomlError(`The ${at} field must be a string.`);
+        const kind = NOT_NULLABLE_WHEN_PRESENT.get(pattern);
+        if (kind !== undefined && (!url || node.type === ACCOUNT_PAGE_TYPE)) {
+          throw new TomlError(`The ${at} field ${NOT_NULLABLE_MESSAGE[kind]}.`);
         }
         // A blank schema label keeps its own message (and is refused either way).
         out[key] = KEEP_EMPTY_FOR_MESSAGE.test(pattern) ? '' : undefined;
@@ -322,8 +353,9 @@ function checkSchemaFields(list: unknown, where: string, primitives: string[], p
     if (typeof field.label !== 'string' || charCount(field.label) > 120) problems.push(`The ${where}.schema[${index}].label is required (max 120).`);
     if (!primitives.includes(field.type as string)) problems.push(`The schema primitive must be one of: ${primitives.join(', ')}.`);
     if (typeof field.label === 'string' && isPhpBlank(field.label)) problems.push(`The ${where}.schema[${index}].label must not be empty.`);
-    if (lineInput && field.type === EXTENSION_LINE_INPUT_PRIMITIVE) {
-      if (field.required !== undefined && typeof field.required !== 'boolean') problems.push(`The ${where}.schema[${index}].required must be true or false.`);
+    // `line_text` is strict (a real boolean); every other primitive follows Laravel's `boolean` rule.
+    if (field.required !== undefined && (lineInput && field.type === EXTENSION_LINE_INPUT_PRIMITIVE ? typeof field.required !== 'boolean' : !isLaravelBoolean(field.required))) {
+      problems.push(`The ${where}.schema[${index}].required must be true or false.`);
     }
     if (lineInput && field.max_length !== undefined) {
       if (field.type !== EXTENSION_LINE_INPUT_PRIMITIVE) {
@@ -479,6 +511,12 @@ export function toManifest(source: Record<string, unknown>): TomlManifest {
     throw fail('The icon must be an icon name (letters, digits, dash, underscore) — never a URL or image.');
   }
 
+  checkOptionalText(doc.developer, 'developer', 120, fail);
+  if (doc.category !== undefined) {
+    if (typeof doc.category !== 'string') throw fail('The category field must be a string.');
+    if (!APP_CATEGORIES.includes(doc.category)) throw fail(`The category must be one of: ${APP_CATEGORIES.join(', ')}.`);
+  }
+
   const listing = (doc.listing ?? {}) as Record<string, unknown>;
   const access = (doc.access ?? {}) as Record<string, unknown>;
   const webhooks = (doc.webhooks ?? {}) as Record<string, unknown>;
@@ -549,6 +587,7 @@ export function toManifest(source: Record<string, unknown>): TomlManifest {
         }
       }
     }
+    if (field.required !== undefined && !isLaravelBoolean(field.required)) throw fail(`The settings[${index}].required field must be true or false.`);
     if (field.help !== undefined && field.help !== null && (typeof field.help !== 'string' || charCount(field.help as string) > 500)) {
       throw fail(`The settings[${index}].help field must be a string (max 500).`);
     }
@@ -567,7 +606,12 @@ export function toManifest(source: Record<string, unknown>): TomlManifest {
   for (const key of ['description', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing', 'developer_url', 'privacy_url', 'support_url', 'demo_url', 'video_url']) {
     if (listing[key] !== undefined) listingOut[key] = listing[key];
   }
+  checkOptionalText(listingOut.description, 'description', 2000, fail);
+  checkOptionalText(listingOut.tagline, 'tagline', 80, fail);
+  if (listingOut.description_long !== undefined && typeof listingOut.description_long !== 'string') throw fail('The description_long field must be a string.');
   if (typeof listingOut.description_long === 'string' && charCount(listingOut.description_long) > 2000) throw fail('The description_long field must be plain text (max 2000).');
+  checkHighlights(listingOut.highlights, fail);
+  checkPricing(listingOut.pricing, problems, fail);
   // Listing promo URLs must be https and at most 2048 characters; the video
   // host is a NAMED allowlist (YouTube/Vimeo — the store page embeds it).
   // Checked here too so a mistake fails on the developer's machine, with the
@@ -632,9 +676,9 @@ function checkUrl(value: unknown, field: string, fail: (message: string) => neve
 }
 
 function checkImage(image: unknown, where: string, problems: string[], fail: (message: string) => never): void {
-  // A non-table image is nulled server-side;
-  // the container key's own allow-list lives with the caller.
-  if (!isRecord(image)) return;
+  // The container key's own allow-list lives with the caller.
+  if (image === undefined) return;
+  if (!isRecord(image)) throw fail(`The ${where}.image field must be an array.`);
   for (const key of Object.keys(image)) {
     if (!['media_id', 'url'].includes(key)) problems.push(unknownField(key, `${where}.image`));
   }
@@ -649,7 +693,47 @@ function checkImage(image: unknown, where: string, problems: string[], fail: (me
  */
 function checkCappedUrl(value: unknown, field: string, fail: (message: string) => never): void {
   checkUrl(value, field, fail);
-  if (typeof value === 'string' && value.length > 2048) throw fail(`The ${field} must not be longer than 2048 characters.`);
+  if (typeof value === 'string' && charCount(value) > 2048) throw fail(`The ${field} must not be longer than 2048 characters.`);
+}
+
+/** Mirror of the API's `apps.categories` keys. */
+const APP_CATEGORIES = ['sales_channels', 'delivery', 'marketing', 'accounting', 'operations'];
+const PRICING_MODELS = ['free', 'free_trial', 'paid'];
+const HIGHLIGHTS_MAX = 5;
+const HIGHLIGHT_MAX = 90;
+
+/** `nullable|string|max:N`: absent is fine, otherwise a string of at most N characters (code points). */
+function checkOptionalText(value: unknown, field: string, max: number, fail: (message: string) => never): void {
+  if (value === undefined) return;
+  if (typeof value !== 'string') throw fail(`The ${field} field must be a string.`);
+  if (charCount(value) > max) throw fail(`The ${field} field must not be greater than ${max} characters.`);
+}
+
+function checkHighlights(value: unknown, fail: (message: string) => never): void {
+  if (value === undefined) return;
+  // The API's `array` rule also accepts a keyed table; its entries are checked the same way.
+  const entries = Array.isArray(value) ? value : isRecord(value) ? Object.values(value) : undefined;
+  if (entries === undefined) throw fail('The highlights field must be an array.');
+  if (entries.length > HIGHLIGHTS_MAX) throw fail(`The highlights field must not have more than ${HIGHLIGHTS_MAX} items.`);
+  entries.forEach((entry: unknown, index) => checkOptionalText(entry ?? '', `highlights[${index}]`, HIGHLIGHT_MAX, fail));
+}
+
+/** `pricing`: an empty table is accepted as the API accepts it; otherwise `model` is required and `note` is capped. */
+function checkPricing(value: unknown, problems: string[], fail: (message: string) => never): void {
+  if (value === undefined) return;
+  if (Array.isArray(value)) {
+    if (value.length > 0) throw fail('The pricing.model field is required when pricing is present.');
+    return;
+  }
+  if (!isRecord(value)) throw fail('The pricing field must be an array.');
+  if (Object.keys(value).length === 0) return;
+  if (value.model === undefined) throw fail('The pricing.model field is required when pricing is present.');
+  if (typeof value.model !== 'string') throw fail('The pricing.model field must be a string.');
+  if (!PRICING_MODELS.includes(value.model)) throw fail(`The pricing model must be one of: ${PRICING_MODELS.join(', ')}.`);
+  checkOptionalText(value.note, 'pricing.note', 80, fail);
+  for (const key of Object.keys(value)) {
+    if (!['model', 'note'].includes(key)) problems.push(unknownField(key, 'manifest.pricing'));
+  }
 }
 
 function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (message: string) => never): void {
@@ -673,7 +757,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     if (typeof proxy.subpath !== 'string' || !/^[a-z0-9][a-z0-9-]{1,39}$/.test(proxy.subpath)) {
       throw fail('The proxy subpath must be 2-40 lowercase letters, digits or dashes.');
     }
-    if (proxy.allow_post !== undefined && typeof proxy.allow_post !== 'boolean') {
+    if (proxy.allow_post !== undefined && !isLaravelBoolean(proxy.allow_post)) {
       throw fail('The extensions.proxy.allow_post field must be true or false.');
     }
     if (proxy.share_customer_id !== undefined && !isLaravelBoolean(proxy.share_customer_id)) {
@@ -684,7 +768,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
       subpath: proxy.subpath,
       ...(proxy.share_customer_id !== undefined ? { share_customer_id: proxy.share_customer_id } : {}),
       // Absent when false: the backend stores allow_post only when true.
-      ...(proxy.allow_post === true ? { allow_post: true } : {}),
+      ...(isLaravelTrue(proxy.allow_post) ? { allow_post: true } : {}),
     };
   }
   if (extensions.merchant_page_url !== undefined) {
@@ -751,7 +835,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     }
     if (block.type === ACCOUNT_PAGE_TYPE && block.url !== undefined) {
       if (typeof block.url !== 'string') throw fail(`The ${where}.url field must be a string.`);
-      if (block.url.length > 2048) throw fail(`The ${where}.url must not be longer than 2048 characters.`);
+      if (charCount(block.url) > 2048) throw fail(`The ${where}.url must not be longer than 2048 characters.`);
     }
     if (block.type !== undefined && !EXTENSION_BLOCK_TYPES.includes(block.type as string)) {
       throw fail(`The block type must be one of: ${EXTENSION_BLOCK_TYPES.join(', ')}.`);
@@ -767,7 +851,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
       checkSchemaFields(block.schema, where, [...EXTENSION_PRIMITIVES, EXTENSION_SUBMIT_PRIMITIVE, EXTENSION_LINE_INPUT_PRIMITIVE], problems, true);
       checkLineTextBlock(block, where, manifest.slug, lineTextKeys, problems);
       const submits = Array.isArray(block.schema) ? block.schema.filter((field) => isRecord(field) && field.type === EXTENSION_SUBMIT_PRIMITIVE) : [];
-      if (submits.length > 0 && !(isRecord(extensions.proxy) && extensions.proxy.allow_post === true)) {
+      if (submits.length > 0 && !(isRecord(extensions.proxy) && isLaravelTrue(extensions.proxy.allow_post))) {
         throw fail(`The ${where}.schema declares a submit primitive, which needs extensions.proxy.allow_post: true.`);
       }
       if (submits.length > 1) throw fail(`The ${where}.schema may declare at most one submit primitive.`);
@@ -790,6 +874,8 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
 
 /** Laravel's `boolean` rule: true, false, 1, 0, "1", "0". */
 const isLaravelBoolean = (value: unknown): boolean => [true, false, 1, 0, '1', '0'].includes(value as boolean | number | string);
+/** The truthy half of Laravel's `boolean` rule (the API casts the validated value with (bool)). */
+const isLaravelTrue = (value: unknown): boolean => [true, 1, '1'].includes(value as boolean | number | string);
 
 /**
  * Shopper account rules (mirrors the API): an `app_page` and an `account-order`
@@ -942,6 +1028,7 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
     }
     if (block.schema !== undefined) checkSchemaFields(block.schema, where, DASHBOARD_PRIMITIVES, problems);
     if (block.when !== undefined) {
+      if (!Array.isArray(block.when)) throw fail(`The ${where}.when field must be an array.`);
       for (const when of block.when as unknown[]) {
         if (!DASHBOARD_WHEN_FIELDS.includes(when as string)) throw fail(`The dashboard \`when\` field must be one of: ${DASHBOARD_WHEN_FIELDS.join(', ')}.`);
       }
@@ -970,6 +1057,7 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
     }
     if (action.schema !== undefined) checkSchemaFields(action.schema, where, DASHBOARD_PRIMITIVES, problems);
     if (action.when !== undefined) {
+      if (!Array.isArray(action.when)) throw fail(`The ${where}.when field must be an array.`);
       for (const when of action.when as unknown[]) {
         if (!DASHBOARD_WHEN_FIELDS.includes(when as string)) throw fail(`The dashboard \`when\` field must be one of: ${DASHBOARD_WHEN_FIELDS.join(', ')}.`);
       }
@@ -1002,6 +1090,8 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
       for (const key of Object.keys(field)) {
         if (!['key', 'label'].includes(key)) problems.push(unknownField(key, `${where}.fields[${fieldIndex}]`));
       }
+      if (typeof field.key !== 'string' || !SETTING_KEY_RE.test(field.key)) throw fail(`The ${where}.fields[${fieldIndex}].key must match [a-z0-9_]{1,64}.`);
+      if (typeof field.label !== 'string' || charCount(field.label) > 80) throw fail(`The ${where}.fields[${fieldIndex}].label field is required (max 80).`);
     }
   });
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
