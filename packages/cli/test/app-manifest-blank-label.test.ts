@@ -4,8 +4,9 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { APP_TOML, loadTomlFile, toManifest } from '../src/lib/app-manifest.js';
 
-// CLI-only parity cases: the server answers a blank schema label with the plain
-// Laravel `required` rule (PHP trim) for EVERY field type, not only line_text.
+// CLI-only parity cases: the deploy route trims every string (Laravel `Str::trim`, which also
+// strips no-break and zero-width spaces) and reads an empty one as missing, so a blank schema
+// label is refused for EVERY field type, not only line_text.
 // The shared line-text-parity fixture stays untouched (backend copy is identical).
 
 const BASE = `
@@ -82,9 +83,14 @@ describe('a blank schema label (server rule: Laravel required, PHP trim, any fie
       expect(failure(extensionDoc({ ...field, label: '  Pick one ' }))).toBeNull();
     });
 
-    it('accepts a label PHP trim does not strip (no-break and zero-width space), as the server does', () => {
-      expect(failure(extensionDoc({ ...field, label: '\u00A0' }))).toBeNull();
-      expect(failure(extensionDoc({ ...field, label: '\u200B' }))).toBeNull();
+    it('refuses a label of only no-break or zero-width spaces: the deploy route trims them before it validates', () => {
+      expect(failure(extensionDoc({ ...field, label: '\u00A0' }))).toMatch(/label must not be empty\.$/);
+      expect(failure(extensionDoc({ ...field, label: '\u200B' }))).toMatch(/label must not be empty\.$/);
+    });
+
+    it('accepts a label with such a space inside, or trimmed to something', () => {
+      expect(failure(extensionDoc({ ...field, label: 'A\u00A0B' }))).toBeNull();
+      expect(failure(extensionDoc({ ...field, label: '\u200BPick one\u00A0' }))).toBeNull();
     });
   });
 

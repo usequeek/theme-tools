@@ -2,7 +2,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { APP_TOML, loadApp, loadTomlFile, serverString, toManifest } from '../src/lib/app-manifest.js';
+import { parse as parseToml } from 'smol-toml';
+import { APP_TOML, fromManifest, loadApp, loadTomlFile, serverString, toManifest } from '../src/lib/app-manifest.js';
 
 // Shopper account manifest contract (`app_page`, `account-page`, `account-order`),
 // mirrored from the API's validator. The rows live in a CLI-side fixture so the
@@ -10,9 +11,10 @@ import { APP_TOML, loadApp, loadTomlFile, serverString, toManifest } from '../sr
 
 interface Row { name: string; valid: boolean; proxy: Record<string, unknown> | null; blocks: Record<string, unknown>[]; embeds?: Record<string, unknown>[]; contains: string | null; count?: number }
 interface VerdictRow { name: string; path: string; value: string; valid: boolean; contains: string | null }
+interface ManifestVerdict { name: string; path: string; value: string | { prefix: string; unit: string; count: number; suffix: string }; valid: boolean }
 interface FieldRow { name: string; field: string; value: string; valid: boolean; contains: string | null }
 interface TitleRow { name: string; title: string; valid: boolean }
-const parity = JSON.parse(readFileSync(new URL('./fixtures/account-manifest-parity.json', import.meta.url), 'utf8')) as { rows: Row[]; titles: TitleRow[]; fields: FieldRow[]; serverVerdicts: VerdictRow[]; serverTrimmedCodePoints: number[] };
+const parity = JSON.parse(readFileSync(new URL('./fixtures/account-manifest-parity.json', import.meta.url), 'utf8')) as { rows: Row[]; titles: TitleRow[]; fields: FieldRow[]; serverVerdicts: VerdictRow[]; serverTrimmedCodePoints: number[]; manifestBase: Record<string, unknown>; manifestVerdicts: ManifestVerdict[] };
 
 const BASE = `
 slug = "bookings"
@@ -167,6 +169,55 @@ describe('what the API middleware does to a url string before it validates (trim
     }
     expect(message).not.toBeNull();
     if (row.contains) expect(message).toContain(row.contains);
+  });
+});
+
+describe('every string is read the way the API reads it (trimmed, empty is unset, caps count code points)', () => {
+  const setPath = (target: Record<string, unknown>, path: string, value: unknown): void => {
+    const parts = path.split('.');
+    let node: Record<string, unknown> = target;
+    parts.slice(0, -1).forEach((part, index) => {
+      node[part] ??= /^\d+$/.test(parts[index + 1]) ? [] : {};
+      node = node[part] as Record<string, unknown>;
+    });
+    node[parts[parts.length - 1]] = value;
+  };
+  const resolve = (value: ManifestVerdict['value']): string => (typeof value === 'string' ? value : `${value.prefix}${value.unit.repeat(value.count)}${value.suffix}`);
+  const answer = (path: string, value: string): string | null => {
+    const manifest = structuredClone(parity.manifestBase);
+    if (path) setPath(manifest, path, value);
+    return failure(parseToml(fromManifest(manifest)) as Record<string, unknown>);
+  };
+
+  it('accepts the unchanged base manifest and has the full API verdict table', () => {
+    expect(answer('', '')).toBeNull();
+    expect(parity.manifestVerdicts.length).toBeGreaterThanOrEqual(350);
+    expect(parity.manifestVerdicts.some((row) => row.valid)).toBe(true);
+    expect(parity.manifestVerdicts.some((row) => !row.valid)).toBe(true);
+  });
+
+  it.each(parity.manifestVerdicts.map((row) => [row.name, row] as const))('API verdict: %s', (_name, row) => {
+    const message = answer(row.path, resolve(row.value));
+    if (row.valid) expect(message).toBeNull();
+    else expect(message).not.toBeNull();
+  });
+
+  it('reports a cap breach with the field named, and an empty required field as missing', () => {
+    expect(answer('name', 'a'.repeat(121))).toBe('The name field is required (max 120).');
+    expect(answer('name', ' \t')).toBe('The name field is required.');
+    expect(answer('slug', ' ')).toBe('The slug must be 2-64 lowercase letters, digits or dashes.');
+    expect(answer('distribution', '')).toBe('The distribution field must be a string.');
+    expect(answer('extensions.blocks.1.type', ' ')).toBe('The extensions.blocks[1].type field must be a string.');
+    expect(answer('scopes.0', '  ')).toBe('The access.scopes[0] field is required.');
+  });
+
+  it('sends the trimmed values', () => {
+    const manifest = structuredClone(parity.manifestBase);
+    manifest.slug = '  bookings\n';
+    manifest.icon = ' ';
+    const { manifest: sent } = toManifest(parseToml(fromManifest(manifest)) as Record<string, unknown>);
+    expect(sent.slug).toBe('bookings');
+    expect(sent.icon).toBeUndefined();
   });
 });
 
@@ -337,7 +388,8 @@ targets = ["account-order"]
     expect(() => loadApp(stage(ACCOUNT_TOML.replace('share_customer_id = true\n', '')))).toThrow('share_customer_id: true');
   });
 
-  it('refuses a toml title with a trailing newline (TOML multi-line string)', () => {
-    expect(() => loadApp(stage(ACCOUNT_TOML.replace('title = "My bookings"', 'title = """My bookings\n"""')))).toThrow('title must be 1-40 characters');
+  it('refuses a toml title with an interior newline, and trims a trailing one like the API (TOML multi-line string)', () => {
+    expect(() => loadApp(stage(ACCOUNT_TOML.replace('title = "My bookings"', 'title = """My\nbookings"""')))).toThrow('title must be 1-40 characters');
+    expect(() => loadApp(stage(ACCOUNT_TOML.replace('title = "My bookings"', 'title = """My bookings\n"""')))).not.toThrow();
   });
 });

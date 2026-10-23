@@ -1,5 +1,5 @@
 {
- "note": "CLI-side parity rows for the shopper account manifest contract, mirrored from the API's account manifest test. Rows mirrored from the API's validator. Messages are matched by substring: the CLI names a field with the manifest. prefix, the API does not. Rows that depend on the API's configured Queek hosts use the public Queek hosts here. serverVerdicts: each input was run through the API's request middleware (trim, empty to null) and then its validator; the verdict is the API's. serverTrimmedCodePoints: every code point the API's trim strips from the ends of a string.",
+ "note": "CLI-side parity rows for the shopper account manifest contract, mirrored from the API's account manifest test. Rows mirrored from the API's validator. Messages are matched by substring: the CLI names a field with the manifest. prefix, the API does not. Rows that depend on the API's configured Queek hosts use the public Queek hosts here. serverVerdicts: each input was run through the API's request middleware (trim, empty to null) and then its validator; the verdict is the API's. serverTrimmedCodePoints: every code point the API's trim strips from the ends of a string. manifestVerdicts: API-shaped manifests (manifestBase with one value set at a dotted path) run through the API's request middleware and its validator; the CLI answers them through the toml round trip. Rows where the CLI is still looser than the API (description, developer, tagline, pricing note and highlight caps, print field key and label) are left out.",
  "rows": [
   {
    "name": "page and order block",
@@ -1013,7 +1013,7 @@
     {
      "key": "my_bookings",
      "type": "app_page",
-     "title": "x\u200b",
+     "title": "x\u200by",
      "targets": [
       "account-page"
      ],
@@ -2123,9 +2123,9 @@
    "valid": false
   },
   {
-   "name": "trailing newline",
+   "name": "trailing newline (trimmed by the API)",
    "title": "My bookings\n",
-   "valid": false
+   "valid": true
   },
   {
    "name": "carriage return",
@@ -2238,9 +2238,9 @@
    "valid": false
   },
   {
-   "name": "BOM U+FEFF",
+   "name": "BOM U+FEFF (trimmed by the API)",
    "title": "\ufeffMy bookings",
-   "valid": false
+   "valid": true
   },
   {
    "name": "tag language U+E0001",
@@ -3345,6 +3345,2603 @@
    "value": "",
    "valid": true,
    "contains": null
+  }
+ ],
+ "manifestBase": {
+  "slug": "bookings",
+  "name": "Bookings",
+  "description": "Bookings.",
+  "icon": "storefront",
+  "developer": "Dev Ltd",
+  "tagline": "Book it",
+  "description_long": "Long text.",
+  "highlights": [
+   "Fast"
+  ],
+  "pricing": {
+   "model": "free",
+   "note": "Free"
+  },
+  "scopes": [
+   "merchant-orders-read"
+  ],
+  "settings": [
+   {
+    "key": "greeting",
+    "label": "Greeting",
+    "type": "string",
+    "help": "Say hi"
+   },
+   {
+    "key": "size",
+    "label": "Size",
+    "type": "select",
+    "options": [
+     "S",
+     "M"
+    ]
+   }
+  ],
+  "install_url": "https://apps.example.com/i",
+  "uninstall_url": "https://apps.example.com/u",
+  "extensions": {
+   "proxy": {
+    "url": "https://apps.example.com/p",
+    "subpath": "bookings",
+    "share_customer_id": true
+   },
+   "merchant_page_url": "https://apps.example.com/m",
+   "nav": [
+    {
+     "label": "Docs",
+     "path": "/m/docs"
+    }
+   ],
+   "embeds": [
+    {
+     "key": "chat",
+     "title": "Chat",
+     "target": "body",
+     "url": "https://apps.example.com/chat",
+     "capabilities": [
+      "chat-bubble"
+     ],
+     "settings": [
+      "greeting"
+     ]
+    }
+   ],
+   "blocks": [
+    {
+     "key": "my_bookings",
+     "type": "app_page",
+     "title": "My bookings",
+     "targets": [
+      "account-page"
+     ],
+     "url": "https://apps.example.com/a"
+    },
+    {
+     "key": "promo",
+     "type": "app_block",
+     "title": "Promo",
+     "description": "Desc",
+     "targets": [
+      "product"
+     ],
+     "available_if": "declared_products",
+     "schema": [
+      {
+       "key": "when",
+       "label": "When",
+       "type": "date"
+      }
+     ]
+    }
+   ]
+  },
+  "dashboard": {
+   "blocks": [
+    {
+     "key": "b",
+     "title": "B",
+     "target": "order-details",
+     "schema": [
+      {
+       "key": "d",
+       "label": "D",
+       "type": "date"
+      }
+     ],
+     "when": [
+      "order.is_paid"
+     ]
+    }
+   ],
+   "actions": [
+    {
+     "key": "a",
+     "title": "A",
+     "target": "order-details",
+     "scope": "merchant-orders-read",
+     "effect": "order_appointment",
+     "notify_url": "https://apps.example.com/n"
+    }
+   ],
+   "print": [
+    {
+     "key": "p",
+     "title": "P",
+     "target": "order-print",
+     "fields": [
+      {
+       "key": "f",
+       "label": "F"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "manifestVerdicts": [
+  {
+   "name": "slug padded",
+   "path": "slug",
+   "value": " \u200b\tbookings\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "slug interior space",
+   "path": "slug",
+   "value": "b ookings",
+   "valid": false
+  },
+  {
+   "name": "slug empty",
+   "path": "slug",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "slug blank",
+   "path": "slug",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "icon padded",
+   "path": "icon",
+   "value": " \u200b\tstorefront\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "icon interior space",
+   "path": "icon",
+   "value": "s torefront",
+   "valid": false
+  },
+  {
+   "name": "icon empty",
+   "path": "icon",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "icon blank",
+   "path": "icon",
+   "value": " \u200b\t\n",
+   "valid": true
+  },
+  {
+   "name": "distribution padded",
+   "path": "distribution",
+   "value": " \u200b\tdevelopment\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "distribution interior space",
+   "path": "distribution",
+   "value": "d evelopment",
+   "valid": false
+  },
+  {
+   "name": "distribution empty",
+   "path": "distribution",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "distribution blank",
+   "path": "distribution",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "scopes.0 padded",
+   "path": "scopes.0",
+   "value": " \u200b\tmerchant-orders-read\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "scopes.0 interior space",
+   "path": "scopes.0",
+   "value": "m erchant-orders-read",
+   "valid": false
+  },
+  {
+   "name": "scopes.0 empty",
+   "path": "scopes.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "scopes.0 blank",
+   "path": "scopes.0",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "settings.0.key padded",
+   "path": "settings.0.key",
+   "value": " \u200b\tgreeting\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "settings.0.key interior space",
+   "path": "settings.0.key",
+   "value": "g reeting",
+   "valid": false
+  },
+  {
+   "name": "settings.0.key empty",
+   "path": "settings.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.0.key blank",
+   "path": "settings.0.key",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "settings.1.type padded",
+   "path": "settings.1.type",
+   "value": " \u200b\tselect\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "settings.1.type interior space",
+   "path": "settings.1.type",
+   "value": "s elect",
+   "valid": false
+  },
+  {
+   "name": "settings.1.type empty",
+   "path": "settings.1.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.1.type blank",
+   "path": "settings.1.type",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "settings.1.options.0 padded",
+   "path": "settings.1.options.0",
+   "value": " \u200b\tS\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "settings.1.options.0 interior space",
+   "path": "settings.1.options.0",
+   "value": "S ",
+   "valid": true
+  },
+  {
+   "name": "settings.1.options.0 empty",
+   "path": "settings.1.options.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.1.options.0 blank",
+   "path": "settings.1.options.0",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "settings.0.type padded",
+   "path": "settings.0.type",
+   "value": " \u200b\tstring\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "settings.0.type interior space",
+   "path": "settings.0.type",
+   "value": "s tring",
+   "valid": false
+  },
+  {
+   "name": "settings.0.type empty",
+   "path": "settings.0.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "settings.0.type blank",
+   "path": "settings.0.type",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.subpath padded",
+   "path": "extensions.proxy.subpath",
+   "value": " \u200b\tbookings\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.proxy.subpath interior space",
+   "path": "extensions.proxy.subpath",
+   "value": "b ookings",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.subpath empty",
+   "path": "extensions.proxy.subpath",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.subpath blank",
+   "path": "extensions.proxy.subpath",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0.path padded",
+   "path": "extensions.nav.0.path",
+   "value": " \u200b\t/m/docs\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.nav.0.path interior space",
+   "path": "extensions.nav.0.path",
+   "value": "/ m/docs",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0.path empty",
+   "path": "extensions.nav.0.path",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0.path blank",
+   "path": "extensions.nav.0.path",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.key padded",
+   "path": "extensions.blocks.1.key",
+   "value": " \u200b\tpromo\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.key interior space",
+   "path": "extensions.blocks.1.key",
+   "value": "p romo",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.key empty",
+   "path": "extensions.blocks.1.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.key blank",
+   "path": "extensions.blocks.1.key",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.type padded",
+   "path": "extensions.blocks.1.type",
+   "value": " \u200b\tapp_block\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.type interior space",
+   "path": "extensions.blocks.1.type",
+   "value": "a pp_block",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.type empty",
+   "path": "extensions.blocks.1.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.type blank",
+   "path": "extensions.blocks.1.type",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.targets.0 padded",
+   "path": "extensions.blocks.1.targets.0",
+   "value": " \u200b\tproduct\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.targets.0 interior space",
+   "path": "extensions.blocks.1.targets.0",
+   "value": "p roduct",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.targets.0 empty",
+   "path": "extensions.blocks.1.targets.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.targets.0 blank",
+   "path": "extensions.blocks.1.targets.0",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.available_if padded",
+   "path": "extensions.blocks.1.available_if",
+   "value": " \u200b\tdeclared_products\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.available_if interior space",
+   "path": "extensions.blocks.1.available_if",
+   "value": "d eclared_products",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.available_if empty",
+   "path": "extensions.blocks.1.available_if",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.available_if blank",
+   "path": "extensions.blocks.1.available_if",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.key padded",
+   "path": "extensions.blocks.1.schema.0.key",
+   "value": " \u200b\twhen\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.key interior space",
+   "path": "extensions.blocks.1.schema.0.key",
+   "value": "w hen",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.key empty",
+   "path": "extensions.blocks.1.schema.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.key blank",
+   "path": "extensions.blocks.1.schema.0.key",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.type padded",
+   "path": "extensions.blocks.1.schema.0.type",
+   "value": " \u200b\tdate\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.type interior space",
+   "path": "extensions.blocks.1.schema.0.type",
+   "value": "d ate",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.type empty",
+   "path": "extensions.blocks.1.schema.0.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.type blank",
+   "path": "extensions.blocks.1.schema.0.type",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.key padded",
+   "path": "extensions.embeds.0.key",
+   "value": " \u200b\tchat\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.key interior space",
+   "path": "extensions.embeds.0.key",
+   "value": "c hat",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.key empty",
+   "path": "extensions.embeds.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.key blank",
+   "path": "extensions.embeds.0.key",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.target padded",
+   "path": "extensions.embeds.0.target",
+   "value": " \u200b\tbody\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.target interior space",
+   "path": "extensions.embeds.0.target",
+   "value": "b ody",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.target empty",
+   "path": "extensions.embeds.0.target",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.target blank",
+   "path": "extensions.embeds.0.target",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.capabilities.0 padded",
+   "path": "extensions.embeds.0.capabilities.0",
+   "value": " \u200b\tchat-bubble\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.capabilities.0 interior space",
+   "path": "extensions.embeds.0.capabilities.0",
+   "value": "c hat-bubble",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.capabilities.0 empty",
+   "path": "extensions.embeds.0.capabilities.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.capabilities.0 blank",
+   "path": "extensions.embeds.0.capabilities.0",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.settings.0 padded",
+   "path": "extensions.embeds.0.settings.0",
+   "value": " \u200b\tgreeting\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.settings.0 interior space",
+   "path": "extensions.embeds.0.settings.0",
+   "value": "g reeting",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.settings.0 empty",
+   "path": "extensions.embeds.0.settings.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.settings.0 blank",
+   "path": "extensions.embeds.0.settings.0",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.key padded",
+   "path": "dashboard.blocks.0.key",
+   "value": " \u200b\tb\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.key interior space",
+   "path": "dashboard.blocks.0.key",
+   "value": "b ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.key empty",
+   "path": "dashboard.blocks.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.key blank",
+   "path": "dashboard.blocks.0.key",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.target padded",
+   "path": "dashboard.blocks.0.target",
+   "value": " \u200b\torder-details\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.target interior space",
+   "path": "dashboard.blocks.0.target",
+   "value": "o rder-details",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.target empty",
+   "path": "dashboard.blocks.0.target",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.target blank",
+   "path": "dashboard.blocks.0.target",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.key padded",
+   "path": "dashboard.blocks.0.schema.0.key",
+   "value": " \u200b\td\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.key interior space",
+   "path": "dashboard.blocks.0.schema.0.key",
+   "value": "d ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.key empty",
+   "path": "dashboard.blocks.0.schema.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.key blank",
+   "path": "dashboard.blocks.0.schema.0.key",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.type padded",
+   "path": "dashboard.blocks.0.schema.0.type",
+   "value": " \u200b\tdate\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.type interior space",
+   "path": "dashboard.blocks.0.schema.0.type",
+   "value": "d ate",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.type empty",
+   "path": "dashboard.blocks.0.schema.0.type",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.type blank",
+   "path": "dashboard.blocks.0.schema.0.type",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when.0 padded",
+   "path": "dashboard.blocks.0.when.0",
+   "value": " \u200b\torder.is_paid\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.when.0 interior space",
+   "path": "dashboard.blocks.0.when.0",
+   "value": "o rder.is_paid",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when.0 empty",
+   "path": "dashboard.blocks.0.when.0",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when.0 blank",
+   "path": "dashboard.blocks.0.when.0",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.key padded",
+   "path": "dashboard.actions.0.key",
+   "value": " \u200b\ta\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.key interior space",
+   "path": "dashboard.actions.0.key",
+   "value": "a ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.key empty",
+   "path": "dashboard.actions.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.key blank",
+   "path": "dashboard.actions.0.key",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.target padded",
+   "path": "dashboard.actions.0.target",
+   "value": " \u200b\torder-details\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.target interior space",
+   "path": "dashboard.actions.0.target",
+   "value": "o rder-details",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.target empty",
+   "path": "dashboard.actions.0.target",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.target blank",
+   "path": "dashboard.actions.0.target",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.effect padded",
+   "path": "dashboard.actions.0.effect",
+   "value": " \u200b\torder_appointment\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.effect interior space",
+   "path": "dashboard.actions.0.effect",
+   "value": "o rder_appointment",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.effect empty",
+   "path": "dashboard.actions.0.effect",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.effect blank",
+   "path": "dashboard.actions.0.effect",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.scope padded",
+   "path": "dashboard.actions.0.scope",
+   "value": " \u200b\tmerchant-orders-read\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.scope interior space",
+   "path": "dashboard.actions.0.scope",
+   "value": "m erchant-orders-read",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.scope empty",
+   "path": "dashboard.actions.0.scope",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.scope blank",
+   "path": "dashboard.actions.0.scope",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.key padded",
+   "path": "dashboard.print.0.key",
+   "value": " \u200b\tp\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.key interior space",
+   "path": "dashboard.print.0.key",
+   "value": "p ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.key empty",
+   "path": "dashboard.print.0.key",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.key blank",
+   "path": "dashboard.print.0.key",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.target padded",
+   "path": "dashboard.print.0.target",
+   "value": " \u200b\torder-print\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.target interior space",
+   "path": "dashboard.print.0.target",
+   "value": "o rder-print",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.target empty",
+   "path": "dashboard.print.0.target",
+   "value": "",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.target blank",
+   "path": "dashboard.print.0.target",
+   "value": " \u200b\t\n",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key padded",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": " \u200b\tf\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.fields.0.key interior space",
+   "path": "dashboard.print.0.fields.0.key",
+   "value": "f ",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.title trailing newline",
+   "path": "extensions.blocks.1.title",
+   "value": "Promo\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.title CRLF",
+   "path": "extensions.blocks.1.title",
+   "value": "Promo\r\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.title trailing ZWSP",
+   "path": "extensions.blocks.1.title",
+   "value": "Promo\u200b",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.title leading and trailing whitespace",
+   "path": "extensions.blocks.1.title",
+   "value": " \u200b\tPromo\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.title interior newline",
+   "path": "extensions.blocks.1.title",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.title interior tab",
+   "path": "extensions.blocks.1.title",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.title blank",
+   "path": "extensions.blocks.1.title",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.title trailing newline",
+   "path": "extensions.embeds.0.title",
+   "value": "Chat\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.title CRLF",
+   "path": "extensions.embeds.0.title",
+   "value": "Chat\r\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.title trailing ZWSP",
+   "path": "extensions.embeds.0.title",
+   "value": "Chat\u200b",
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.title leading and trailing whitespace",
+   "path": "extensions.embeds.0.title",
+   "value": " \u200b\tChat\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.title interior newline",
+   "path": "extensions.embeds.0.title",
+   "value": "A\nB",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.title interior tab",
+   "path": "extensions.embeds.0.title",
+   "value": "A\tB",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.title blank",
+   "path": "extensions.embeds.0.title",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0.label trailing newline",
+   "path": "extensions.nav.0.label",
+   "value": "Docs\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.nav.0.label CRLF",
+   "path": "extensions.nav.0.label",
+   "value": "Docs\r\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.nav.0.label trailing ZWSP",
+   "path": "extensions.nav.0.label",
+   "value": "Docs\u200b",
+   "valid": true
+  },
+  {
+   "name": "extensions.nav.0.label leading and trailing whitespace",
+   "path": "extensions.nav.0.label",
+   "value": " \u200b\tDocs\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.nav.0.label interior newline",
+   "path": "extensions.nav.0.label",
+   "value": "A\nB",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0.label interior tab",
+   "path": "extensions.nav.0.label",
+   "value": "A\tB",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0.label blank",
+   "path": "extensions.nav.0.label",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.title trailing newline",
+   "path": "dashboard.blocks.0.title",
+   "value": "B\n",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.title CRLF",
+   "path": "dashboard.blocks.0.title",
+   "value": "B\r\n",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.title trailing ZWSP",
+   "path": "dashboard.blocks.0.title",
+   "value": "B\u200b",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.title leading and trailing whitespace",
+   "path": "dashboard.blocks.0.title",
+   "value": " \u200b\tB\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.title interior newline",
+   "path": "dashboard.blocks.0.title",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.title interior tab",
+   "path": "dashboard.blocks.0.title",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.title blank",
+   "path": "dashboard.blocks.0.title",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.title trailing newline",
+   "path": "dashboard.actions.0.title",
+   "value": "A\n",
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.title CRLF",
+   "path": "dashboard.actions.0.title",
+   "value": "A\r\n",
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.title trailing ZWSP",
+   "path": "dashboard.actions.0.title",
+   "value": "A\u200b",
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.title leading and trailing whitespace",
+   "path": "dashboard.actions.0.title",
+   "value": " \u200b\tA\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.title interior newline",
+   "path": "dashboard.actions.0.title",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.title interior tab",
+   "path": "dashboard.actions.0.title",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.title blank",
+   "path": "dashboard.actions.0.title",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.title trailing newline",
+   "path": "dashboard.print.0.title",
+   "value": "P\n",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.title CRLF",
+   "path": "dashboard.print.0.title",
+   "value": "P\r\n",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.title trailing ZWSP",
+   "path": "dashboard.print.0.title",
+   "value": "P\u200b",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.title leading and trailing whitespace",
+   "path": "dashboard.print.0.title",
+   "value": " \u200b\tP\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.title interior newline",
+   "path": "dashboard.print.0.title",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.title interior tab",
+   "path": "dashboard.print.0.title",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.title blank",
+   "path": "dashboard.print.0.title",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.0.label trailing newline",
+   "path": "settings.0.label",
+   "value": "Greeting\n",
+   "valid": true
+  },
+  {
+   "name": "settings.0.label CRLF",
+   "path": "settings.0.label",
+   "value": "Greeting\r\n",
+   "valid": true
+  },
+  {
+   "name": "settings.0.label trailing ZWSP",
+   "path": "settings.0.label",
+   "value": "Greeting\u200b",
+   "valid": true
+  },
+  {
+   "name": "settings.0.label leading and trailing whitespace",
+   "path": "settings.0.label",
+   "value": " \u200b\tGreeting\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "settings.0.label interior newline",
+   "path": "settings.0.label",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "settings.0.label interior tab",
+   "path": "settings.0.label",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "settings.0.label blank",
+   "path": "settings.0.label",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label trailing newline",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "When\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label CRLF",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "When\r\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label trailing ZWSP",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "When\u200b",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label leading and trailing whitespace",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": " \u200b\tWhen\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label interior newline",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label interior tab",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label blank",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label trailing newline",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": "F\n",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label CRLF",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": "F\r\n",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label trailing ZWSP",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": "F\u200b",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label leading and trailing whitespace",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": " \u200b\tF\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label interior newline",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label interior tab",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description trailing newline",
+   "path": "extensions.blocks.1.description",
+   "value": "Desc\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description CRLF",
+   "path": "extensions.blocks.1.description",
+   "value": "Desc\r\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description trailing ZWSP",
+   "path": "extensions.blocks.1.description",
+   "value": "Desc\u200b",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description leading and trailing whitespace",
+   "path": "extensions.blocks.1.description",
+   "value": " \u200b\tDesc\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description interior newline",
+   "path": "extensions.blocks.1.description",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description interior tab",
+   "path": "extensions.blocks.1.description",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description blank",
+   "path": "extensions.blocks.1.description",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "description trailing newline",
+   "path": "description",
+   "value": "Bookings.\n",
+   "valid": true
+  },
+  {
+   "name": "description CRLF",
+   "path": "description",
+   "value": "Bookings.\r\n",
+   "valid": true
+  },
+  {
+   "name": "description trailing ZWSP",
+   "path": "description",
+   "value": "Bookings.\u200b",
+   "valid": true
+  },
+  {
+   "name": "description leading and trailing whitespace",
+   "path": "description",
+   "value": " \u200b\tBookings.\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "description interior newline",
+   "path": "description",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "description interior tab",
+   "path": "description",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "description blank",
+   "path": "description",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "tagline trailing newline",
+   "path": "tagline",
+   "value": "Book it\n",
+   "valid": true
+  },
+  {
+   "name": "tagline CRLF",
+   "path": "tagline",
+   "value": "Book it\r\n",
+   "valid": true
+  },
+  {
+   "name": "tagline trailing ZWSP",
+   "path": "tagline",
+   "value": "Book it\u200b",
+   "valid": true
+  },
+  {
+   "name": "tagline leading and trailing whitespace",
+   "path": "tagline",
+   "value": " \u200b\tBook it\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "tagline interior newline",
+   "path": "tagline",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "tagline interior tab",
+   "path": "tagline",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "tagline blank",
+   "path": "tagline",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "developer trailing newline",
+   "path": "developer",
+   "value": "Dev Ltd\n",
+   "valid": true
+  },
+  {
+   "name": "developer CRLF",
+   "path": "developer",
+   "value": "Dev Ltd\r\n",
+   "valid": true
+  },
+  {
+   "name": "developer trailing ZWSP",
+   "path": "developer",
+   "value": "Dev Ltd\u200b",
+   "valid": true
+  },
+  {
+   "name": "developer leading and trailing whitespace",
+   "path": "developer",
+   "value": " \u200b\tDev Ltd\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "developer interior newline",
+   "path": "developer",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "developer interior tab",
+   "path": "developer",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "developer blank",
+   "path": "developer",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "settings.0.help trailing newline",
+   "path": "settings.0.help",
+   "value": "Say hi\n",
+   "valid": true
+  },
+  {
+   "name": "settings.0.help CRLF",
+   "path": "settings.0.help",
+   "value": "Say hi\r\n",
+   "valid": true
+  },
+  {
+   "name": "settings.0.help trailing ZWSP",
+   "path": "settings.0.help",
+   "value": "Say hi\u200b",
+   "valid": true
+  },
+  {
+   "name": "settings.0.help leading and trailing whitespace",
+   "path": "settings.0.help",
+   "value": " \u200b\tSay hi\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "settings.0.help interior newline",
+   "path": "settings.0.help",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "settings.0.help interior tab",
+   "path": "settings.0.help",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "settings.0.help blank",
+   "path": "settings.0.help",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "pricing.note trailing newline",
+   "path": "pricing.note",
+   "value": "Free\n",
+   "valid": true
+  },
+  {
+   "name": "pricing.note CRLF",
+   "path": "pricing.note",
+   "value": "Free\r\n",
+   "valid": true
+  },
+  {
+   "name": "pricing.note trailing ZWSP",
+   "path": "pricing.note",
+   "value": "Free\u200b",
+   "valid": true
+  },
+  {
+   "name": "pricing.note leading and trailing whitespace",
+   "path": "pricing.note",
+   "value": " \u200b\tFree\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "pricing.note interior newline",
+   "path": "pricing.note",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "pricing.note interior tab",
+   "path": "pricing.note",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "pricing.note blank",
+   "path": "pricing.note",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 trailing newline",
+   "path": "highlights.0",
+   "value": "Fast\n",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 CRLF",
+   "path": "highlights.0",
+   "value": "Fast\r\n",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 trailing ZWSP",
+   "path": "highlights.0",
+   "value": "Fast\u200b",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 leading and trailing whitespace",
+   "path": "highlights.0",
+   "value": " \u200b\tFast\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 interior newline",
+   "path": "highlights.0",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 interior tab",
+   "path": "highlights.0",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 blank",
+   "path": "highlights.0",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "name trailing newline",
+   "path": "name",
+   "value": "Bookings\n",
+   "valid": true
+  },
+  {
+   "name": "name CRLF",
+   "path": "name",
+   "value": "Bookings\r\n",
+   "valid": true
+  },
+  {
+   "name": "name trailing ZWSP",
+   "path": "name",
+   "value": "Bookings\u200b",
+   "valid": true
+  },
+  {
+   "name": "name leading and trailing whitespace",
+   "path": "name",
+   "value": " \u200b\tBookings\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "name interior newline",
+   "path": "name",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "name interior tab",
+   "path": "name",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "name blank",
+   "path": "name",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "description_long trailing newline",
+   "path": "description_long",
+   "value": "Long text.\n",
+   "valid": true
+  },
+  {
+   "name": "description_long CRLF",
+   "path": "description_long",
+   "value": "Long text.\r\n",
+   "valid": true
+  },
+  {
+   "name": "description_long trailing ZWSP",
+   "path": "description_long",
+   "value": "Long text.\u200b",
+   "valid": true
+  },
+  {
+   "name": "description_long leading and trailing whitespace",
+   "path": "description_long",
+   "value": " \u200b\tLong text.\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "description_long interior newline",
+   "path": "description_long",
+   "value": "A\nB",
+   "valid": true
+  },
+  {
+   "name": "description_long interior tab",
+   "path": "description_long",
+   "value": "A\tB",
+   "valid": true
+  },
+  {
+   "name": "description_long blank",
+   "path": "description_long",
+   "value": " \t\n\u200b",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.0.title trailing newline",
+   "path": "extensions.blocks.0.title",
+   "value": "My bookings\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.0.title CRLF",
+   "path": "extensions.blocks.0.title",
+   "value": "My bookings\r\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.0.title trailing ZWSP",
+   "path": "extensions.blocks.0.title",
+   "value": "My bookings\u200b",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.0.title leading and trailing whitespace",
+   "path": "extensions.blocks.0.title",
+   "value": " \u200b\tMy bookings\n\ufeff ",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.0.title interior newline",
+   "path": "extensions.blocks.0.title",
+   "value": "A\nB",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.title interior tab",
+   "path": "extensions.blocks.0.title",
+   "value": "A\tB",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.title blank",
+   "path": "extensions.blocks.0.title",
+   "value": " \t\n\u200b",
+   "valid": false
+  },
+  {
+   "name": "description_long at the cap of 2000",
+   "path": "description_long",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 2000,
+    "suffix": ""
+   },
+   "valid": true
+  },
+  {
+   "name": "description_long at the cap of 2000 plus newline",
+   "path": "description_long",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 2000,
+    "suffix": "\n"
+   },
+   "valid": true
+  },
+  {
+   "name": "description_long at the cap of 2000 plus padding",
+   "path": "description_long",
+   "value": {
+    "prefix": " \t",
+    "unit": "a",
+    "count": 2000,
+    "suffix": "\u200b\n"
+   },
+   "valid": true
+  },
+  {
+   "name": "description_long over the cap by one",
+   "path": "description_long",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 2001,
+    "suffix": ""
+   },
+   "valid": false
+  },
+  {
+   "name": "description_long over the cap by one plus newline",
+   "path": "description_long",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 2001,
+    "suffix": "\n"
+   },
+   "valid": false
+  },
+  {
+   "name": "description_long at the cap in emoji",
+   "path": "description_long",
+   "value": {
+    "prefix": "",
+    "unit": "\ud83d\udcc5",
+    "count": 2000,
+    "suffix": ""
+   },
+   "valid": true
+  },
+  {
+   "name": "description_long over the cap in emoji",
+   "path": "description_long",
+   "value": {
+    "prefix": "",
+    "unit": "\ud83d\udcc5",
+    "count": 2001,
+    "suffix": ""
+   },
+   "valid": false
+  },
+  {
+   "name": "description at the cap of 2000",
+   "path": "description",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 2000,
+    "suffix": ""
+   },
+   "valid": true
+  },
+  {
+   "name": "description at the cap of 2000 plus newline",
+   "path": "description",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 2000,
+    "suffix": "\n"
+   },
+   "valid": true
+  },
+  {
+   "name": "description at the cap of 2000 plus padding",
+   "path": "description",
+   "value": {
+    "prefix": " \t",
+    "unit": "a",
+    "count": 2000,
+    "suffix": "\u200b\n"
+   },
+   "valid": true
+  },
+  {
+   "name": "description at the cap in emoji",
+   "path": "description",
+   "value": {
+    "prefix": "",
+    "unit": "\ud83d\udcc5",
+    "count": 2000,
+    "suffix": ""
+   },
+   "valid": true
+  },
+  {
+   "name": "name at the cap of 120",
+   "path": "name",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "name at the cap of 120 plus newline",
+   "path": "name",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "name at the cap of 120 plus padding",
+   "path": "name",
+   "value": " \taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b\n",
+   "valid": true
+  },
+  {
+   "name": "name over the cap by one",
+   "path": "name",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "name over the cap by one plus newline",
+   "path": "name",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": false
+  },
+  {
+   "name": "name at the cap in emoji",
+   "path": "name",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "name over the cap in emoji",
+   "path": "name",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "developer at the cap of 120",
+   "path": "developer",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "developer at the cap of 120 plus newline",
+   "path": "developer",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "developer at the cap of 120 plus padding",
+   "path": "developer",
+   "value": " \taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b\n",
+   "valid": true
+  },
+  {
+   "name": "developer at the cap in emoji",
+   "path": "developer",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "tagline at the cap of 80",
+   "path": "tagline",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "tagline at the cap of 80 plus newline",
+   "path": "tagline",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "tagline at the cap of 80 plus padding",
+   "path": "tagline",
+   "value": " \taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b\n",
+   "valid": true
+  },
+  {
+   "name": "tagline at the cap in emoji",
+   "path": "tagline",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "pricing.note at the cap of 80",
+   "path": "pricing.note",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "pricing.note at the cap of 80 plus newline",
+   "path": "pricing.note",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "pricing.note at the cap of 80 plus padding",
+   "path": "pricing.note",
+   "value": " \taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b\n",
+   "valid": true
+  },
+  {
+   "name": "pricing.note at the cap in emoji",
+   "path": "pricing.note",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 at the cap of 90",
+   "path": "highlights.0",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 at the cap of 90 plus newline",
+   "path": "highlights.0",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 at the cap of 90 plus padding",
+   "path": "highlights.0",
+   "value": " \taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b\n",
+   "valid": true
+  },
+  {
+   "name": "highlights.0 at the cap in emoji",
+   "path": "highlights.0",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "settings.0.label at the cap of 120",
+   "path": "settings.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "settings.0.label at the cap of 120 plus newline",
+   "path": "settings.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "settings.0.label at the cap of 120 plus padding",
+   "path": "settings.0.label",
+   "value": " \taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b\n",
+   "valid": true
+  },
+  {
+   "name": "settings.0.label over the cap by one",
+   "path": "settings.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "settings.0.label over the cap by one plus newline",
+   "path": "settings.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": false
+  },
+  {
+   "name": "settings.0.label at the cap in emoji",
+   "path": "settings.0.label",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "settings.0.label over the cap in emoji",
+   "path": "settings.0.label",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "settings.1.options.0 at the cap of 120",
+   "path": "settings.1.options.0",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "settings.1.options.0 at the cap of 120 plus newline",
+   "path": "settings.1.options.0",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "settings.1.options.0 at the cap of 120 plus padding",
+   "path": "settings.1.options.0",
+   "value": " \taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b\n",
+   "valid": true
+  },
+  {
+   "name": "settings.1.options.0 over the cap by one",
+   "path": "settings.1.options.0",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "settings.1.options.0 over the cap by one plus newline",
+   "path": "settings.1.options.0",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": false
+  },
+  {
+   "name": "settings.1.options.0 at the cap in emoji",
+   "path": "settings.1.options.0",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "settings.1.options.0 over the cap in emoji",
+   "path": "settings.1.options.0",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "settings.0.help at the cap of 500",
+   "path": "settings.0.help",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 500,
+    "suffix": ""
+   },
+   "valid": true
+  },
+  {
+   "name": "settings.0.help at the cap of 500 plus newline",
+   "path": "settings.0.help",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 500,
+    "suffix": "\n"
+   },
+   "valid": true
+  },
+  {
+   "name": "settings.0.help at the cap of 500 plus padding",
+   "path": "settings.0.help",
+   "value": {
+    "prefix": " \t",
+    "unit": "a",
+    "count": 500,
+    "suffix": "\u200b\n"
+   },
+   "valid": true
+  },
+  {
+   "name": "settings.0.help over the cap by one",
+   "path": "settings.0.help",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 501,
+    "suffix": ""
+   },
+   "valid": false
+  },
+  {
+   "name": "settings.0.help over the cap by one plus newline",
+   "path": "settings.0.help",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 501,
+    "suffix": "\n"
+   },
+   "valid": false
+  },
+  {
+   "name": "settings.0.help at the cap in emoji",
+   "path": "settings.0.help",
+   "value": {
+    "prefix": "",
+    "unit": "\ud83d\udcc5",
+    "count": 500,
+    "suffix": ""
+   },
+   "valid": true
+  },
+  {
+   "name": "settings.0.help over the cap in emoji",
+   "path": "settings.0.help",
+   "value": {
+    "prefix": "",
+    "unit": "\ud83d\udcc5",
+    "count": 501,
+    "suffix": ""
+   },
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.title at the cap of 80",
+   "path": "extensions.blocks.1.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.title at the cap of 80 plus newline",
+   "path": "extensions.blocks.1.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.title at the cap of 80 plus padding",
+   "path": "extensions.blocks.1.title",
+   "value": " \taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.title over the cap by one",
+   "path": "extensions.blocks.1.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.title over the cap by one plus newline",
+   "path": "extensions.blocks.1.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.title at the cap in emoji",
+   "path": "extensions.blocks.1.title",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.title over the cap in emoji",
+   "path": "extensions.blocks.1.title",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.description at the cap of 500",
+   "path": "extensions.blocks.1.description",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 500,
+    "suffix": ""
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description at the cap of 500 plus newline",
+   "path": "extensions.blocks.1.description",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 500,
+    "suffix": "\n"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description at the cap of 500 plus padding",
+   "path": "extensions.blocks.1.description",
+   "value": {
+    "prefix": " \t",
+    "unit": "a",
+    "count": 500,
+    "suffix": "\u200b\n"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description over the cap by one",
+   "path": "extensions.blocks.1.description",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 501,
+    "suffix": ""
+   },
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.description over the cap by one plus newline",
+   "path": "extensions.blocks.1.description",
+   "value": {
+    "prefix": "",
+    "unit": "a",
+    "count": 501,
+    "suffix": "\n"
+   },
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.description at the cap in emoji",
+   "path": "extensions.blocks.1.description",
+   "value": {
+    "prefix": "",
+    "unit": "\ud83d\udcc5",
+    "count": 500,
+    "suffix": ""
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description over the cap in emoji",
+   "path": "extensions.blocks.1.description",
+   "value": {
+    "prefix": "",
+    "unit": "\ud83d\udcc5",
+    "count": 501,
+    "suffix": ""
+   },
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0.label at the cap of 40",
+   "path": "extensions.nav.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "extensions.nav.0.label at the cap of 40 plus newline",
+   "path": "extensions.nav.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.nav.0.label at the cap of 40 plus padding",
+   "path": "extensions.nav.0.label",
+   "value": " \taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.nav.0.label over the cap by one",
+   "path": "extensions.nav.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0.label over the cap by one plus newline",
+   "path": "extensions.nav.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.nav.0.label at the cap in emoji",
+   "path": "extensions.nav.0.label",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "extensions.nav.0.label over the cap in emoji",
+   "path": "extensions.nav.0.label",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.title at the cap of 80",
+   "path": "extensions.embeds.0.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.title at the cap of 80 plus newline",
+   "path": "extensions.embeds.0.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.title at the cap of 80 plus padding",
+   "path": "extensions.embeds.0.title",
+   "value": " \taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.title over the cap by one",
+   "path": "extensions.embeds.0.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.title over the cap by one plus newline",
+   "path": "extensions.embeds.0.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.embeds.0.title at the cap in emoji",
+   "path": "extensions.embeds.0.title",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.title over the cap in emoji",
+   "path": "extensions.embeds.0.title",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.title at the cap of 40",
+   "path": "extensions.blocks.0.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.0.title at the cap of 40 plus newline",
+   "path": "extensions.blocks.0.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.0.title at the cap of 40 plus padding",
+   "path": "extensions.blocks.0.title",
+   "value": " \taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.0.title over the cap by one",
+   "path": "extensions.blocks.0.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.title over the cap by one plus newline",
+   "path": "extensions.blocks.0.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.0.title at the cap in emoji",
+   "path": "extensions.blocks.0.title",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.0.title over the cap in emoji",
+   "path": "extensions.blocks.0.title",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.title at the cap of 80",
+   "path": "dashboard.blocks.0.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.title at the cap of 80 plus newline",
+   "path": "dashboard.blocks.0.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.title at the cap of 80 plus padding",
+   "path": "dashboard.blocks.0.title",
+   "value": " \taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b\n",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.title over the cap by one",
+   "path": "dashboard.blocks.0.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.title over the cap by one plus newline",
+   "path": "dashboard.blocks.0.title",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.title at the cap in emoji",
+   "path": "dashboard.blocks.0.title",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.title over the cap in emoji",
+   "path": "dashboard.blocks.0.title",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label at the cap of 120",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label at the cap of 120 plus newline",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label at the cap of 120 plus padding",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": " \taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label over the cap by one",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label over the cap by one plus newline",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label at the cap in emoji",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label over the cap in emoji",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label NBSP only",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "\u00a0",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label ZWSP only",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "\u200b",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label interior NBSP",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": "A\u00a0B",
+   "valid": true
+  },
+  {
+   "name": "settings.0.label NBSP only",
+   "path": "settings.0.label",
+   "value": "\u00a0",
+   "valid": false
+  },
+  {
+   "name": "settings.0.label ZWSP only",
+   "path": "settings.0.label",
+   "value": "\u200b",
+   "valid": false
+  },
+  {
+   "name": "settings.0.label interior NBSP",
+   "path": "settings.0.label",
+   "value": "A\u00a0B",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.label NBSP only",
+   "path": "dashboard.blocks.0.schema.0.label",
+   "value": "\u00a0",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.label ZWSP only",
+   "path": "dashboard.blocks.0.schema.0.label",
+   "value": "\u200b",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema.0.label interior NBSP",
+   "path": "dashboard.blocks.0.schema.0.label",
+   "value": "A\u00a0B",
+   "valid": true
+  },
+  {
+   "name": "icon empty",
+   "path": "icon",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "icon blank",
+   "path": "icon",
+   "value": " \t\u200b",
+   "valid": true
+  },
+  {
+   "name": "developer empty",
+   "path": "developer",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "developer blank",
+   "path": "developer",
+   "value": " \t\u200b",
+   "valid": true
+  },
+  {
+   "name": "category empty",
+   "path": "category",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "category blank",
+   "path": "category",
+   "value": " \t\u200b",
+   "valid": true
+  },
+  {
+   "name": "tagline empty",
+   "path": "tagline",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "tagline blank",
+   "path": "tagline",
+   "value": " \t\u200b",
+   "valid": true
+  },
+  {
+   "name": "description empty",
+   "path": "description",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "description blank",
+   "path": "description",
+   "value": " \t\u200b",
+   "valid": true
+  },
+  {
+   "name": "description_long empty",
+   "path": "description_long",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "description_long blank",
+   "path": "description_long",
+   "value": " \t\u200b",
+   "valid": true
+  },
+  {
+   "name": "pricing.note empty",
+   "path": "pricing.note",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "pricing.note blank",
+   "path": "pricing.note",
+   "value": " \t\u200b",
+   "valid": true
+  },
+  {
+   "name": "settings.0.help empty",
+   "path": "settings.0.help",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "settings.0.help blank",
+   "path": "settings.0.help",
+   "value": " \t\u200b",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description empty",
+   "path": "extensions.blocks.1.description",
+   "value": "",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description blank",
+   "path": "extensions.blocks.1.description",
+   "value": " \t\u200b",
+   "valid": true
   }
  ]
 }

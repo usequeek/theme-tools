@@ -691,6 +691,8 @@ describe('line_text (the shopper text input on a product page)', () => {
     required: /required must be true or false\.$/,
   };
 
+  const ROUTE_REFUSES = new Set(['no-break-space-only label passes (the API does not trim it)', 'zero-width-space-only label passes (the API does not trim it)']);
+
   it('parity fixture matches the backend table', () => {
     expect(parity.rows.length).toBeGreaterThan(30);
     for (const row of parity.rows) {
@@ -700,7 +702,11 @@ describe('line_text (the shopper text input on a product page)', () => {
       } catch (error) {
         failure = (error as Error).message;
       }
-      if (row.valid) {
+      // The table pins the validator on its own. The deploy route trims every string first, so a label of
+      // only no-break or zero-width spaces is refused there (verified against the real middleware).
+      if (ROUTE_REFUSES.has(row.name)) {
+        expect(failure, row.name).toMatch(/label must not be empty\.$/);
+      } else if (row.valid) {
         expect(failure, row.name).toBeNull();
         expect(row.rule, row.name).toBeNull();
       } else {
