@@ -75,9 +75,11 @@ const STOREFRONT_BLOCK_TARGETS = [...EXTENSION_BLOCK_TARGETS, ACCOUNT_PAGE_TARGE
 /** One account page and one account order block per manifest. */
 const ACCOUNT_PAGES_MAX = 1;
 const ACCOUNT_BLOCKS_MAX = 1;
-const ACCOUNT_TITLE_MAX = 40;
+/** Longest shopper-facing label: an account page or block title, an add-to-cart button label and its block title. */
+const SHOPPER_TEXT_MAX = 40;
 /**
- * Parity constant, mirrors the API's account title rule (PCRE, flags `uD`):
+ * Parity constant, mirrors the API's shopper text rule (PCRE, flags `uD`; the account title
+ * and the add-to-cart label and block title share it):
  * 1-40 code points; no control (Cc), line or paragraph separator (Zl, Zp) or
  * format (Cf) character, U+180E or the tag block, EXCEPT ZWNJ and ZWJ (Persian
  * and other scripts need them); a title of only whitespace or ZWNJ/ZWJ is
@@ -85,8 +87,8 @@ const ACCOUNT_TITLE_MAX = 40;
  * JavaScript `$` (no `m` flag) matches only at the very end, which is what
  * PCRE's `D` flag gives, so a trailing newline is refused.
  */
-const ACCOUNT_TITLE_RE = new RegExp(
-  `^(?![\\p{Z}\\u200C\\u200D]+$)(?:[^\\p{Cc}\\p{Zl}\\p{Zp}\\p{Cf}\\u180E\\u{E0000}-\\u{E007F}]|[\\u200C\\u200D]){1,${ACCOUNT_TITLE_MAX}}$`,
+const SHOPPER_TEXT_RE = new RegExp(
+  `^(?![\\p{Z}\\u200C\\u200D]+$)(?:[^\\p{Cc}\\p{Zl}\\p{Zp}\\p{Cf}\\u180E\\u{E0000}-\\u{E007F}]|[\\u200C\\u200D]){1,${SHOPPER_TEXT_MAX}}$`,
   'u',
 );
 const EXTENSION_PRIMITIVES = ['date', 'time', 'select'];
@@ -97,6 +99,15 @@ const EXTENSION_SUBMIT_PRIMITIVE = 'submit';
  * dashboard), and deliberately outside `EXTENSION_PRIMITIVES`.
  */
 const EXTENSION_LINE_INPUT_PRIMITIVE = 'line_text';
+/**
+ * The add-to-cart button on a product page: one field in a block of its own, the
+ * block's signed proxy read names the products. Extension blocks only, outside
+ * `EXTENSION_PRIMITIVES`. The API accepts it whatever its platform switch says (the
+ * switch gates installs, not the manifest), so the type is accepted here always.
+ */
+const EXTENSION_ADD_TO_CART_PRIMITIVE = 'add_to_cart';
+/** Blocks with an `add_to_cart` field one manifest may declare. */
+const ADD_TO_CART_BLOCKS_PER_MANIFEST = 2;
 /** Largest `max_length` a `line_text` field may declare. */
 const LINE_TEXT_MAX_LENGTH = 500;
 /** `line_text` fields one manifest may declare, across all of its blocks. */
@@ -368,7 +379,10 @@ function checkSchemaFields(list: unknown, where: string, primitives: string[], p
     }
     if (typeof field.key !== 'string' || !SETTING_KEY_RE.test(field.key)) problems.push(`The ${where}.schema[${index}].key must match [a-z0-9_]{1,64}.`);
     if (typeof field.label !== 'string' || charCount(field.label) > 120) problems.push(`The ${where}.schema[${index}].label is required (max 120).`);
-    if (!primitives.includes(field.type as string)) problems.push(`The schema primitive must be one of: ${primitives.join(', ')}.`);
+    // The add-to-cart type is accepted but not named in the message, as the API words it while its platform switch is off.
+    if (!primitives.includes(field.type as string) && !(lineInput && field.type === EXTENSION_ADD_TO_CART_PRIMITIVE)) {
+      problems.push(`The schema primitive must be one of: ${primitives.join(', ')}.`);
+    }
     if (typeof field.label === 'string' && isPhpBlank(field.label)) problems.push(`The ${where}.schema[${index}].label must not be empty.`);
     // `line_text` is strict (a real boolean); every other primitive follows Laravel's `boolean` rule.
     if (field.required !== undefined && (lineInput && field.type === EXTENSION_LINE_INPUT_PRIMITIVE ? typeof field.required !== 'boolean' : !isLaravelBoolean(field.required))) {
@@ -873,6 +887,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     if (block.schema !== undefined) {
       checkSchemaFields(block.schema, where, [...EXTENSION_PRIMITIVES, EXTENSION_SUBMIT_PRIMITIVE, EXTENSION_LINE_INPUT_PRIMITIVE], problems, true);
       checkLineTextBlock(block, where, manifest.slug, lineTextKeys, problems);
+      checkAddToCartBlock(block, where, problems);
       const submits = Array.isArray(block.schema) ? block.schema.filter((field) => isRecord(field) && field.type === EXTENSION_SUBMIT_PRIMITIVE) : [];
       if (submits.length > 0 && !(isRecord(extensions.proxy) && isLaravelTrue(extensions.proxy.allow_post))) {
         throw fail(`The ${where}.schema declares a submit primitive, which needs extensions.proxy.allow_post: true.`);
@@ -883,6 +898,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     checkImage(block.image, where, problems, fail);
     checked.push(block);
   });
+  checkAddToCartManifest(extensions, blocks as unknown[], problems);
   // The API reaches the account rules only once every earlier refusal is clear.
   if (problems.length === 0) problems.push(...accountExtensionProblems(extensions, checked as Record<string, unknown>[]));
   // Then block keys, the API's order: account refusals first, uniqueness after.
@@ -920,8 +936,8 @@ function accountExtensionProblems(extensions: Record<string, unknown>, blocks: R
     if (!isPage && accountTargets.length === 0) return;
     needsCustomerId = true;
     if (targets.some((target) => !accountTargets.includes(target))) problems.push(`The ${where}.targets may not mix product and account targets.`);
-    if (!ACCOUNT_TITLE_RE.test(String(block.title ?? ''))) {
-      problems.push(`The ${where}.title must be 1-${ACCOUNT_TITLE_MAX} characters with no control, zero-width or direction-override characters.`);
+    if (!SHOPPER_TEXT_RE.test(String(block.title ?? ''))) {
+      problems.push(`The ${where}.title must be 1-${SHOPPER_TEXT_MAX} characters with no control, zero-width or direction-override characters.`);
     }
     // Present means declared, whatever the value.
     for (const field of ['available_if', 'link_url', 'image']) {
@@ -1004,6 +1020,44 @@ function checkLineTextBlock(block: Record<string, unknown>, where: string, slug:
       problems.push(`The ${at} may not be ${LINE_TEXT_BEARER_KEYS.join(', ')}.`);
     }
   });
+}
+
+const declaresAddToCart = (block: unknown): boolean =>
+  isRecord(block) && Array.isArray(block.schema) && block.schema.some((field) => isRecord(field) && field.type === EXTENSION_ADD_TO_CART_PRIMITIVE);
+
+/**
+ * Block rules for an `add_to_cart` field (mirrors the API): the block holds exactly that
+ * one field, is a plain app_block on the product target alone, takes no `required` or
+ * `options` on the field, and the button label and the block title are 1-40 characters of
+ * visible text. The products come from the app's proxy read, so none are declared here.
+ */
+function checkAddToCartBlock(block: Record<string, unknown>, where: string, problems: string[]): void {
+  if (!declaresAddToCart(block)) return;
+  const primitive = EXTENSION_ADD_TO_CART_PRIMITIVE;
+  const fields = block.schema as unknown[];
+  const labelProblem = (at: string): string => `The ${at} must be 1-${SHOPPER_TEXT_MAX} characters with no control, zero-width or direction-override characters.`;
+  if (fields.length !== 1) problems.push(`The ${where}.schema must hold exactly one ${primitive} field and nothing else.`);
+  const targets = block.targets as unknown[];
+  if ((block.type ?? 'app_block') !== 'app_block' || targets.length !== 1 || targets[0] !== EXTENSION_BLOCK_TARGETS[0]) {
+    problems.push(`The ${where} with an ${primitive} field must be an app_block with exactly the ${EXTENSION_BLOCK_TARGETS.join(', ')} target.`);
+  }
+  fields.forEach((field, index) => {
+    if (!isRecord(field) || field.type !== primitive) return;
+    // Present means declared, whatever the value; a `required` that is not a boolean is already refused by the type rule.
+    if (isLaravelBoolean(field.required)) problems.push(`The ${where}.schema[${index}].required is not valid on an ${primitive} field.`);
+    if ('options' in field) problems.push(`The ${where}.schema[${index}].options is not valid on an ${primitive} field.`);
+    // A blank or over-long (120) label is refused with its own message already: the API reaches this rule only past those.
+    if (typeof field.label === 'string' && field.label !== '' && charCount(field.label) <= 120 && !SHOPPER_TEXT_RE.test(field.label)) problems.push(labelProblem(`${where}.schema[${index}].label`));
+  });
+  if (typeof block.title === 'string' && !SHOPPER_TEXT_RE.test(block.title)) problems.push(labelProblem(`${where}.title`));
+}
+
+/** Manifest-wide `add_to_cart` rules: the products come from the signed proxy read, and the blocks are capped. */
+function checkAddToCartManifest(extensions: Record<string, unknown>, blocks: unknown[], problems: string[]): void {
+  const count = blocks.filter(declaresAddToCart).length;
+  if (count === 0) return;
+  if (!isRecord(extensions.proxy)) problems.push(`A block with an ${EXTENSION_ADD_TO_CART_PRIMITIVE} field needs extensions.proxy: the products come from its signed read.`);
+  if (count > ADD_TO_CART_BLOCKS_PER_MANIFEST) problems.push(`A manifest may declare at most ${ADD_TO_CART_BLOCKS_PER_MANIFEST} blocks with an ${EXTENSION_ADD_TO_CART_PRIMITIVE} field.`);
 }
 
 /** Backend descriptor accounting uses UTF-8 bytes of normalized JSON. */

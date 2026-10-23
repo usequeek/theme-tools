@@ -1,0 +1,1253 @@
+{
+  "rows": [
+    {
+      "name": "accepts one add_to_cart block with a proxy",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": true,
+      "rule": null,
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "accepts a block shown only on declared products",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": true,
+      "rule": null,
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ],
+          "available_if": "declared_products"
+        }
+      ]
+    },
+    {
+      "name": "accepts a description",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": true,
+      "rule": null,
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ],
+          "description": "Everything for a first month."
+        }
+      ]
+    },
+    {
+      "name": "accepts a 40 character label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": true,
+      "rule": null,
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "accepts a Persian label with a zero-width non-joiner",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": true,
+      "rule": null,
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "accepts two add_to_cart blocks",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": true,
+      "rule": null,
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        },
+        {
+          "key": "add_pack_two",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "accepts beside a line_text block",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": true,
+      "rule": null,
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        },
+        {
+          "key": "engraving",
+          "title": "Engraving",
+          "targets": [
+            "product"
+          ],
+          "available_if": "declared_products",
+          "schema": [
+            {
+              "key": "engraving",
+              "label": "Engraving text",
+              "type": "line_text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a second field in the block",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "exactly_one_field",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add",
+              "type": "add_to_cart"
+            },
+            {
+              "key": "when",
+              "label": "When",
+              "type": "date"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses two add_to_cart fields in one block",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "exactly_one_field",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add",
+              "type": "add_to_cart"
+            },
+            {
+              "key": "add2",
+              "label": "Add more",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses an app_embed block type",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "product_target_only",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ],
+          "type": "app_embed"
+        }
+      ]
+    },
+    {
+      "name": "refuses required on the field",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "field_not_valid",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses options on the field",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "field_not_valid",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart",
+              "options": [
+                "a"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses max_length on the field",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "max_length_placement",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart",
+              "max_length": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a control character in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\u0007 it",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a zero-width space in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\u200b it",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a label of only non-breaking spaces",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "\u00a0\u00a0",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a 41 character label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a direction override in the title",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "title",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Kit\u202e",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a title longer than 40 characters",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "title",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "ttttttttttttttttttttttttttttttttttttttttt",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses an add_to_cart block without a proxy",
+      "slug": "my-app",
+      "proxy": false,
+      "valid": false,
+      "rule": "needs_proxy",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses three add_to_cart blocks",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "block_cap",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        },
+        {
+          "key": "b2",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        },
+        {
+          "key": "b3",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+2028 line separator in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\u2028it",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+2029 paragraph separator in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\u2029it",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+0085 next line in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\u0085it",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+061C Arabic letter mark in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\u061cit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+2060 word joiner in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\u2060it",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+2061 function application in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\u2061it",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+2062 invisible times in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\u2062it",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+2063 invisible separator in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\u2063it",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+2064 invisible plus in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\u2064it",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+FEFF byte order mark in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\ufeffit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+00AD soft hyphen in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\u00adit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a tag character U+E0041 in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\udb40\udc41it",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+180E Mongolian vowel separator in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add\u180eit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+2028 line separator in the title",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "title",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Kit\u2028",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+2060 word joiner in the title",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "title",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Kit\u2060",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+FEFF byte order mark in the title",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "title",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Kit\ufeff",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a tag character U+E0041 in the title",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "title",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Kit\udb40\udc41",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses U+180E Mongolian vowel separator in the title",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "title",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Kit\u180e",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a trailing newline in the label",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add it\n",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a trailing newline in the title",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "title",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Kit\n",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a label of only a zero-width non-joiner",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "\u200c",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a label of only zero-width joiners and non-joiners",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "\u200c\u200d",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a title of only non-breaking spaces",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "title",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "\u00a0",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "accepts a Persian title with a zero-width non-joiner",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": true,
+      "rule": null,
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "\u06a9\u062a\u0627\u0628\u200c\u0647\u0627",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "accepts a 40 code point label of two-byte characters",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": true,
+      "rule": null,
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a 41 code point label of two-byte characters",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "label",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "accepts a 40 code point title of astral characters",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": true,
+      "rule": null,
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a 41 code point title of astral characters",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "title",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+          "targets": [
+            "product"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a block that also targets collection",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "product_target_only",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "product",
+            "collection"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "refuses a block that targets only collection",
+      "slug": "my-app",
+      "proxy": true,
+      "valid": false,
+      "rule": "product_target_only",
+      "blocks": [
+        {
+          "key": "add_pack",
+          "title": "Starter kit",
+          "targets": [
+            "collection"
+          ],
+          "schema": [
+            {
+              "key": "add",
+              "label": "Add the starter kit",
+              "type": "add_to_cart"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6926 @@
+{
+ "about": "Verdicts of the real API stack for add_to_cart manifests: the global TrimStrings and ConvertEmptyStringsToNull middleware, then AppManifestValidator, from the API's master at the time the rows were taken. fixtureRows are the rows of add-to-cart-parity.json run through that same stack, by name; rows are CLI-sensitive cases of our own (slug, extensions and an optional dashboard, as a manifest body).",
+ "fixtureRows": [
+  {
+   "name": "accepts one add_to_cart block with a proxy",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "accepts a block shown only on declared products",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "accepts a description",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "accepts a 40 character label",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "accepts a Persian label with a zero-width non-joiner",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "accepts two add_to_cart blocks",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "accepts beside a line_text block",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "refuses a second field in the block",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema must hold exactly one add_to_cart field and nothing else."
+   ]
+  },
+  {
+   "name": "refuses two add_to_cart fields in one block",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema must hold exactly one add_to_cart field and nothing else."
+   ]
+  },
+  {
+   "name": "refuses an app_embed block type",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0] with an add_to_cart field must be an app_block with exactly the product target."
+   ]
+  },
+  {
+   "name": "refuses required on the field",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].required is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "refuses options on the field",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].options is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "refuses max_length on the field",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].max_length is only valid on a line_text field."
+   ]
+  },
+  {
+   "name": "refuses a control character in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses a zero-width space in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses a label of only non-breaking spaces",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field is required."
+   ]
+  },
+  {
+   "name": "refuses a 41 character label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses a direction override in the title",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].title must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses a title longer than 40 characters",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].title must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses an add_to_cart block without a proxy",
+   "valid": false,
+   "messages": [
+    "A block with an add_to_cart field needs extensions.proxy: the products come from its signed read."
+   ]
+  },
+  {
+   "name": "refuses three add_to_cart blocks",
+   "valid": false,
+   "messages": [
+    "A manifest may declare at most 2 blocks with an add_to_cart field."
+   ]
+  },
+  {
+   "name": "refuses U+2028 line separator in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses U+2029 paragraph separator in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses U+0085 next line in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses U+061C Arabic letter mark in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses U+2060 word joiner in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses U+2061 function application in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses U+2062 invisible times in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses U+2063 invisible separator in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses U+2064 invisible plus in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses U+FEFF byte order mark in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses U+00AD soft hyphen in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses a tag character U+E0041 in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses U+180E Mongolian vowel separator in the label",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses U+2028 line separator in the title",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "refuses U+2060 word joiner in the title",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "refuses U+FEFF byte order mark in the title",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "refuses a tag character U+E0041 in the title",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].title must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses U+180E Mongolian vowel separator in the title",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "refuses a trailing newline in the label",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "refuses a trailing newline in the title",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "refuses a label of only a zero-width non-joiner",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field is required."
+   ]
+  },
+  {
+   "name": "refuses a label of only zero-width joiners and non-joiners",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field is required."
+   ]
+  },
+  {
+   "name": "refuses a title of only non-breaking spaces",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.title field is required."
+   ]
+  },
+  {
+   "name": "accepts a Persian title with a zero-width non-joiner",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "accepts a 40 code point label of two-byte characters",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "refuses a 41 code point label of two-byte characters",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "accepts a 40 code point title of astral characters",
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "refuses a 41 code point title of astral characters",
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].title must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "refuses a block that also targets collection",
+   "valid": false,
+   "messages": [
+    "The block target must be one of: product, account-page, account-order."
+   ]
+  },
+  {
+   "name": "refuses a block that targets only collection",
+   "valid": false,
+   "messages": [
+    "The block target must be one of: product, account-page, account-order."
+   ]
+  }
+ ],
+ "rows": [
+  {
+   "name": "label with padding spaces",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "  Add the kit  ",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with leading and trailing newlines",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\nAdd the kit\n",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a tab at each end",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\tAdd\t",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a leading zero-width space",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u200bAdd",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a trailing zero-width space",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add\u200b",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with an interior zero-width space",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Ad\u200bd",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "label with a leading byte order mark",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\ufeffAdd",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a leading left-to-right mark",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u200eAdd",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a trailing left-to-right mark",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add\u200e",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with no-break space padding",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u00a0Add\u00a0",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a leading zero-width non-joiner",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u200cAdd",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a leading right-to-left mark",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u200fAdd",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a leading line separator",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u2028Add",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a trailing line separator",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add\u2028",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a leading paragraph separator",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u2029Add",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a leading next line",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u0085Add",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a trailing vertical tab",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add\u000b",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a trailing NUL",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add\u0000",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with an interior newline",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add\nkit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "label with an interior tab",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add\tkit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "label with an interior space run",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add   kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a leading soft hyphen",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u00adAdd",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a leading word joiner",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u2060Add",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a leading ideographic space",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u3000Add",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a leading em space",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u2003Add",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a leading thin space",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u2009Add",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a leading Mongolian vowel separator",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u180eAdd",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with an interior space",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add to cart",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label of one character",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "A",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label of an emoji",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\ud83d\uded2",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label mixing text and an emoji",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add \ud83d\uded2 now",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label of spaces only",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "   ",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field is required."
+   ]
+  },
+  {
+   "name": "label of a tab only",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\t",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field is required."
+   ]
+  },
+  {
+   "name": "label of newlines only",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\n\n",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field is required."
+   ]
+  },
+  {
+   "name": "label of zero-width spaces only",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u200b\u200b",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field is required."
+   ]
+  },
+  {
+   "name": "label of a byte order mark only",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\ufeff",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field is required."
+   ]
+  },
+  {
+   "name": "label empty",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field is required."
+   ]
+  },
+  {
+   "name": "label with html",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "<b>Add</b>",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a script tag",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "<script>x</script>",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with an ampersand",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add & go",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with quotes",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\"Add\" 'kit'",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a backslash",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add\\kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label with a percent and braces",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "100% {kit}",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label in Arabic",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u0623\u0636\u0641 \u0625\u0644\u0649 \u0627\u0644\u0633\u0644\u0629",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label in Persian with a joiner",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label at 40",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label at 41",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "label at 40 plus a trailing newline",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label at 40 padded by spaces",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  ",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label at 41 padded by spaces",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": " aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "label at 40 emoji",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label at 41 emoji",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "label at 40 two-byte characters",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label at 41 two-byte characters",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "label at 40 with a trailing zero-width space",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200b",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label at 40 with a trailing zero-width joiner",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200d",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label at 41 with a trailing zero-width joiner",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u200d",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "label at 120",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "label at 121",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field must not be greater than 120 characters."
+   ]
+  },
+  {
+   "name": "label at 121 emoji",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field must not be greater than 120 characters."
+   ]
+  },
+  {
+   "name": "label at 5000",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field must not be greater than 120 characters."
+   ]
+  },
+  {
+   "name": "label missing",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field is required."
+   ]
+  },
+  {
+   "name": "label as a number",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": 5,
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field must be a string."
+   ]
+  },
+  {
+   "name": "label as a list",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": [
+         "x"
+        ],
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field must be a string."
+   ]
+  },
+  {
+   "name": "label as true",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": true,
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.label field must be a string."
+   ]
+  },
+  {
+   "name": "title with padding spaces",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "  Starter kit  ",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "title with leading and trailing newlines",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "\nStarter kit\n",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "title with a leading zero-width space",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "\u200bKit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "title with an interior zero-width space",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Ki\u200bt",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].title must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "title with a leading right-to-left mark",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "\u200fKit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "title with a direction override",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "\u202eKit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].title must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "title with an interior newline",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Kit\nstarter",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].title must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "title with html",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "<i>Kit</i>",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "title at 40",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "title at 41",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].title must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "title at 40 plus a trailing newline",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "title at 40 emoji",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "title at 41 emoji",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2\ud83d\uded2",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].title must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "title at 80",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].title must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "title at 81",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.title field must not be greater than 80 characters."
+   ]
+  },
+  {
+   "name": "title of no-break spaces only",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "\u00a0\u00a0",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.title field is required."
+   ]
+  },
+  {
+   "name": "title of zero-width non-joiners only",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "\u200c\u200c",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.title field is required."
+   ]
+  },
+  {
+   "name": "title with a leading line separator",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "\u2028Kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "title empty",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.title field is required."
+   ]
+  },
+  {
+   "name": "title of spaces only",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "   ",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.title field is required."
+   ]
+  },
+  {
+   "name": "title with a trailing NUL",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Kit\u0000",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "title missing",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.title field is required."
+   ]
+  },
+  {
+   "name": "title as a number",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": 5,
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.title field must be a string."
+   ]
+  },
+  {
+   "name": "required true",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "required": true
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].required is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "required false",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "required": false
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].required is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "required one",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "required": 1
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].required is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "required zero",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "required": 0
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].required is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "required string one",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "required": "1"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].required is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "required string zero",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "required": "0"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].required is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "required string true",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "required": "true"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.required field must be true or false."
+   ]
+  },
+  {
+   "name": "required string x",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "required": "x"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.required field must be true or false."
+   ]
+  },
+  {
+   "name": "required empty",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "required": ""
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.required field must be true or false."
+   ]
+  },
+  {
+   "name": "required spaces",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "required": "  "
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.required field must be true or false."
+   ]
+  },
+  {
+   "name": "required a list",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "required": [
+         true
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.required field must be true or false."
+   ]
+  },
+  {
+   "name": "required null",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "required": null
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.required field must be true or false."
+   ]
+  },
+  {
+   "name": "options a list",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "options": [
+         "a",
+         "b"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].options is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "options empty list",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "options": []
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].options is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "options empty string",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "options": ""
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].options is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "options a string",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "options": "a"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].options is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "options null",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "options": null
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].options is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "options a keyed table",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "options": {
+         "a": "x"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].options is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "max_length 5",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "max_length": 5
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].max_length is only valid on a line_text field."
+   ]
+  },
+  {
+   "name": "max_length 0",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "max_length": 0
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].max_length is only valid on a line_text field."
+   ]
+  },
+  {
+   "name": "max_length string",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "max_length": "5"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].max_length is only valid on a line_text field."
+   ]
+  },
+  {
+   "name": "max_length empty",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "max_length": ""
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].max_length is only valid on a line_text field."
+   ]
+  },
+  {
+   "name": "max_length null",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "max_length": null
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].max_length is only valid on a line_text field."
+   ]
+  },
+  {
+   "name": "unknown key help in the field",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "help": "x"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "Unknown field 'help' in extensions.blocks[0].schema[0]."
+   ]
+  },
+  {
+   "name": "unknown key default in the field",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "default": "x"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "Unknown field 'default' in extensions.blocks[0].schema[0]."
+   ]
+  },
+  {
+   "name": "unknown key empty in the field",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "help": ""
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "Unknown field 'help' in extensions.blocks[0].schema[0]."
+   ]
+  },
+  {
+   "name": "unknown key add_to_cart in the block",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "add_to_cart": true
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "Unknown field 'add_to_cart' in extensions.blocks[0]."
+   ]
+  },
+  {
+   "name": "unknown key products in the block",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "products": [
+       1
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "Unknown field 'products' in extensions.blocks[0]."
+   ]
+  },
+  {
+   "name": "unknown key url in the block",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "url": "https://apps.example.com/x"
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "Unknown field 'url' in extensions.blocks[0]."
+   ]
+  },
+  {
+   "name": "unknown key in the field and a second field",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "help": "x"
+       },
+       {
+        "key": "d",
+        "label": "D",
+        "type": "date"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "Unknown field 'help' in extensions.blocks[0].schema[0]."
+   ]
+  },
+  {
+   "name": "type with padding",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "  add_to_cart  "
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "type in capitals",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "ADD_TO_CART"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The schema primitive must be one of: date, time, select, submit, line_text."
+   ]
+  },
+  {
+   "name": "type with a dash",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add-to-cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The schema primitive must be one of: date, time, select, submit, line_text."
+   ]
+  },
+  {
+   "name": "type empty",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "type": ""
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.type field is required."
+   ]
+  },
+  {
+   "name": "field key in capitals",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "Add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.key field format is invalid."
+   ]
+  },
+  {
+   "name": "field key with a dash",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add-it",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.key field format is invalid."
+   ]
+  },
+  {
+   "name": "field key of 64",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "field key of 65",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.key field format is invalid."
+   ]
+  },
+  {
+   "name": "field key empty",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.key field is required."
+   ]
+  },
+  {
+   "name": "field key padded",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": " add ",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "field key with a trailing newline",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add\n",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "field key claim",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "claim",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "block key in capitals",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "Add_Pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.key field format is invalid."
+   ]
+  },
+  {
+   "name": "block key of 64",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "block key of 65",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.key field format is invalid."
+   ]
+  },
+  {
+   "name": "block key empty",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.key field is required."
+   ]
+  },
+  {
+   "name": "a second date field",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       },
+       {
+        "key": "d",
+        "label": "D",
+        "type": "date"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema must hold exactly one add_to_cart field and nothing else."
+   ]
+  },
+  {
+   "name": "a second select field",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "s",
+        "label": "S",
+        "type": "select",
+        "options": [
+         "a"
+        ]
+       },
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema must hold exactly one add_to_cart field and nothing else."
+   ]
+  },
+  {
+   "name": "a second submit field",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack",
+     "allow_post": true
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       },
+       {
+        "key": "s",
+        "label": "S",
+        "type": "submit"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema must hold exactly one add_to_cart field and nothing else."
+   ]
+  },
+  {
+   "name": "two add_to_cart fields",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       },
+       {
+        "key": "add2",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema must hold exactly one add_to_cart field and nothing else."
+   ]
+  },
+  {
+   "name": "three add_to_cart fields",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       },
+       {
+        "key": "add2",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       },
+       {
+        "key": "add3",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema must hold exactly one add_to_cart field and nothing else."
+   ]
+  },
+  {
+   "name": "a line_text field beside",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       },
+       {
+        "key": "t",
+        "label": "T",
+        "type": "line_text"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema may not mix line_text fields with other primitives.",
+    "The extensions.blocks[0] with line_text fields must set available_if to declared_products.",
+    "The extensions.blocks[0].schema must hold exactly one add_to_cart field and nothing else."
+   ]
+  },
+  {
+   "name": "a line_text field beside with declared_products",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       },
+       {
+        "key": "t",
+        "label": "T",
+        "type": "line_text"
+       }
+      ],
+      "available_if": "declared_products"
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema may not mix line_text fields with other primitives.",
+    "The extensions.blocks[0].schema must hold exactly one add_to_cart field and nothing else."
+   ]
+  },
+  {
+   "name": "an empty schema",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": []
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "a schema as a keyed table",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": {
+       "first": {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      }
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "a schema as a keyed table with two fields",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": {
+       "first": {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       },
+       "second": {
+        "key": "d",
+        "label": "D",
+        "type": "date"
+       }
+      }
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema must hold exactly one add_to_cart field and nothing else."
+   ]
+  },
+  {
+   "name": "a schema as a string",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": "x"
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema field must be an array."
+   ]
+  },
+  {
+   "name": "a schema as empty string",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": ""
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema field must be an array."
+   ]
+  },
+  {
+   "name": "a field as a string",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       "add_to_cart"
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.key field is required.",
+    "The extensions.blocks.0.schema.0.label field is required.",
+    "The extensions.blocks.0.schema.0.type field is required."
+   ]
+  },
+  {
+   "name": "a field as an empty list",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       []
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.key field is required.",
+    "The extensions.blocks.0.schema.0.label field is required.",
+    "The extensions.blocks.0.schema.0.type field is required."
+   ]
+  },
+  {
+   "name": "a field as an empty table",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {}
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.schema.0.key field is required.",
+    "The extensions.blocks.0.schema.0.label field is required.",
+    "The extensions.blocks.0.schema.0.type field is required."
+   ]
+  },
+  {
+   "name": "target collection",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "collection"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The block target must be one of: product, account-page, account-order."
+   ]
+  },
+  {
+   "name": "target product and collection",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product",
+       "collection"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The block target must be one of: product, account-page, account-order."
+   ]
+  },
+  {
+   "name": "target account-order",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "account-order"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0] with an add_to_cart field must be an app_block with exactly the product target."
+   ]
+  },
+  {
+   "name": "target account-page",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "account-page"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0] with an add_to_cart field must be an app_block with exactly the product target."
+   ]
+  },
+  {
+   "name": "target product twice",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product",
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0] with an add_to_cart field must be an app_block with exactly the product target."
+   ]
+  },
+  {
+   "name": "target product and account-order",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product",
+       "account-order"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0] with an add_to_cart field must be an app_block with exactly the product target."
+   ]
+  },
+  {
+   "name": "targets empty list",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.targets field is required."
+   ]
+  },
+  {
+   "name": "targets keyed table",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": {
+       "a": "product"
+      },
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "targets keyed table of two",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": {
+       "a": "product",
+       "b": "product"
+      },
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0] with an add_to_cart field must be an app_block with exactly the product target."
+   ]
+  },
+  {
+   "name": "target padded",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "  product  "
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "target in capitals",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "Product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The block target must be one of: product, account-page, account-order."
+   ]
+  },
+  {
+   "name": "target empty string",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       ""
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.targets.0 field is required."
+   ]
+  },
+  {
+   "name": "target a number",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       5
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.targets.0 field must be a string.",
+    "The block target must be one of: product, account-page, account-order."
+   ]
+  },
+  {
+   "name": "targets a string",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": "product",
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.targets field must be an array."
+   ]
+  },
+  {
+   "name": "type app_block",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "type": "app_block"
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "type app_embed",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "type": "app_embed"
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0] with an add_to_cart field must be an app_block with exactly the product target."
+   ]
+  },
+  {
+   "name": "type app_page",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "type": "app_page"
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0] with an add_to_cart field must be an app_block with exactly the product target."
+   ]
+  },
+  {
+   "name": "type app_page with account target and url",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "account-page"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "type": "app_page",
+      "url": "https://apps.example.com/x"
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0] with an add_to_cart field must be an app_block with exactly the product target."
+   ]
+  },
+  {
+   "name": "type empty",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "type": ""
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.type field must be a string.",
+    "The block type must be one of: app_block, app_embed, app_page."
+   ]
+  },
+  {
+   "name": "type padded",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "type": " app_block "
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "type unknown",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "type": "banner"
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The block type must be one of: app_block, app_embed, app_page."
+   ]
+  },
+  {
+   "name": "available_if declared_products",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "available_if": "declared_products"
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "available_if unknown",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "available_if": "always"
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The block visibility condition must be one of: declared_products."
+   ]
+  },
+  {
+   "name": "available_if empty",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "available_if": ""
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks.0.available_if field must be a string.",
+    "The block visibility condition must be one of: declared_products."
+   ]
+  },
+  {
+   "name": "a description",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "description": "Adds the pack."
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "a link_url",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "link_url": "https://apps.example.com/l"
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "an image",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ],
+      "image": {
+       "url": "https://apps.example.com/i.png"
+      }
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "no proxy",
+   "slug": "my-app",
+   "extensions": {
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "A block with an add_to_cart field needs extensions.proxy: the products come from its signed read."
+   ]
+  },
+  {
+   "name": "proxy empty list",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": [],
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.proxy.url must be an https URL."
+   ]
+  },
+  {
+   "name": "proxy empty string",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": "",
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.proxy field must be an array."
+   ]
+  },
+  {
+   "name": "proxy without a url",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.proxy.url field is required when extensions.proxy is present."
+   ]
+  },
+  {
+   "name": "proxy with a bad url",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "http://apps.example.com/p",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.proxy.url must be an https URL."
+   ]
+  },
+  {
+   "name": "proxy with allow_post",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack",
+     "allow_post": true
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "proxy with share_customer_id",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack",
+     "share_customer_id": true
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "no proxy and a bad label",
+   "slug": "my-app",
+   "extensions": {
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Ad\u200bd",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters.",
+    "A block with an add_to_cart field needs extensions.proxy: the products come from its signed read."
+   ]
+  },
+  {
+   "name": "no proxy and two blocks",
+   "slug": "my-app",
+   "extensions": {
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "add_two",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "A block with an add_to_cart field needs extensions.proxy: the products come from its signed read."
+   ]
+  },
+  {
+   "name": "no proxy and three blocks",
+   "slug": "my-app",
+   "extensions": {
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "add_two",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "add_three",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "A block with an add_to_cart field needs extensions.proxy: the products come from its signed read.",
+    "A manifest may declare at most 2 blocks with an add_to_cart field."
+   ]
+  },
+  {
+   "name": "one block",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "two blocks",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "add_two",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "three blocks",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "add_two",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "add_three",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "A manifest may declare at most 2 blocks with an add_to_cart field."
+   ]
+  },
+  {
+   "name": "four blocks",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "b0",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "b1",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "b2",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "b3",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "A manifest may declare at most 2 blocks with an add_to_cart field."
+   ]
+  },
+  {
+   "name": "two blocks with the same key",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "Extension block keys must be unique."
+   ]
+  },
+  {
+   "name": "two blocks beside a plain block",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "add_two",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "plain",
+      "title": "Plain",
+      "targets": [
+       "product"
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "three blocks, the third invalid",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "add_two",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "add_three",
+      "title": "Starter kit",
+      "targets": [
+       "collection"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The block target must be one of: product, account-page, account-order."
+   ]
+  },
+  {
+   "name": "blocks as a keyed table",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": {
+     "a": {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     "b": {
+      "key": "add_two",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    }
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "blocks as a keyed table of three",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": {
+     "a": {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     "b": {
+      "key": "add_two",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     "c": {
+      "key": "add_three",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    }
+   },
+   "valid": false,
+   "messages": [
+    "A manifest may declare at most 2 blocks with an add_to_cart field."
+   ]
+  },
+  {
+   "name": "blocks empty",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": []
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "extensions empty list",
+   "slug": "my-app",
+   "extensions": [],
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "blocks beside a submit block",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack",
+     "allow_post": true
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "sub",
+      "title": "Sub",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "go",
+        "label": "Go",
+        "type": "submit"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "beside an account page and account block",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack",
+     "share_customer_id": true
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "pg",
+      "type": "app_page",
+      "title": "Page",
+      "targets": [
+       "account-page"
+      ],
+      "url": "https://apps.example.com/a"
+     },
+     {
+      "key": "ord",
+      "title": "Ord",
+      "targets": [
+       "account-order"
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "beside a line_text block",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     },
+     {
+      "key": "eng",
+      "title": "Eng",
+      "targets": [
+       "product"
+      ],
+      "available_if": "declared_products",
+      "schema": [
+       {
+        "key": "eng",
+        "label": "Eng",
+        "type": "line_text"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "a long slug",
+   "slug": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "a slug with dashes",
+   "slug": "my--app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "add_to_cart on a dashboard block",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "dashboard": {
+    "blocks": [
+     {
+      "key": "d",
+      "title": "D",
+      "target": "order-details",
+      "schema": [
+       {
+        "key": "x",
+        "label": "X",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The dashboard schema primitive must be one of: date, time, select, text, slot-list."
+   ]
+  },
+  {
+   "name": "date on a dashboard block",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "dashboard": {
+    "blocks": [
+     {
+      "key": "d",
+      "title": "D",
+      "target": "order-details",
+      "schema": [
+       {
+        "key": "x",
+        "label": "X",
+        "type": "date"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "add_to_cart on a dashboard action",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "dashboard": {
+    "actions": [
+     {
+      "key": "a",
+      "title": "A",
+      "target": "order-details",
+      "scope": "merchant-orders-read",
+      "effect": "order_appointment",
+      "notify_url": "https://apps.example.com/n",
+      "schema": [
+       {
+        "key": "x",
+        "label": "X",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The dashboard schema primitive must be one of: date, time, select, text, slot-list."
+   ]
+  },
+  {
+   "name": "a plain extensions block with no schema",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "plain",
+      "title": "Plain",
+      "targets": [
+       "product"
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "a date block still valid",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "d",
+      "title": "D",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "d",
+        "label": "D",
+        "type": "date"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": true,
+   "messages": []
+  },
+  {
+   "name": "max_length on a date field still refused",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "d",
+      "title": "D",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "d",
+        "label": "D",
+        "type": "date",
+        "max_length": 5
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].max_length is only valid on a line_text field."
+   ]
+  },
+  {
+   "name": "an unknown primitive",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "d",
+      "title": "D",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "d",
+        "label": "D",
+        "type": "cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The schema primitive must be one of: date, time, select, submit, line_text."
+   ]
+  },
+  {
+   "name": "a second field and a bad label",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Ad\u200bd",
+        "type": "add_to_cart"
+       },
+       {
+        "key": "d",
+        "label": "D",
+        "type": "date"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema must hold exactly one add_to_cart field and nothing else.",
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "a bad target and a bad title",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Ki\u200bt",
+      "targets": [
+       "account-order"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart"
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0] with an add_to_cart field must be an app_block with exactly the product target.",
+    "The extensions.blocks[0].title must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  },
+  {
+   "name": "required and options together",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Starter kit",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Add the starter kit",
+        "type": "add_to_cart",
+        "required": true,
+        "options": [
+         "a"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].required is not valid on an add_to_cart field.",
+    "The extensions.blocks[0].schema[0].options is not valid on an add_to_cart field."
+   ]
+  },
+  {
+   "name": "required, a bad label and a bad title",
+   "slug": "my-app",
+   "extensions": {
+    "proxy": {
+     "url": "https://apps.example.com/pack/proxy",
+     "subpath": "pack"
+    },
+    "blocks": [
+     {
+      "key": "add_pack",
+      "title": "Ki\u200bt",
+      "targets": [
+       "product"
+      ],
+      "schema": [
+       {
+        "key": "add",
+        "label": "Ad\u200bd",
+        "type": "add_to_cart",
+        "required": false
+       }
+      ]
+     }
+    ]
+   },
+   "valid": false,
+   "messages": [
+    "The extensions.blocks[0].schema[0].required is not valid on an add_to_cart field.",
+    "The extensions.blocks[0].schema[0].label must be 1-40 characters with no control, zero-width or direction-override characters.",
+    "The extensions.blocks[0].title must be 1-40 characters with no control, zero-width or direction-override characters."
+   ]
+  }
+ ]
+}
