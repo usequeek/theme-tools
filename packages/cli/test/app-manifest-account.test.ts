@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parse as parseToml } from 'smol-toml';
+import { parse as parseToml, TomlDate } from 'smol-toml';
 import { APP_TOML, fromManifest, loadApp, loadTomlFile, serverString, toManifest } from '../src/lib/app-manifest.js';
 
 // Shopper account manifest contract (`app_page`, `account-page`, `account-order`),
@@ -11,7 +11,7 @@ import { APP_TOML, fromManifest, loadApp, loadTomlFile, serverString, toManifest
 
 interface Row { name: string; valid: boolean; proxy: Record<string, unknown> | null; blocks: Record<string, unknown>[]; embeds?: Record<string, unknown>[]; contains: string | null; count?: number }
 interface VerdictRow { name: string; path: string; value: string; valid: boolean; contains: string | null }
-type Spec = string | number | boolean | unknown[] | { prefix: string; unit: string; count: number; suffix: string };
+type Spec = string | number | boolean | unknown[] | { prefix: string; unit: string; count: number; suffix: string } | { datetime: string } | Record<string, unknown>;
 interface ManifestVerdict { name: string; path: string; value: Spec; valid: boolean }
 interface FieldRow { name: string; field: string; value: string; valid: boolean; contains: string | null }
 interface TitleRow { name: string; title: string; valid: boolean }
@@ -183,8 +183,9 @@ describe('every string is read the way the API reads it (trimmed, empty is unset
     });
     node[parts[parts.length - 1]] = value;
   };
-  const isSpec = (value: Spec): value is Extract<Spec, { unit: string }> => typeof value === 'object' && !Array.isArray(value) && 'unit' in value && 'prefix' in value;
-  const resolve = (value: Spec): unknown => (isSpec(value) ? `${value.prefix}${value.unit.repeat(value.count)}${value.suffix}` : value);
+  const isRepeat = (value: Spec): value is { prefix: string; unit: string; count: number; suffix: string } => typeof value === 'object' && !Array.isArray(value) && 'unit' in value && 'prefix' in value;
+  const isDatetime = (value: Spec): value is { datetime: string } => typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 1 && 'datetime' in value;
+  const resolve = (value: Spec): unknown => (isRepeat(value) ? `${value.prefix}${value.unit.repeat(value.count)}${value.suffix}` : isDatetime(value) ? new TomlDate(value.datetime) : value);
   const answerFrom = (base: Record<string, unknown>, path: string, value: unknown): string | null => {
     const manifest = structuredClone(base);
     if (path) setPath(manifest, path, value);
@@ -229,7 +230,9 @@ describe('every string is read the way the API reads it (trimmed, empty is unset
     expect(rule('highlights', ['a', 'b', 'c', 'd', 'e', 'f'])).toBe('The highlights field must not have more than 5 items.');
     expect(rule('pricing.model', 'freemium')).toBe('The pricing model must be one of: free, free_trial, paid.');
     expect(rule('pricing.extra', 'x')).toBe("Unknown field 'extra' in manifest.pricing.");
-    expect(rule('category', 'bogus')).toBe('The category must be one of: sales_channels, delivery, marketing, accounting, operations.');
+    expect(rule('category', 5)).toBe('The category field must be a string.');
+    // No list of categories here: the API reads it from configuration that can change.
+    expect(rule('category', 'a-category-added-later')).toBeNull();
     expect(rule('description', 5)).toBe('The description field must be a string.');
     expect(rule('dashboard.print.0.fields.0.label', 'a'.repeat(81))).toBe('The manifest.dashboard.print[0].fields[0].label field is required (max 80).');
     expect(rule('dashboard.print.0.fields.0.key', 'Bad Key')).toBe('The manifest.dashboard.print[0].fields[0].key must match [a-z0-9_]{1,64}.');
@@ -253,6 +256,37 @@ describe('every string is read the way the API reads it (trimmed, empty is unset
     expect(sentProxy('1')?.allow_post).toBe(true);
     expect(sentProxy(0)).not.toHaveProperty('allow_post');
     expect(sentProxy('0')).not.toHaveProperty('allow_post');
+  });
+
+  it('accepts what the API accepts for tables and lists written the other way round', () => {
+    expect(rule2('extensions.blocks.1.image', [])).toBeNull();
+    expect(rule2('dashboard.blocks.0.image', [])).toBeNull();
+    expect(rule2('dashboard.blocks.0.when', {})).toBeNull();
+    expect(rule2('dashboard.actions.0.when', { a: 'order.has_appointment' })).toBeNull();
+    expect(rule2('dashboard.print.0.fields', {})).toBeNull();
+    expect(rule2('dashboard.print.0.fields', { a: { key: 'f', label: 'F' } })).toBeNull();
+    expect(rule2('extensions.nav', { a: { label: 'Docs', path: '/m/docs' } })).toBeNull();
+    expect(rule2('extensions', [])).toBeNull();
+    expect(rule2('dashboard', [])).toBeNull();
+  });
+
+  it('refuses a keyed highlights table with an empty entry, and the wrong types with the API wording', () => {
+    expect(rule2('highlights', { a: '' })).toBe('The listing.highlights[0] field is required.');
+    expect(rule2('dashboard.print.0.fields', 5)).toBe('The manifest.dashboard.print[0].fields field must be an array.');
+    expect(rule2('extensions.blocks.1.image.media_id', 'a'.repeat(65))).toBe('The manifest.extensions.blocks[1].image.media_id field must not be greater than 64 characters.');
+    expect(rule2('extensions.blocks.1.image.media_id', 5)).toBe('The manifest.extensions.blocks[1].image.media_id field must be a string.');
+    expect(rule2('webhook_topics.0', 5)).toBe('The webhooks.topics[0] field must be a string.');
+  });
+
+  it('sends a datetime written where text is expected as the ISO string the wire carries', () => {
+    for (const literal of ['2024-01-02', '2024-01-02T03:04:05.000Z', '2024-01-02T03:04:05.000+01:00', '03:04:05.000', '2024-01-02T03:04:05.123']) {
+      const date = new TomlDate(literal);
+      expect(JSON.stringify(date)).toBe(JSON.stringify(literal));
+      const manifest = structuredClone(parity.ruleBase);
+      setPath(manifest, 'tagline', date);
+      const { manifest: sent } = toManifest(parseToml(fromManifest(manifest)) as Record<string, unknown>);
+      expect(sent.tagline).toBe(literal);
+    }
   });
 
   it('counts a url cap in code points', () => {

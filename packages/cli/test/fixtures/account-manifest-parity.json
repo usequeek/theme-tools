@@ -1,5 +1,5 @@
 {
- "note": "CLI-side parity rows for the shopper account manifest contract, mirrored from the API's account manifest test. Rows mirrored from the API's validator. Messages are matched by substring: the CLI names a field with the manifest. prefix, the API does not. Rows that depend on the API's configured Queek hosts use the public Queek hosts here. serverVerdicts: each input was run through the API's request middleware (trim, empty to null) and then its validator; the verdict is the API's. serverTrimmedCodePoints: every code point the API's trim strips from the ends of a string. manifestVerdicts: API-shaped manifests (manifestBase with one value set at a dotted path) run through the API's request middleware and its validator; the CLI answers them through the toml round trip. Rows where the CLI is still looser than the API (description, developer, tagline, pricing note and highlight caps, print field key and label) are left out. ruleVerdicts: the same, from a manifest that declares every optional section; every key of it is also set to an empty and to a blank string, plus the cap, type and enum rows of the listing fields.",
+ "note": "CLI-side parity rows for the shopper account manifest contract and the manifest text rules, mirrored from the API's validator. Messages are matched by substring: the CLI names a field with the manifest. prefix, the API does not. Rows that depend on the API's configured Queek hosts use the public Queek hosts here. serverVerdicts, manifestVerdicts and ruleVerdicts: each input was run through the API's request middleware (trim, empty to null) and then its validator; the verdict is the API's, and the CLI answers the same input through the toml round trip. A {datetime} value is a TOML datetime literal: the API receives its ISO string (what JSON.stringify gives). serverTrimmedCodePoints: every code point the API's trim strips from the ends of a string. Not covered, because they need the API's own data: the scope and webhook topic catalogues, the category list (a configuration value there), and whether a host resolves.",
  "rows": [
   {
    "name": "page and order block",
@@ -8421,54 +8421,6 @@
    "valid": true
   },
   {
-   "name": "category sales_channels",
-   "path": "category",
-   "value": "sales_channels",
-   "valid": true
-  },
-  {
-   "name": "category delivery",
-   "path": "category",
-   "value": "delivery",
-   "valid": true
-  },
-  {
-   "name": "category marketing",
-   "path": "category",
-   "value": "marketing",
-   "valid": true
-  },
-  {
-   "name": "category accounting",
-   "path": "category",
-   "value": "accounting",
-   "valid": true
-  },
-  {
-   "name": "category operations",
-   "path": "category",
-   "value": "operations",
-   "valid": true
-  },
-  {
-   "name": "category bogus",
-   "path": "category",
-   "value": "bogus",
-   "valid": false
-  },
-  {
-   "name": "category Operations",
-   "path": "category",
-   "value": "Operations",
-   "valid": false
-  },
-  {
-   "name": "category sales channels",
-   "path": "category",
-   "value": "sales channels",
-   "valid": false
-  },
-  {
    "name": "pricing model free",
    "path": "pricing.model",
    "value": "free",
@@ -9287,6 +9239,1218 @@
    "name": "extensions.embeds.0.settings as a number",
    "path": "extensions.embeds.0.settings",
    "value": 5,
+   "valid": false
+  },
+  {
+   "name": "ext image empty list",
+   "path": "extensions.blocks.1.image",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "dash image empty list",
+   "path": "dashboard.blocks.0.image",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "ext image non-empty list",
+   "path": "extensions.blocks.1.image",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "dash image non-empty list",
+   "path": "dashboard.blocks.0.image",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "ext image unknown key",
+   "path": "extensions.blocks.1.image.extra",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image.media_id at 64",
+   "path": "extensions.blocks.1.image.media_id",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.image.media_id at 65",
+   "path": "extensions.blocks.1.image.media_id",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image.media_id emoji 64",
+   "path": "extensions.blocks.1.image.media_id",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.image.media_id emoji 65",
+   "path": "extensions.blocks.1.image.media_id",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image.media_id 64 plus newline",
+   "path": "extensions.blocks.1.image.media_id",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.image.media_id int",
+   "path": "extensions.blocks.1.image.media_id",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image.media_id true",
+   "path": "extensions.blocks.1.image.media_id",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image.media_id list",
+   "path": "extensions.blocks.1.image.media_id",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image.media_id keyed",
+   "path": "extensions.blocks.1.image.media_id",
+   "value": {
+    "a": "x"
+   },
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image.media_id at 64",
+   "path": "dashboard.blocks.0.image.media_id",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.image.media_id at 65",
+   "path": "dashboard.blocks.0.image.media_id",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image.media_id emoji 64",
+   "path": "dashboard.blocks.0.image.media_id",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.image.media_id emoji 65",
+   "path": "dashboard.blocks.0.image.media_id",
+   "value": "\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5\ud83d\udcc5",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image.media_id 64 plus newline",
+   "path": "dashboard.blocks.0.image.media_id",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.image.media_id int",
+   "path": "dashboard.blocks.0.image.media_id",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image.media_id true",
+   "path": "dashboard.blocks.0.image.media_id",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image.media_id list",
+   "path": "dashboard.blocks.0.image.media_id",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image.media_id keyed",
+   "path": "dashboard.blocks.0.image.media_id",
+   "value": {
+    "a": "x"
+   },
+   "valid": false
+  },
+  {
+   "name": "highlights keyed ok",
+   "path": "highlights",
+   "value": {
+    "a": "x"
+   },
+   "valid": true
+  },
+  {
+   "name": "highlights keyed empty entry",
+   "path": "highlights",
+   "value": {
+    "a": ""
+   },
+   "valid": false
+  },
+  {
+   "name": "highlights keyed second empty",
+   "path": "highlights",
+   "value": {
+    "a": "x",
+    "b": "  "
+   },
+   "valid": false
+  },
+  {
+   "name": "highlights keyed over cap",
+   "path": "highlights",
+   "value": {
+    "a": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "valid": false
+  },
+  {
+   "name": "highlights keyed six",
+   "path": "highlights",
+   "value": {
+    "a": "x",
+    "b": "x",
+    "c": "x",
+    "d": "x",
+    "e": "x",
+    "f": "x"
+   },
+   "valid": false
+  },
+  {
+   "name": "highlights empty list",
+   "path": "highlights",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "webhook_topics.0 valid",
+   "path": "webhook_topics.0",
+   "value": "orders/paid",
+   "valid": true
+  },
+  {
+   "name": "webhook_topics.0 = 5",
+   "path": "webhook_topics.0",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "webhook_topics.0 = true",
+   "path": "webhook_topics.0",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "webhook_topics.0 = 1.5",
+   "path": "webhook_topics.0",
+   "value": 1.5,
+   "valid": false
+  },
+  {
+   "name": "webhook_topics.0 = [\"x\"]",
+   "path": "webhook_topics.0",
+   "value": [
+    "x"
+   ],
+   "valid": false
+  },
+  {
+   "name": "webhook_topics.0 = {\"a\":\"x\"}",
+   "path": "webhook_topics.0",
+   "value": {
+    "a": "x"
+   },
+   "valid": false
+  },
+  {
+   "name": "webhook_topics keyed",
+   "path": "webhook_topics",
+   "value": {
+    "a": "orders/paid"
+   },
+   "valid": true
+  },
+  {
+   "name": "webhook_topics keyed non-string",
+   "path": "webhook_topics",
+   "value": {
+    "a": 5
+   },
+   "valid": false
+  },
+  {
+   "name": "webhook_topics empty list",
+   "path": "webhook_topics",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "print fields keyed ok",
+   "path": "dashboard.print.0.fields",
+   "value": {
+    "a": {
+     "key": "f",
+     "label": "F"
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "print fields keyed missing key",
+   "path": "dashboard.print.0.fields",
+   "value": {
+    "a": {
+     "label": "F"
+    }
+   },
+   "valid": false
+  },
+  {
+   "name": "print fields keyed unknown",
+   "path": "dashboard.print.0.fields",
+   "value": {
+    "a": {
+     "key": "f",
+     "label": "F",
+     "x": 1
+    }
+   },
+   "valid": false
+  },
+  {
+   "name": "print fields empty list",
+   "path": "dashboard.print.0.fields",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "print fields = 5",
+   "path": "dashboard.print.0.fields",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "print fields = true",
+   "path": "dashboard.print.0.fields",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "print fields = 1.5",
+   "path": "dashboard.print.0.fields",
+   "value": 1.5,
+   "valid": false
+  },
+  {
+   "name": "print fields = \"x\"",
+   "path": "dashboard.print.0.fields",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when empty list",
+   "path": "dashboard.blocks.0.when",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.when keyed ok",
+   "path": "dashboard.blocks.0.when",
+   "value": {
+    "a": "order.is_paid"
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.when keyed bad",
+   "path": "dashboard.blocks.0.when",
+   "value": {
+    "a": "bogus"
+   },
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when = 5",
+   "path": "dashboard.blocks.0.when",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when = true",
+   "path": "dashboard.blocks.0.when",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when = \"x\"",
+   "path": "dashboard.blocks.0.when",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.when empty list",
+   "path": "dashboard.actions.0.when",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.when keyed ok",
+   "path": "dashboard.actions.0.when",
+   "value": {
+    "a": "order.is_paid"
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.when keyed bad",
+   "path": "dashboard.actions.0.when",
+   "value": {
+    "a": "bogus"
+   },
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.when = 5",
+   "path": "dashboard.actions.0.when",
+   "value": 5,
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.when = true",
+   "path": "dashboard.actions.0.when",
+   "value": true,
+   "valid": false
+  },
+  {
+   "name": "dashboard.actions.0.when = \"x\"",
+   "path": "dashboard.actions.0.when",
+   "value": "x",
+   "valid": false
+  },
+  {
+   "name": "optional_scopes as a keyed table",
+   "path": "optional_scopes",
+   "value": {
+    "a": "merchant-collections-read"
+   },
+   "valid": true
+  },
+  {
+   "name": "optional_scopes as an empty list",
+   "path": "optional_scopes",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "scopes as a keyed table",
+   "path": "scopes",
+   "value": {
+    "a": "merchant-orders-read"
+   },
+   "valid": true
+  },
+  {
+   "name": "scopes as an empty list",
+   "path": "scopes",
+   "value": [],
+   "valid": false
+  },
+  {
+   "name": "extensions.nav as a keyed table",
+   "path": "extensions.nav",
+   "value": {
+    "a": {
+     "label": "Docs",
+     "path": "/m/docs"
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.nav as an empty list",
+   "path": "extensions.nav",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds as a keyed table",
+   "path": "extensions.embeds",
+   "value": {
+    "a": {
+     "key": "chat",
+     "title": "Chat",
+     "target": "body",
+     "url": "https://apps.example.com/chat",
+     "capabilities": [
+      "chat-bubble"
+     ]
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds as an empty list",
+   "path": "extensions.embeds",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.settings as a keyed table",
+   "path": "extensions.embeds.0.settings",
+   "value": {
+    "a": "greeting"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.settings as an empty list",
+   "path": "extensions.embeds.0.settings",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.capabilities as a keyed table",
+   "path": "extensions.embeds.0.capabilities",
+   "value": {
+    "a": "chat-bubble"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.capabilities as an empty list",
+   "path": "extensions.embeds.0.capabilities",
+   "value": [],
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.targets as a keyed table",
+   "path": "extensions.blocks.1.targets",
+   "value": {
+    "a": "product"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.targets as an empty list",
+   "path": "extensions.blocks.1.targets",
+   "value": [],
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema as a keyed table",
+   "path": "extensions.blocks.1.schema",
+   "value": {
+    "a": {
+     "key": "when",
+     "label": "When",
+     "type": "date"
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema as an empty list",
+   "path": "extensions.blocks.1.schema",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "settings.1.options as a keyed table",
+   "path": "settings.1.options",
+   "value": {
+    "a": "S",
+    "b": "M"
+   },
+   "valid": true
+  },
+  {
+   "name": "settings.1.options as an empty list",
+   "path": "settings.1.options",
+   "value": [],
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.options as a keyed table",
+   "path": "extensions.blocks.1.schema.1.options",
+   "value": {
+    "a": "S"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.options as an empty list",
+   "path": "extensions.blocks.1.schema.1.options",
+   "value": [],
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.schema as a keyed table",
+   "path": "dashboard.blocks.0.schema",
+   "value": {
+    "a": {
+     "key": "d",
+     "label": "D",
+     "type": "date"
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.schema as an empty list",
+   "path": "dashboard.blocks.0.schema",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.schema as a keyed table",
+   "path": "dashboard.actions.0.schema",
+   "value": {
+    "a": {
+     "key": "d",
+     "label": "D",
+     "type": "date"
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.schema as an empty list",
+   "path": "dashboard.actions.0.schema",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "dashboard.print as a keyed table",
+   "path": "dashboard.print",
+   "value": {
+    "a": {
+     "key": "p",
+     "title": "P",
+     "target": "order-print"
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.print as an empty list",
+   "path": "dashboard.print",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.1.options keyed empty entry",
+   "path": "extensions.blocks.1.schema.1.options",
+   "value": {
+    "a": ""
+   },
+   "valid": false
+  },
+  {
+   "name": "settings.1.options keyed empty entry",
+   "path": "settings.1.options",
+   "value": {
+    "a": ""
+   },
+   "valid": false
+  },
+  {
+   "name": "extensions as an empty list",
+   "path": "extensions",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "dashboard as an empty list",
+   "path": "dashboard",
+   "value": [],
+   "valid": true
+  },
+  {
+   "name": "extensions.proxy as an empty list",
+   "path": "extensions.proxy",
+   "value": [],
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks keyed",
+   "path": "extensions.blocks",
+   "value": {
+    "a": {
+     "key": "promo",
+     "title": "Promo",
+     "targets": [
+      "product"
+     ]
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks keyed",
+   "path": "dashboard.blocks",
+   "value": {
+    "a": {
+     "key": "b",
+     "title": "B",
+     "target": "order-details"
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions keyed",
+   "path": "dashboard.actions",
+   "value": {
+    "a": {
+     "key": "a",
+     "title": "A",
+     "target": "order-details",
+     "scope": "merchant-orders-read",
+     "effect": "order_appointment",
+     "notify_url": "https://apps.example.com/n"
+    }
+   },
+   "valid": true
+  },
+  {
+   "name": "name as datetime 2024-01-02",
+   "path": "name",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "name as datetime 2024-01-02T03:04:05.000Z",
+   "path": "name",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "name as datetime 2024-01-02T03:04:05.000+01:00",
+   "path": "name",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000+01:00"
+   },
+   "valid": true
+  },
+  {
+   "name": "name as datetime 03:04:05.000",
+   "path": "name",
+   "value": {
+    "datetime": "03:04:05.000"
+   },
+   "valid": true
+  },
+  {
+   "name": "name as datetime 2024-01-02T03:04:05.123",
+   "path": "name",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.123"
+   },
+   "valid": true
+  },
+  {
+   "name": "developer as datetime 2024-01-02",
+   "path": "developer",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "developer as datetime 2024-01-02T03:04:05.000Z",
+   "path": "developer",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "description as datetime 2024-01-02",
+   "path": "description",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "description as datetime 2024-01-02T03:04:05.000Z",
+   "path": "description",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "tagline as datetime 2024-01-02",
+   "path": "tagline",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "tagline as datetime 2024-01-02T03:04:05.000Z",
+   "path": "tagline",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "description_long as datetime 2024-01-02",
+   "path": "description_long",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "description_long as datetime 2024-01-02T03:04:05.000Z",
+   "path": "description_long",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "highlights.0 as datetime 2024-01-02",
+   "path": "highlights.0",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "highlights.0 as datetime 2024-01-02T03:04:05.000Z",
+   "path": "highlights.0",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "pricing.note as datetime 2024-01-02",
+   "path": "pricing.note",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "pricing.note as datetime 2024-01-02T03:04:05.000Z",
+   "path": "pricing.note",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "settings.0.label as datetime 2024-01-02",
+   "path": "settings.0.label",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "settings.0.label as datetime 2024-01-02T03:04:05.000Z",
+   "path": "settings.0.label",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "settings.0.help as datetime 2024-01-02",
+   "path": "settings.0.help",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "settings.0.help as datetime 2024-01-02T03:04:05.000Z",
+   "path": "settings.0.help",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "settings.1.options.0 as datetime 2024-01-02",
+   "path": "settings.1.options.0",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "settings.1.options.0 as datetime 2024-01-02T03:04:05.000Z",
+   "path": "settings.1.options.0",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.nav.0.label as datetime 2024-01-02",
+   "path": "extensions.nav.0.label",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.nav.0.label as datetime 2024-01-02T03:04:05.000Z",
+   "path": "extensions.nav.0.label",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.title as datetime 2024-01-02",
+   "path": "extensions.embeds.0.title",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.embeds.0.title as datetime 2024-01-02T03:04:05.000Z",
+   "path": "extensions.embeds.0.title",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.0.title as datetime 2024-01-02",
+   "path": "extensions.blocks.0.title",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.0.title as datetime 2024-01-02T03:04:05.000Z",
+   "path": "extensions.blocks.0.title",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.title as datetime 2024-01-02",
+   "path": "extensions.blocks.1.title",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.title as datetime 2024-01-02T03:04:05.000Z",
+   "path": "extensions.blocks.1.title",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description as datetime 2024-01-02",
+   "path": "extensions.blocks.1.description",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.description as datetime 2024-01-02T03:04:05.000Z",
+   "path": "extensions.blocks.1.description",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label as datetime 2024-01-02",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.schema.0.label as datetime 2024-01-02T03:04:05.000Z",
+   "path": "extensions.blocks.1.schema.0.label",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.title as datetime 2024-01-02",
+   "path": "dashboard.blocks.0.title",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.blocks.0.title as datetime 2024-01-02T03:04:05.000Z",
+   "path": "dashboard.blocks.0.title",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.title as datetime 2024-01-02",
+   "path": "dashboard.actions.0.title",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.actions.0.title as datetime 2024-01-02T03:04:05.000Z",
+   "path": "dashboard.actions.0.title",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.title as datetime 2024-01-02",
+   "path": "dashboard.print.0.title",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.title as datetime 2024-01-02T03:04:05.000Z",
+   "path": "dashboard.print.0.title",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label as datetime 2024-01-02",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "dashboard.print.0.fields.0.label as datetime 2024-01-02T03:04:05.000Z",
+   "path": "dashboard.print.0.fields.0.label",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "icon as datetime 2024-01-02",
+   "path": "icon",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "icon as datetime 2024-01-02T03:04:05.000Z",
+   "path": "icon",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": false
+  },
+  {
+   "name": "slug as datetime 2024-01-02",
+   "path": "slug",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "slug as datetime 2024-01-02T03:04:05.000Z",
+   "path": "slug",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": false
+  },
+  {
+   "name": "distribution as datetime 2024-01-02",
+   "path": "distribution",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": false
+  },
+  {
+   "name": "distribution as datetime 2024-01-02T03:04:05.000Z",
+   "path": "distribution",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": false
+  },
+  {
+   "name": "logo_url as datetime 2024-01-02",
+   "path": "logo_url",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": false
+  },
+  {
+   "name": "logo_url as datetime 2024-01-02T03:04:05.000Z",
+   "path": "logo_url",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image.media_id as datetime 2024-01-02",
+   "path": "extensions.blocks.1.image.media_id",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": true
+  },
+  {
+   "name": "extensions.blocks.1.image.media_id as datetime 2024-01-02T03:04:05.000Z",
+   "path": "extensions.blocks.1.image.media_id",
+   "value": {
+    "datetime": "2024-01-02T03:04:05.000Z"
+   },
+   "valid": true
+  },
+  {
+   "name": "highlights as datetime",
+   "path": "highlights",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": false
+  },
+  {
+   "name": "pricing as datetime",
+   "path": "pricing",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": false
+  },
+  {
+   "name": "extensions as datetime",
+   "path": "extensions",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": false
+  },
+  {
+   "name": "dashboard as datetime",
+   "path": "dashboard",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": false
+  },
+  {
+   "name": "extensions.blocks.1.image as datetime",
+   "path": "extensions.blocks.1.image",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.image as datetime",
+   "path": "dashboard.blocks.0.image",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": false
+  },
+  {
+   "name": "extensions.nav as datetime",
+   "path": "extensions.nav",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": false
+  },
+  {
+   "name": "webhook_topics as datetime",
+   "path": "webhook_topics",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": false
+  },
+  {
+   "name": "dashboard.print.0.fields as datetime",
+   "path": "dashboard.print.0.fields",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": false
+  },
+  {
+   "name": "dashboard.blocks.0.when as datetime",
+   "path": "dashboard.blocks.0.when",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": false
+  },
+  {
+   "name": "settings.0.required as datetime",
+   "path": "settings.0.required",
+   "value": {
+    "datetime": "2024-01-02"
+   },
+   "valid": false
+  },
+  {
+   "name": "extensions.proxy.allow_post as datetime",
+   "path": "extensions.proxy.allow_post",
+   "value": {
+    "datetime": "2024-01-02"
+   },
    "valid": false
   }
  ]

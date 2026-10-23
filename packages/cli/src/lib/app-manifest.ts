@@ -238,6 +238,17 @@ const NOT_NULLABLE_WHEN_PRESENT = new Map<string, 'string' | 'array' | 'boolean'
   ['dashboard.blocks.*.schema.*.required', 'boolean'],
   ['dashboard.actions.*.schema.*.required', 'boolean'],
 ]);
+/** Lists the API's `array` rule also accepts as a keyed table (read as its values). */
+const LIST_PATTERNS = new Set([
+  'access.scopes', 'access.optional_scopes', 'webhooks.topics', 'listing.highlights', 'settings', 'settings.*.options',
+  'extensions.nav', 'extensions.embeds', 'extensions.embeds.*.capabilities', 'extensions.embeds.*.settings',
+  'extensions.blocks', 'extensions.blocks.*.targets', 'extensions.blocks.*.schema', 'extensions.blocks.*.schema.*.options',
+  'dashboard.blocks', 'dashboard.blocks.*.schema', 'dashboard.blocks.*.schema.*.options', 'dashboard.blocks.*.when',
+  'dashboard.actions', 'dashboard.actions.*.schema', 'dashboard.actions.*.schema.*.options', 'dashboard.actions.*.when',
+  'dashboard.print', 'dashboard.print.*.fields',
+]);
+/** Tables the API also accepts written as an empty list. */
+const TABLE_PATTERNS = new Set(['extensions', 'extensions.proxy', 'extensions.blocks.*.image', 'dashboard', 'dashboard.blocks.*.image']);
 const NOT_NULLABLE_MESSAGE = { string: 'must be a string', array: 'must be an array', boolean: 'must be true or false' } as const;
 
 /** Length as the API counts it: code points, not UTF-16 units (an emoji is one). */
@@ -259,7 +270,10 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
  * Returns a copy; `dev` (CLI-only, never sent) is left as written.
  */
 function normalizeStrings(node: unknown, display: string): unknown {
+  const pattern = display.replace(/\[\d+\]/g, '.*');
   if (Array.isArray(node)) {
+    // The API reads an empty list and an empty table alike (`[]`), so an empty list stands for an empty table.
+    if (node.length === 0 && TABLE_PATTERNS.has(pattern)) return {};
     return node.map((item, index) => {
       const at = `${display}[${index}]`;
       const value = normalizeStrings(item, at);
@@ -267,6 +281,8 @@ function normalizeStrings(node: unknown, display: string): unknown {
       return value;
     });
   }
+  // The API's `array` rule accepts a keyed table too and reads its values as the list.
+  if (isPlainObject(node) && LIST_PATTERNS.has(pattern)) return normalizeStrings(Object.values(node), display);
   if (isPlainObject(node)) {
     const out: Record<string, unknown> = {};
     for (const [key, child] of Object.entries(node)) {
@@ -275,25 +291,26 @@ function normalizeStrings(node: unknown, display: string): unknown {
         continue;
       }
       const at = display === '' ? key : `${display}.${key}`;
-      const pattern = at.replace(/\[\d+\]/g, '.*');
+      const childPattern = at.replace(/\[\d+\]/g, '.*');
       const value = normalizeStrings(child, at);
       if (value === undefined && typeof child === 'string') {
         // The key stays (as undefined): the API sees it present with a null value, so an unknown
         // field is still refused and a nullable one reads as unset. A field that cannot be null is refused.
-        const url = pattern === 'extensions.blocks.*.url';
-        const kind = NOT_NULLABLE_WHEN_PRESENT.get(pattern);
+        const url = childPattern === 'extensions.blocks.*.url';
+        const kind = NOT_NULLABLE_WHEN_PRESENT.get(childPattern);
         if (kind !== undefined && (!url || node.type === ACCOUNT_PAGE_TYPE)) {
           throw new TomlError(`The ${at} field ${NOT_NULLABLE_MESSAGE[kind]}.`);
         }
         // A blank schema label keeps its own message (and is refused either way).
-        out[key] = KEEP_EMPTY_FOR_MESSAGE.test(pattern) ? '' : undefined;
+        out[key] = KEEP_EMPTY_FOR_MESSAGE.test(childPattern) ? '' : undefined;
       } else {
         out[key] = value;
       }
     }
     return out;
   }
-  return serverString(node);
+  // A TOML datetime written where text is expected travels as its ISO string (JSON.stringify), so that is what the API sees.
+  return serverString(node instanceof Date ? node.toISOString() : node);
 }
 
 /** `schema[].label`: blank is refused with its own message ("must not be empty"). */
@@ -514,7 +531,6 @@ export function toManifest(source: Record<string, unknown>): TomlManifest {
   checkOptionalText(doc.developer, 'developer', 120, fail);
   if (doc.category !== undefined) {
     if (typeof doc.category !== 'string') throw fail('The category field must be a string.');
-    if (!APP_CATEGORIES.includes(doc.category)) throw fail(`The category must be one of: ${APP_CATEGORIES.join(', ')}.`);
   }
 
   const listing = (doc.listing ?? {}) as Record<string, unknown>;
@@ -554,6 +570,10 @@ export function toManifest(source: Record<string, unknown>): TomlManifest {
 
   const topics = (webhooks.topics ?? []) as unknown;
   if (!Array.isArray(topics)) throw fail('The webhooks.topics field must be a list.');
+  // Type only: whether a topic exists is the API's catalogue to answer.
+  topics.forEach((topic: unknown, index) => {
+    if (typeof topic !== 'string') throw fail(`The webhooks.topics[${index}] field must be a string.`);
+  });
   const webhookUrl = webhooks.url as unknown;
   if ((topics as unknown[]).length > 0 && webhookUrl === undefined) throw fail('webhook_topics needs webhook_url: topics without a receiver URL are refused.');
   for (const urlField of [['install_url', app.install_url], ['uninstall_url', app.uninstall_url], ['settings_url', app.settings_url], ['webhook_url', webhookUrl]] as const) {
@@ -682,6 +702,7 @@ function checkImage(image: unknown, where: string, problems: string[], fail: (me
   for (const key of Object.keys(image)) {
     if (!['media_id', 'url'].includes(key)) problems.push(unknownField(key, `${where}.image`));
   }
+  checkOptionalText(image.media_id, `${where}.image.media_id`, IMAGE_MEDIA_ID_MAX, fail);
   if (image.url !== undefined && image.url !== null) checkCappedUrl(image.url, `${where}.image.url`, fail);
 }
 
@@ -696,10 +717,14 @@ function checkCappedUrl(value: unknown, field: string, fail: (message: string) =
   if (typeof value === 'string' && charCount(value) > 2048) throw fail(`The ${field} must not be longer than 2048 characters.`);
 }
 
-/** Mirror of the API's `apps.categories` keys. */
-const APP_CATEGORIES = ['sales_channels', 'delivery', 'marketing', 'accounting', 'operations'];
+/**
+ * Mirror of the API's `AppManifestValidator::PRICING_MODELS` (a code constant there).
+ * `category` has no list here on purpose: the API reads it from configuration that can change.
+ */
 const PRICING_MODELS = ['free', 'free_trial', 'paid'];
 const HIGHLIGHTS_MAX = 5;
+/** `image.media_id`: `string|max:64` on the API. */
+const IMAGE_MEDIA_ID_MAX = 64;
 const HIGHLIGHT_MAX = 90;
 
 /** `nullable|string|max:N`: absent is fine, otherwise a string of at most N characters (code points). */
@@ -711,11 +736,9 @@ function checkOptionalText(value: unknown, field: string, max: number, fail: (me
 
 function checkHighlights(value: unknown, fail: (message: string) => never): void {
   if (value === undefined) return;
-  // The API's `array` rule also accepts a keyed table; its entries are checked the same way.
-  const entries = Array.isArray(value) ? value : isRecord(value) ? Object.values(value) : undefined;
-  if (entries === undefined) throw fail('The highlights field must be an array.');
-  if (entries.length > HIGHLIGHTS_MAX) throw fail(`The highlights field must not have more than ${HIGHLIGHTS_MAX} items.`);
-  entries.forEach((entry: unknown, index) => checkOptionalText(entry ?? '', `highlights[${index}]`, HIGHLIGHT_MAX, fail));
+  if (!Array.isArray(value)) throw fail('The highlights field must be an array.');
+  if (value.length > HIGHLIGHTS_MAX) throw fail(`The highlights field must not have more than ${HIGHLIGHTS_MAX} items.`);
+  value.forEach((entry: unknown, index) => checkOptionalText(entry, `highlights[${index}]`, HIGHLIGHT_MAX, fail));
 }
 
 /** `pricing`: an empty table is accepted as the API accepts it; otherwise `model` is required and `note` is capped. */
@@ -1077,11 +1100,8 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
     if (!DASHBOARD_PRINT_TARGETS.includes(row.target as string)) {
       throw fail(`The dashboard print target must be one of: ${DASHBOARD_PRINT_TARGETS.join(', ')}.`);
     }
-    if (row.fields !== undefined && !Array.isArray(row.fields)) {
-      problems.push(`The ${where}.fields must be a list.`);
-    } else if (Array.isArray(row.fields) && row.fields.length > 20) {
-      throw fail(`The ${where}.fields must not have more than 20 fields.`);
-    }
+    if (row.fields !== undefined && !Array.isArray(row.fields)) throw fail(`The ${where}.fields field must be an array.`);
+    if (Array.isArray(row.fields) && row.fields.length > 20) throw fail(`The ${where}.fields must not have more than 20 fields.`);
     for (const [fieldIndex, field] of ((row.fields ?? []) as unknown[]).entries()) {
       if (!isRecord(field)) {
         problems.push(unknownField(String(fieldIndex), `${where}.fields`));
