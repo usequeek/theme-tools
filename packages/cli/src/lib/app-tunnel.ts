@@ -118,7 +118,7 @@ export async function startCloudflared(port: number, logFile: string): Promise<T
 
 /** A `--url` tunnel the CLI does not own: nothing to stop. */
 export function manualTunnel(url: string): Tunnel {
-  if (!url.startsWith('https://')) throw new Error('The --url tunnel must be an https URL (Queek calls back over https).');
+  if (!/^https:\/\//i.test(url)) throw new Error('The --url tunnel must be an https URL (Queek calls back over https).');
   return { url: url.replace(/\/+$/, ''), how: 'flag', stop: noop };
 }
 

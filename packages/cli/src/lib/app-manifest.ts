@@ -168,6 +168,31 @@ const URL_AUTHORITY_RE = /^[a-z][a-z0-9+.-]*:\/*([^/?#]*)/i;
 const hasUnsafeUrlCharacter = (url: string): boolean => UNSAFE_URL_CHARACTER_RE.test(url) || (URL_AUTHORITY_RE.exec(url)?.[1] ?? '').includes('\\');
 const unsafeUrlProblem = (field: string): string => `The ${field} must not contain control characters, whitespace, invisible characters or a backslash in the host.`;
 
+/**
+ * Characters the API's request middleware strips from both ends of every
+ * string (Laravel `Str::trim`): Unicode whitespace plus the invisible set
+ * (zero-width and bidi marks, BOM, soft hyphen...), U+0085 and NUL. Verified
+ * against the real middleware over every code point.
+ */
+const SERVER_TRIM_CHARACTERS =
+  '\\s\\u0009\\u0020\\u0085\\u00A0\\u00AD\\u034F\\u061C\\u115F\\u1160\\u17B4\\u17B5\\u180E\\u2000-\\u200F\\u202F\\u205F-\\u2065\\u206A-\\u206F\\u3000\\u2800\\u3164\\uFEFF\\uFFA0\\u{1D159}\\u{1D173}-\\u{1D17A}\\u{E0020}\\0';
+// The class lists combining and joining characters on purpose: that is the exact set the API strips.
+// eslint-disable-next-line no-misleading-character-class
+const SERVER_TRIM_RE = new RegExp(`^[${SERVER_TRIM_CHARACTERS}]+|[${SERVER_TRIM_CHARACTERS}]+$`, 'gu');
+
+/**
+ * What the API sees of a string: trimmed, and an empty result is null (absent).
+ * The API runs this on the whole request BEFORE it validates, so a url field
+ * written as "", " " or " https://x.example.com/ " reads as absent or trimmed
+ * there. Non-strings pass through untouched. Interior whitespace is kept (and
+ * refused by the url check).
+ */
+export function serverString(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.replace(SERVER_TRIM_RE, '');
+  return trimmed === '' ? undefined : trimmed;
+}
+
 function httpsProblem(field: string, value: unknown): string | null {
   if (typeof value !== 'string' || !/^https:\/\//i.test(value)) {
     return `The ${field} must be an https URL.`;
@@ -415,9 +440,12 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
 
   const topics = (webhooks.topics ?? []) as unknown;
   if (!Array.isArray(topics)) throw fail('The webhooks.topics field must be a list.');
-  const webhookUrl = webhooks.url as unknown;
+  const webhookUrl = serverString(webhooks.url);
+  const settingsUrl = serverString(app.settings_url);
+  const installUrl = serverString(app.install_url);
+  const uninstallUrl = serverString(app.uninstall_url);
   if ((topics as unknown[]).length > 0 && webhookUrl === undefined) throw fail('webhook_topics needs webhook_url: topics without a receiver URL are refused.');
-  for (const urlField of [['install_url', app.install_url], ['uninstall_url', app.uninstall_url], ['settings_url', app.settings_url], ['webhook_url', webhookUrl]] as const) {
+  for (const urlField of [['install_url', installUrl], ['uninstall_url', uninstallUrl], ['settings_url', settingsUrl], ['webhook_url', webhookUrl]] as const) {
     if (urlField[1] === undefined) {
       if (urlField[0] === 'install_url' || urlField[0] === 'uninstall_url') throw fail(`The ${urlField[0]} field is required.`);
       continue;
@@ -453,7 +481,7 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
     }
   });
 
-  const manifest: AppManifest = { slug: resolvedSlug, name, scopes: scopes as string[], install_url: app.install_url as string, uninstall_url: app.uninstall_url as string };
+  const manifest: AppManifest = { slug: resolvedSlug, name, scopes: scopes as string[], install_url: installUrl as string, uninstall_url: uninstallUrl as string };
   // Absent when undeclared: an app without `optional_scopes` re-registers
   // byte-identical to its pre-optional versions, or the registry mints a
   // phantom version.
@@ -464,7 +492,8 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   }
   const listingOut: Record<string, unknown> = {};
   for (const key of ['description', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing', 'developer_url', 'privacy_url', 'support_url', 'demo_url', 'video_url']) {
-    if (listing[key] !== undefined) listingOut[key] = listing[key];
+    const value = ['logo_url', 'developer_url', 'privacy_url', 'support_url', 'demo_url', 'video_url'].includes(key) ? serverString(listing[key]) : listing[key];
+    if (value !== undefined) listingOut[key] = value;
   }
   if ((listingOut.description_long as string)?.length > 2000) throw fail('The description_long field must be plain text (max 2000).');
   // Listing promo URLs must be https and at most 2048 characters; the video
@@ -486,7 +515,7 @@ export function toManifest(doc: Record<string, unknown>): TomlManifest {
   Object.assign(manifest, listingOut);
   manifest.webhook_topics = topics as string[];
   if (webhookUrl !== undefined) manifest.webhook_url = webhookUrl as string;
-  if (app.settings_url !== undefined) manifest.settings_url = app.settings_url as string;
+  if (settingsUrl !== undefined) manifest.settings_url = settingsUrl as string;
   if ((settings as unknown[]).length > 0) manifest.settings = settings as AppManifest['settings'];
 
   checkExtensions(doc.extensions, manifest, fail);
@@ -537,7 +566,12 @@ function checkImage(image: unknown, where: string, problems: string[], fail: (me
   for (const key of Object.keys(image)) {
     if (!['media_id', 'url'].includes(key)) problems.push(unknownField(key, `${where}.image`));
   }
-  if (image.url !== undefined && image.url !== null) checkCappedUrl(image.url, `${where}.image.url`, fail);
+  if (image.url !== undefined && image.url !== null) {
+    const url = serverString(image.url);
+    // An empty url reads as null on the API, which the `string` rule refuses.
+    if (url === undefined) throw fail(`The ${where}.image.url field must be a string.`);
+    checkCappedUrl(url, `${where}.image.url`, fail);
+  }
 }
 
 /**
@@ -567,8 +601,9 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     }
     if (problems.length > 0) throw new TomlError(problems.join('\n'));
     const proxy = extensions.proxy;
-    if (typeof proxy.url !== 'string') throw fail('The extensions.proxy.url field is required.');
-    checkCappedUrl(proxy.url, 'extensions.proxy.url', fail);
+    const proxyUrl = serverString(proxy.url);
+    if (typeof proxyUrl !== 'string') throw fail('The extensions.proxy.url field is required.');
+    checkCappedUrl(proxyUrl, 'extensions.proxy.url', fail);
     if (typeof proxy.subpath !== 'string' || !/^[a-z0-9][a-z0-9-]{1,39}$/.test(proxy.subpath)) {
       throw fail('The proxy subpath must be 2-40 lowercase letters, digits or dashes.');
     }
@@ -579,19 +614,20 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
       throw fail('The extensions.proxy.share_customer_id field must be true or false.');
     }
     out.proxy = {
-      url: proxy.url,
+      url: proxyUrl,
       subpath: proxy.subpath,
       ...(proxy.share_customer_id !== undefined ? { share_customer_id: proxy.share_customer_id } : {}),
       // Absent when false: the backend stores allow_post only when true.
       ...(proxy.allow_post === true ? { allow_post: true } : {}),
     };
   }
-  if (extensions.merchant_page_url !== undefined) {
-    checkCappedUrl(extensions.merchant_page_url, 'extensions.merchant_page_url', fail);
-    out.merchant_page_url = extensions.merchant_page_url;
+  const merchantPageUrl = serverString(extensions.merchant_page_url);
+  if (merchantPageUrl !== undefined) {
+    checkCappedUrl(merchantPageUrl, 'extensions.merchant_page_url', fail);
+    out.merchant_page_url = merchantPageUrl;
   }
   if (extensions.nav !== undefined) {
-    out.nav = checkNav(extensions.nav, extensions.merchant_page_url, fail);
+    out.nav = checkNav(extensions.nav, merchantPageUrl, fail);
   }
   const embeds = (extensions.embeds ?? []) as unknown;
   if (!Array.isArray(embeds)) throw fail('The extensions.embeds section must be a list of [[extensions.embeds]] tables.');
@@ -610,10 +646,11 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
     embedKeys.add(embed.key);
     if (typeof embed.title !== 'string' || embed.title.trim() === '' || [...embed.title].length > 80 || hasControlCharacter(embed.title)) throw fail(`The ${where}.title is required (max 80, no control characters).`);
     if (embed.target !== 'body') throw fail(`The ${where}.target must be "body".`);
-    if (typeof embed.url !== 'string' || !embed.url.toLowerCase().startsWith('https://')) throw fail(`The ${where}.url must be an https URL.`);
-    if (embed.url.includes('#')) throw fail(`The ${where}.url must not contain a fragment.`);
-    checkCappedUrl(embed.url, `${where}.url`, fail);
-    if (sharesKnownQueekOrigin(embed.url)) throw fail(`The ${where}.url must not share a Queek origin.`);
+    const embedUrl = serverString(embed.url);
+    if (typeof embedUrl !== 'string' || !embedUrl.toLowerCase().startsWith('https://')) throw fail(`The ${where}.url must be an https URL.`);
+    if (embedUrl.includes('#')) throw fail(`The ${where}.url must not contain a fragment.`);
+    checkCappedUrl(embedUrl, `${where}.url`, fail);
+    if (sharesKnownQueekOrigin(embedUrl)) throw fail(`The ${where}.url must not share a Queek origin.`);
     if (!Array.isArray(embed.capabilities) || embed.capabilities.length !== 1 || !['chat-bubble', 'banner', 'popup', 'scroll-top'].includes(String(embed.capabilities[0]))) {
       throw fail(`The ${where}.capabilities must contain exactly one of: chat-bubble, banner, popup, scroll-top.`);
     }
@@ -625,7 +662,7 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
       if (typeof settingKey !== 'string' || !setting) throw fail(`The ${where} settings keys must exist in [[settings]] (unknown key '${String(settingKey)}').`);
       if (setting.type === 'secret') throw fail(`The ${where} cannot expose secret setting '${settingKey}'.`);
     }
-    const normalized = { key: embed.key, title: embed.title, target: embed.target, url: embed.url,
+    const normalized = { key: embed.key, title: embed.title, target: embed.target, url: embedUrl,
       capabilities: embed.capabilities, settings: [...new Set(embedSettings)] };
     if (!isEmbedDescriptorWithinLimit(normalized)) throw fail(`The ${where} exceeds the descriptor byte limit (4096 bytes).`);
     return normalized;
@@ -649,8 +686,10 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
       throw fail(`The ${where}.description field must be a string (max 500).`);
     }
     if (block.type === ACCOUNT_PAGE_TYPE && block.url !== undefined) {
-      if (typeof block.url !== 'string') throw fail(`The ${where}.url field must be a string.`);
-      if (block.url.length > 2048) throw fail(`The ${where}.url must not be longer than 2048 characters.`);
+      // An empty url reads as null on the API, which the `string` rule refuses.
+      const pageUrl = serverString(block.url);
+      if (typeof pageUrl !== 'string') throw fail(`The ${where}.url field must be a string.`);
+      if (pageUrl.length > 2048) throw fail(`The ${where}.url must not be longer than 2048 characters.`);
     }
     if (block.type !== undefined && !EXTENSION_BLOCK_TYPES.includes(block.type as string)) {
       throw fail(`The block type must be one of: ${EXTENSION_BLOCK_TYPES.join(', ')}.`);
@@ -671,7 +710,8 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
       }
       if (submits.length > 1) throw fail(`The ${where}.schema may declare at most one submit primitive.`);
     }
-    if (block.link_url !== undefined && block.link_url !== null) checkCappedUrl(block.link_url, `${where}.link_url`, fail);
+    const linkUrl = serverString(block.link_url);
+    if (linkUrl !== undefined && linkUrl !== null) checkCappedUrl(linkUrl, `${where}.link_url`, fail);
     checkImage(block.image, where, problems, fail);
     checked.push(block);
   });
@@ -715,7 +755,8 @@ function accountExtensionProblems(extensions: Record<string, unknown>, blocks: R
     }
     // Present means declared, whatever the value.
     for (const field of ['available_if', 'link_url', 'image']) {
-      if (block[field] !== undefined && block[field] !== null) problems.push(`The ${where}.${field} is not available on an account page or account block.`);
+      const declared = field === 'link_url' ? serverString(block[field]) : block[field];
+      if (declared !== undefined && declared !== null) problems.push(`The ${where}.${field} is not available on an account page or account block.`);
     }
     if (block.schema !== undefined && block.schema !== null && !(Array.isArray(block.schema) && block.schema.length === 0)) {
       problems.push(`The ${where}.schema is not available on an account page or account block.`);
@@ -752,7 +793,8 @@ function accountExtensionProblems(extensions: Record<string, unknown>, blocks: R
 function accountPageProblems(block: Record<string, unknown>, targets: string[], where: string): string[] {
   const problems: string[] = [];
   if (targets.length !== 1 || targets[0] !== ACCOUNT_PAGE_TARGET) problems.push(`The ${where} app_page must have exactly the ${ACCOUNT_PAGE_TARGET} target.`);
-  const url = typeof block.url === 'string' ? block.url : '';
+  const pageUrl = serverString(block.url);
+  const url = typeof pageUrl === 'string' ? pageUrl : '';
   if (url === '') return [...problems, `The ${where}.url is required on an app_page.`];
   if (hasUnsafeUrlCharacter(url)) return [...problems, unsafeUrlProblem(`${where}.url`)];
   if (url.includes('#')) problems.push(`The ${where}.url must not contain a fragment.`);
@@ -845,7 +887,8 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
         if (!DASHBOARD_WHEN_FIELDS.includes(when as string)) throw fail(`The dashboard \`when\` field must be one of: ${DASHBOARD_WHEN_FIELDS.join(', ')}.`);
       }
     }
-    if (block.link_url !== undefined && block.link_url !== null) checkCappedUrl(block.link_url, `${where}.link_url`, fail);
+    const linkUrl = serverString(block.link_url);
+    if (linkUrl !== undefined && linkUrl !== null) checkCappedUrl(linkUrl, `${where}.link_url`, fail);
     checkImage(block.image, where, problems, fail);
   }
   for (const [index, action] of checkList('actions', 10).entries()) {
@@ -861,8 +904,9 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
     }
     if (typeof action.scope !== 'string' || action.scope === '') throw fail(`The ${where} scope field is required.`);
     if (action.effect !== 'order_appointment') throw fail('The dashboard action effect must be one of: order_appointment.');
-    if (typeof action.notify_url !== 'string') throw fail(`The ${where} notify_url field is required.`);
-    checkCappedUrl(action.notify_url, `${where}.notify_url`, fail);
+    const notifyUrl = serverString(action.notify_url);
+    if (typeof notifyUrl !== 'string') throw fail(`The ${where} notify_url field is required.`);
+    checkCappedUrl(notifyUrl, `${where}.notify_url`, fail);
     checkImage(action.image, where, problems, fail);
     if (!scopes.includes(action.scope)) {
       throw fail(`Dashboard action '${action.key}' declares scope '${action.scope}' the manifest never grants.`);

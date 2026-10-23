@@ -1,5 +1,5 @@
 {
- "note": "CLI-side parity rows for the shopper account manifest contract, mirrored from the API's account manifest test. Rows mirrored from the API's validator. Messages are matched by substring: the CLI names a field with the manifest. prefix, the API does not. Rows that depend on the API's configured Queek hosts use the public Queek hosts here.",
+ "note": "CLI-side parity rows for the shopper account manifest contract, mirrored from the API's account manifest test. Rows mirrored from the API's validator. Messages are matched by substring: the CLI names a field with the manifest. prefix, the API does not. Rows that depend on the API's configured Queek hosts use the public Queek hosts here. serverVerdicts: each input was run through the API's request middleware (trim, empty to null) and then its validator; the verdict is the API's. serverTrimmedCodePoints: every code point the API's trim strips from the ends of a string.",
  "rows": [
   {
    "name": "page and order block",
@@ -435,7 +435,7 @@
      "url": ""
     }
    ],
-   "contains": "url is required on an app_page"
+   "contains": "url field must be a string"
   },
   {
    "name": "page with http url",
@@ -1253,8 +1253,8 @@
    "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
   },
   {
-   "name": "page url: trailing space",
-   "valid": false,
+   "name": "page url accepts a trailing space (trimmed, as the API does)",
+   "valid": true,
    "proxy": {
     "url": "https://apps.example.com/bookings/proxy",
     "subpath": "bookings",
@@ -1271,7 +1271,7 @@
      "url": "https://apps.example.com/a "
     }
    ],
-   "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+   "contains": null
   },
   {
    "name": "page url: no-break space in the path",
@@ -2326,11 +2326,11 @@
    "contains": "must be an https URL"
   },
   {
-   "name": "logo_url: empty string",
+   "name": "logo_url: empty string (the API reads it as absent)",
    "field": "logo_url",
    "value": "",
-   "valid": false,
-   "contains": "must be an https URL"
+   "valid": true,
+   "contains": null
   },
   {
    "name": "logo_url: space in the path",
@@ -2417,11 +2417,11 @@
    "contains": "must be an https URL"
   },
   {
-   "name": "developer_url: empty string",
+   "name": "developer_url: empty string (the API reads it as absent)",
    "field": "developer_url",
    "value": "",
-   "valid": false,
-   "contains": "must be an https URL"
+   "valid": true,
+   "contains": null
   },
   {
    "name": "developer_url: space in the path",
@@ -2508,11 +2508,11 @@
    "contains": "must be an https URL"
   },
   {
-   "name": "privacy_url: empty string",
+   "name": "privacy_url: empty string (the API reads it as absent)",
    "field": "privacy_url",
    "value": "",
-   "valid": false,
-   "contains": "must be an https URL"
+   "valid": true,
+   "contains": null
   },
   {
    "name": "privacy_url: space in the path",
@@ -2599,11 +2599,11 @@
    "contains": "must be an https URL"
   },
   {
-   "name": "support_url: empty string",
+   "name": "support_url: empty string (the API reads it as absent)",
    "field": "support_url",
    "value": "",
-   "valid": false,
-   "contains": "must be an https URL"
+   "valid": true,
+   "contains": null
   },
   {
    "name": "support_url: space in the path",
@@ -2632,6 +2632,719 @@
    "value": "https://apps.example.com\\.evil.example/",
    "valid": false,
    "contains": "must not contain control characters, whitespace, invisible characters or a backslash in the host"
+  }
+ ],
+ "serverTrimmedCodePoints": [
+  0,
+  9,
+  10,
+  11,
+  12,
+  13,
+  32,
+  133,
+  160,
+  173,
+  847,
+  1564,
+  4447,
+  4448,
+  5760,
+  6068,
+  6069,
+  6158,
+  8192,
+  8193,
+  8194,
+  8195,
+  8196,
+  8197,
+  8198,
+  8199,
+  8200,
+  8201,
+  8202,
+  8203,
+  8204,
+  8205,
+  8206,
+  8207,
+  8232,
+  8233,
+  8239,
+  8287,
+  8288,
+  8289,
+  8290,
+  8291,
+  8292,
+  8293,
+  8298,
+  8299,
+  8300,
+  8301,
+  8302,
+  8303,
+  10240,
+  12288,
+  12644,
+  65279,
+  65440,
+  119129,
+  119155,
+  119156,
+  119157,
+  119158,
+  119159,
+  119160,
+  119161,
+  119162,
+  917536
+ ],
+ "serverVerdicts": [
+  {
+   "name": "logo_url: empty",
+   "path": "logo_url",
+   "value": "",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: spaces",
+   "path": "logo_url",
+   "value": "   ",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: tab",
+   "path": "logo_url",
+   "value": "\t",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: ZWSP only",
+   "path": "logo_url",
+   "value": "\u200b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: BOM only",
+   "path": "logo_url",
+   "value": "\ufeff",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: NBSP only",
+   "path": "logo_url",
+   "value": "\u00a0",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: NEL only",
+   "path": "logo_url",
+   "value": "\u0085",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: lead/trail space",
+   "path": "logo_url",
+   "value": " https://apps.example.com/x ",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: lead/trail tab",
+   "path": "logo_url",
+   "value": "\thttps://apps.example.com/x\t",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: lead/trail ZWSP",
+   "path": "logo_url",
+   "value": "\u200bhttps://apps.example.com/x\u200b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: lead/trail BOM",
+   "path": "logo_url",
+   "value": "\ufeffhttps://apps.example.com/x\ufeff",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: lead/trail LRM",
+   "path": "logo_url",
+   "value": "\u200ehttps://apps.example.com/x\u200e",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: lead/trail NEL",
+   "path": "logo_url",
+   "value": "\u0085https://apps.example.com/x\u0085",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: interior space",
+   "path": "logo_url",
+   "value": "https://apps.example.com/a b",
+   "valid": false,
+   "contains": "backslash in the host"
+  },
+  {
+   "name": "logo_url: interior ZWSP",
+   "path": "logo_url",
+   "value": "https://apps.example.com/a\u200bb",
+   "valid": false,
+   "contains": "backslash in the host"
+  },
+  {
+   "name": "logo_url: upper scheme",
+   "path": "logo_url",
+   "value": "HTTPS://apps.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "logo_url: http",
+   "path": "logo_url",
+   "value": "http://apps.example.com/x",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "developer_url: empty",
+   "path": "developer_url",
+   "value": "",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: spaces",
+   "path": "developer_url",
+   "value": "   ",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: tab",
+   "path": "developer_url",
+   "value": "\t",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: ZWSP only",
+   "path": "developer_url",
+   "value": "\u200b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: BOM only",
+   "path": "developer_url",
+   "value": "\ufeff",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: NBSP only",
+   "path": "developer_url",
+   "value": "\u00a0",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: NEL only",
+   "path": "developer_url",
+   "value": "\u0085",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: lead/trail space",
+   "path": "developer_url",
+   "value": " https://apps.example.com/x ",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: lead/trail tab",
+   "path": "developer_url",
+   "value": "\thttps://apps.example.com/x\t",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: lead/trail ZWSP",
+   "path": "developer_url",
+   "value": "\u200bhttps://apps.example.com/x\u200b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: lead/trail BOM",
+   "path": "developer_url",
+   "value": "\ufeffhttps://apps.example.com/x\ufeff",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: lead/trail LRM",
+   "path": "developer_url",
+   "value": "\u200ehttps://apps.example.com/x\u200e",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: lead/trail NEL",
+   "path": "developer_url",
+   "value": "\u0085https://apps.example.com/x\u0085",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: interior space",
+   "path": "developer_url",
+   "value": "https://apps.example.com/a b",
+   "valid": false,
+   "contains": "backslash in the host"
+  },
+  {
+   "name": "developer_url: interior ZWSP",
+   "path": "developer_url",
+   "value": "https://apps.example.com/a\u200bb",
+   "valid": false,
+   "contains": "backslash in the host"
+  },
+  {
+   "name": "developer_url: upper scheme",
+   "path": "developer_url",
+   "value": "HTTPS://apps.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "developer_url: http",
+   "path": "developer_url",
+   "value": "http://apps.example.com/x",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "privacy_url: empty",
+   "path": "privacy_url",
+   "value": "",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: spaces",
+   "path": "privacy_url",
+   "value": "   ",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: tab",
+   "path": "privacy_url",
+   "value": "\t",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: ZWSP only",
+   "path": "privacy_url",
+   "value": "\u200b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: BOM only",
+   "path": "privacy_url",
+   "value": "\ufeff",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: NBSP only",
+   "path": "privacy_url",
+   "value": "\u00a0",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: NEL only",
+   "path": "privacy_url",
+   "value": "\u0085",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: lead/trail space",
+   "path": "privacy_url",
+   "value": " https://apps.example.com/x ",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: lead/trail tab",
+   "path": "privacy_url",
+   "value": "\thttps://apps.example.com/x\t",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: lead/trail ZWSP",
+   "path": "privacy_url",
+   "value": "\u200bhttps://apps.example.com/x\u200b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: lead/trail BOM",
+   "path": "privacy_url",
+   "value": "\ufeffhttps://apps.example.com/x\ufeff",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: lead/trail LRM",
+   "path": "privacy_url",
+   "value": "\u200ehttps://apps.example.com/x\u200e",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: lead/trail NEL",
+   "path": "privacy_url",
+   "value": "\u0085https://apps.example.com/x\u0085",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: interior space",
+   "path": "privacy_url",
+   "value": "https://apps.example.com/a b",
+   "valid": false,
+   "contains": "backslash in the host"
+  },
+  {
+   "name": "privacy_url: interior ZWSP",
+   "path": "privacy_url",
+   "value": "https://apps.example.com/a\u200bb",
+   "valid": false,
+   "contains": "backslash in the host"
+  },
+  {
+   "name": "privacy_url: upper scheme",
+   "path": "privacy_url",
+   "value": "HTTPS://apps.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "privacy_url: http",
+   "path": "privacy_url",
+   "value": "http://apps.example.com/x",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "support_url: empty",
+   "path": "support_url",
+   "value": "",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: spaces",
+   "path": "support_url",
+   "value": "   ",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: tab",
+   "path": "support_url",
+   "value": "\t",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: ZWSP only",
+   "path": "support_url",
+   "value": "\u200b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: BOM only",
+   "path": "support_url",
+   "value": "\ufeff",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: NBSP only",
+   "path": "support_url",
+   "value": "\u00a0",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: NEL only",
+   "path": "support_url",
+   "value": "\u0085",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: lead/trail space",
+   "path": "support_url",
+   "value": " https://apps.example.com/x ",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: lead/trail tab",
+   "path": "support_url",
+   "value": "\thttps://apps.example.com/x\t",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: lead/trail ZWSP",
+   "path": "support_url",
+   "value": "\u200bhttps://apps.example.com/x\u200b",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: lead/trail BOM",
+   "path": "support_url",
+   "value": "\ufeffhttps://apps.example.com/x\ufeff",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: lead/trail LRM",
+   "path": "support_url",
+   "value": "\u200ehttps://apps.example.com/x\u200e",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: lead/trail NEL",
+   "path": "support_url",
+   "value": "\u0085https://apps.example.com/x\u0085",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: interior space",
+   "path": "support_url",
+   "value": "https://apps.example.com/a b",
+   "valid": false,
+   "contains": "backslash in the host"
+  },
+  {
+   "name": "support_url: interior ZWSP",
+   "path": "support_url",
+   "value": "https://apps.example.com/a\u200bb",
+   "valid": false,
+   "contains": "backslash in the host"
+  },
+  {
+   "name": "support_url: upper scheme",
+   "path": "support_url",
+   "value": "HTTPS://apps.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "support_url: http",
+   "path": "support_url",
+   "value": "http://apps.example.com/x",
+   "valid": false,
+   "contains": "must be an https URL"
+  },
+  {
+   "name": "install_url empty",
+   "path": "install_url",
+   "value": "",
+   "valid": false,
+   "contains": "field is required"
+  },
+  {
+   "name": "install_url lead space",
+   "path": "install_url",
+   "value": " https://apps.example.com/i",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "install_url trail tab",
+   "path": "install_url",
+   "value": "https://apps.example.com/i\t",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "settings_url empty",
+   "path": "settings_url",
+   "value": "",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "webhook_url empty",
+   "path": "webhook_url",
+   "value": "",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "video_url empty",
+   "path": "video_url",
+   "value": "",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "demo_url empty",
+   "path": "demo_url",
+   "value": "",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "demo_url lead space",
+   "path": "demo_url",
+   "value": " https://apps.example.com/x",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "proxy.url empty",
+   "path": "extensions.proxy.url",
+   "value": "",
+   "valid": false,
+   "contains": "field is required"
+  },
+  {
+   "name": "proxy.url trail space",
+   "path": "extensions.proxy.url",
+   "value": "https://apps.example.com/p ",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "merchant_page_url empty",
+   "path": "extensions.merchant_page_url",
+   "value": "",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "merchant_page_url trail space",
+   "path": "extensions.merchant_page_url",
+   "value": "https://apps.example.com/m ",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "page url empty",
+   "path": "extensions.blocks.0.url",
+   "value": "",
+   "valid": false,
+   "contains": "field must be a string"
+  },
+  {
+   "name": "page url spaces",
+   "path": "extensions.blocks.0.url",
+   "value": "  ",
+   "valid": false,
+   "contains": "field must be a string"
+  },
+  {
+   "name": "page url lead/trail ws",
+   "path": "extensions.blocks.0.url",
+   "value": " \u200bhttps://apps.example.com/a\t",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "product link_url empty",
+   "path": "extensions.blocks.1.link_url",
+   "value": "",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "product link_url lead/trail ws",
+   "path": "extensions.blocks.1.link_url",
+   "value": " https://apps.example.com/l\t",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "product image.url empty",
+   "path": "extensions.blocks.1.image.url",
+   "value": "",
+   "valid": false,
+   "contains": "field must be a string"
+  },
+  {
+   "name": "product image.url trail space",
+   "path": "extensions.blocks.1.image.url",
+   "value": "https://apps.example.com/i.png ",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "embed url empty",
+   "path": "extensions.embeds.0.url",
+   "value": "",
+   "valid": false,
+   "contains": null
+  },
+  {
+   "name": "embed url lead/trail ws",
+   "path": "extensions.embeds.0.url",
+   "value": " https://apps.example.com/chat\t",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "notify_url empty",
+   "path": "dashboard.actions.0.notify_url",
+   "value": "",
+   "valid": false,
+   "contains": "field is required"
+  },
+  {
+   "name": "notify_url trail space",
+   "path": "dashboard.actions.0.notify_url",
+   "value": "https://apps.example.com/n ",
+   "valid": true,
+   "contains": null
+  },
+  {
+   "name": "account block link_url empty",
+   "path": "extensions.blocks.0.link_url",
+   "value": "",
+   "valid": true,
+   "contains": null
   }
  ]
 }

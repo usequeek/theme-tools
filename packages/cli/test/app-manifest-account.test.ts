@@ -2,16 +2,17 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { APP_TOML, loadApp, loadTomlFile, toManifest } from '../src/lib/app-manifest.js';
+import { APP_TOML, loadApp, loadTomlFile, serverString, toManifest } from '../src/lib/app-manifest.js';
 
 // Shopper account manifest contract (`app_page`, `account-page`, `account-order`),
 // mirrored from the API's validator. The rows live in a CLI-side fixture so the
 // shared line-text-parity fixture stays untouched.
 
 interface Row { name: string; valid: boolean; proxy: Record<string, unknown> | null; blocks: Record<string, unknown>[]; embeds?: Record<string, unknown>[]; contains: string | null; count?: number }
+interface VerdictRow { name: string; path: string; value: string; valid: boolean; contains: string | null }
 interface FieldRow { name: string; field: string; value: string; valid: boolean; contains: string | null }
 interface TitleRow { name: string; title: string; valid: boolean }
-const parity = JSON.parse(readFileSync(new URL('./fixtures/account-manifest-parity.json', import.meta.url), 'utf8')) as { rows: Row[]; titles: TitleRow[]; fields: FieldRow[] };
+const parity = JSON.parse(readFileSync(new URL('./fixtures/account-manifest-parity.json', import.meta.url), 'utf8')) as { rows: Row[]; titles: TitleRow[]; fields: FieldRow[]; serverVerdicts: VerdictRow[]; serverTrimmedCodePoints: number[] };
 
 const BASE = `
 slug = "bookings"
@@ -104,6 +105,68 @@ describe('shopper account manifest parity fixture', () => {
       // An all-blank title is the plain `required` refusal, as on the API.
       expect(message).toMatch(/extensions\.blocks\[0\]\.title (must be 1-40 characters|field is required)/);
     });
+  });
+});
+
+describe('what the API middleware does to a url string before it validates (trim, empty reads as absent)', () => {
+  const trimmed = new Set(parity.serverTrimmedCodePoints);
+
+  it('trims exactly the code points the API trims, over every code point', () => {
+    const wrong: string[] = [];
+    for (let code = 0; code <= 0x10ffff; code += 1) {
+      if (code >= 0xd800 && code <= 0xdfff) continue;
+      const stripped = serverString(`a${String.fromCodePoint(code)}`) === 'a';
+      if (stripped !== trimmed.has(code)) wrong.push(code.toString(16));
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  it('reads an empty result as absent, keeps interior whitespace and passes non-strings through', () => {
+    expect(serverString('')).toBeUndefined();
+    expect(serverString(' \t​﻿')).toBeUndefined();
+    expect(serverString(' https://x.example.com/a b ')).toBe('https://x.example.com/a b');
+    expect(serverString(5)).toBe(5);
+  });
+
+  const section = (doc: Record<string, unknown>, name: string): Record<string, unknown> => {
+    doc[name] ??= {};
+    return doc[name] as Record<string, unknown>;
+  };
+  const docWith = (path: string, value: string): Record<string, unknown> => {
+    const doc = loadTomlFile(join(stage(BASE), APP_TOML)).doc;
+    doc.extensions = {
+      proxy: PROXY,
+      blocks: [page(), { key: 'promo', title: 'Promo', targets: ['product'] }],
+      embeds: [{ key: 'chat', title: 'Chat', target: 'body', url: 'https://apps.example.com/chat', capabilities: ['chat-bubble'] }],
+    };
+    doc.dashboard = { actions: [{ key: 'a', title: 'A', target: 'order-details', scope: 'merchant-business_profile-read', effect: 'order_appointment', notify_url: 'https://apps.example.com/n' }] };
+    const ext = doc.extensions as { proxy: Record<string, unknown>; blocks: Record<string, unknown>[]; embeds: Record<string, unknown>[]; merchant_page_url?: string };
+    const parts = path.split('.');
+    if (['logo_url', 'developer_url', 'privacy_url', 'support_url', 'demo_url', 'video_url'].includes(path)) section(doc, 'listing')[path] = value;
+    else if (['install_url', 'uninstall_url', 'settings_url'].includes(path)) section(doc, 'app')[path] = value;
+    else if (path === 'webhook_url') section(doc, 'webhooks').url = value;
+    else if (path === 'extensions.proxy.url') ext.proxy = { ...PROXY, url: value };
+    else if (path === 'extensions.merchant_page_url') ext.merchant_page_url = value;
+    else if (parts[1] === 'blocks' && parts[3] === 'image') ext.blocks[Number(parts[2])].image = { url: value };
+    else if (parts[1] === 'blocks') ext.blocks[Number(parts[2])][parts[3]] = value;
+    else if (parts[1] === 'embeds') ext.embeds[0].url = value;
+    else if (parts[0] === 'dashboard') ((doc.dashboard as { actions: Record<string, unknown>[] }).actions[0]).notify_url = value;
+    else throw new Error(`unmapped path ${path}`);
+    return doc;
+  };
+
+  it('has the full server verdict table', () => {
+    expect(parity.serverVerdicts.length).toBeGreaterThanOrEqual(90);
+  });
+
+  it.each(parity.serverVerdicts.map((row) => [row.name, row] as const))('server verdict: %s', (_name, row) => {
+    const message = failure(docWith(row.path, row.value));
+    if (row.valid) {
+      expect(message).toBeNull();
+      return;
+    }
+    expect(message).not.toBeNull();
+    if (row.contains) expect(message).toContain(row.contains);
   });
 });
 
