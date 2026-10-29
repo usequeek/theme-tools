@@ -544,6 +544,40 @@ describe('[[extensions.embeds]] — storefront embeds', () => {
     expect(() => parsed(`${BASE}\n${duplicate}`)).toThrow('Storefront embed keys must be unique.');
   });
 
+  describe('link-button — Queek draws the button, the app supplies only the link', () => {
+    const link = (overrides = '') => `${BASE}\n[[extensions.embeds]]\nkey = "chat"\ntitle = "Chat button"\ntarget = "body"\ncapabilities = ["link-button"]\nlabel = "Chat on WhatsApp"\nicon = "whatsapp"\nlink = "whatsapp_link"\n${overrides}`;
+
+    it('maps a link-button with no url and no settings, and round-trips the manifest', () => {
+      const manifest = parsed(link('position = "bottom-left"\n'));
+      expect((manifest.extensions as { embeds: unknown[] }).embeds).toEqual([{
+        key: 'chat', title: 'Chat button', target: 'body', capabilities: ['link-button'],
+        label: 'Chat on WhatsApp', icon: 'whatsapp', link: 'whatsapp_link', position: 'bottom-left',
+      }]);
+      expect(toManifest(loadTomlFile(stageFile(fromManifest(manifest))).doc).manifest).toEqual(manifest);
+    });
+
+    it('leaves the position out when it is not declared, and counts toward the three-embed cap', () => {
+      expect((parsed(link()).extensions as { embeds: Record<string, unknown>[] }).embeds[0]).not.toHaveProperty('position');
+      const rows = Array.from({ length: 4 }, (_, i) => `[[extensions.embeds]]\nkey = "c${i}"\ntitle = "Chat ${i}"\ntarget = "body"\ncapabilities = ["link-button"]\nlabel = "Chat"\nicon = "chat"\nlink = "l${i}"\n`).join('\n');
+      expect(() => parsed(`${BASE}\n${rows}`)).toThrow('must not have more than 3 embeds');
+    });
+
+    it.each([
+      ['a url (nothing is framed)', link('url = "https://x.example.com/e"\n'), /Unknown field 'url'/],
+      ['settings', link('settings = ["a"]\n'), /Unknown field 'settings'/],
+      ['a missing label', link().replace('label = "Chat on WhatsApp"\n', ''), /label is required/],
+      ['a long label', link().replace('Chat on WhatsApp', 'x'.repeat(41)), /label is required/],
+      ['an unknown icon', link().replace('"whatsapp"', '"skype"'), /icon must be one of: whatsapp, telegram, messenger, chat/],
+      ['a missing link key', link().replace('link = "whatsapp_link"\n', ''), /link must name an installation metafield key/],
+      ['a link key with a dot', link().replace('whatsapp_link', 'a.b'), /link must name an installation metafield key/],
+      ['an unknown corner', link('position = "top-left"\n'), /position must be/],
+    ])('rejects %s', (_label, toml, error) => expect(() => parsed(toml)).toThrow(error));
+
+    it('names link-button among the capabilities when the capability is unknown', () => {
+      expect(() => parsed(embed().replace('chat-bubble', 'support-bubble'))).toThrow(/scroll-top, link-button/);
+    });
+  });
+
   it('measures descriptor size in UTF-8 bytes', () => {
     const manifest = parsed(embed());
     const descriptor = (manifest.extensions as { embeds: unknown[] }).embeds[0];

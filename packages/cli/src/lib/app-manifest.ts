@@ -28,6 +28,10 @@ export const MANIFEST_KEYS = [
  * The `extensions` sub-keys the API accepts: nothing else is sent under
  * `extensions`.
  */
+/** The closed lists of a `link-button` embed (the server's config apps.embeds.link_button_icons, and the fields it accepts). */
+const LINK_BUTTON_ICONS = ['whatsapp', 'telegram', 'messenger', 'chat'];
+const LINK_BUTTON_EMBED_KEYS = ['key', 'title', 'target', 'capabilities', 'label', 'icon', 'link', 'position'];
+
 export const EXTENSION_KEYS = ['proxy', 'blocks', 'merchant_page_url', 'nav', 'embeds'] as const;
 
 export type ManifestKey = (typeof MANIFEST_KEYS)[number];
@@ -824,20 +828,33 @@ function checkExtensions(extensions: unknown, manifest: AppManifest, fail: (mess
   const checkedEmbeds = embeds.map((embed, index) => {
     const where = `manifest.extensions.embeds[${index}]`;
     if (!isRecord(embed)) throw fail(`The ${where} entry must be a table.`);
+    // A link-button frames no page: Queek draws it and the app supplies only the link (an installation metafield).
+    const linkButton = Array.isArray(embed.capabilities) && embed.capabilities.length === 1 && embed.capabilities[0] === 'link-button';
     for (const key of Object.keys(embed)) {
-      if (!['key', 'title', 'target', 'url', 'capabilities', 'settings'].includes(key)) problems.push(unknownField(key, where));
+      if (!(linkButton ? LINK_BUTTON_EMBED_KEYS : ['key', 'title', 'target', 'url', 'capabilities', 'settings']).includes(key)) problems.push(unknownField(key, where));
     }
     if (typeof embed.key !== 'string' || !SETTING_KEY_RE.test(embed.key)) throw fail(`The ${where}.key must match [a-z0-9_]{1,64}.`);
     if (embedKeys.has(embed.key)) throw fail('Storefront embed keys must be unique.');
     embedKeys.add(embed.key);
     if (typeof embed.title !== 'string' || embed.title.trim() === '' || [...embed.title].length > 80 || hasControlCharacter(embed.title)) throw fail(`The ${where}.title is required (max 80, no control characters).`);
     if (embed.target !== 'body') throw fail(`The ${where}.target must be "body".`);
+    if (linkButton) {
+      if (typeof embed.label !== 'string' || embed.label === '' || [...embed.label].length > 40 || hasControlCharacter(embed.label)) throw fail(`The ${where}.label is required for a link-button (max 40, no control characters).`);
+      if (!LINK_BUTTON_ICONS.includes(String(embed.icon))) throw fail(`The ${where}.icon must be one of: ${LINK_BUTTON_ICONS.join(', ')}.`);
+      if (typeof embed.link !== 'string' || !SETTING_KEY_RE.test(embed.link)) throw fail(`The ${where}.link must name an installation metafield key matching [a-z0-9_]{1,64}.`);
+      if (embed.position !== undefined && !['bottom-left', 'bottom-right'].includes(String(embed.position))) throw fail(`The ${where}.position must be "bottom-left" or "bottom-right".`);
+      if (problems.length > 0) throw new TomlError(problems.join('\n'));
+      const checkedLink = { key: embed.key, title: embed.title, target: embed.target, capabilities: embed.capabilities,
+        label: embed.label, icon: embed.icon, link: embed.link, ...(embed.position !== undefined ? { position: embed.position } : {}) };
+      if (!isEmbedDescriptorWithinLimit(checkedLink)) throw fail(`The ${where} exceeds the descriptor byte limit (4096 bytes).`);
+      return checkedLink;
+    }
     if (typeof embed.url !== 'string' || !embed.url.toLowerCase().startsWith('https://')) throw fail(`The ${where}.url must be an https URL.`);
     if (embed.url.includes('#')) throw fail(`The ${where}.url must not contain a fragment.`);
     checkCappedUrl(embed.url, `${where}.url`, fail);
     if (sharesKnownQueekOrigin(embed.url)) throw fail(`The ${where}.url must not share a Queek origin.`);
     if (!Array.isArray(embed.capabilities) || embed.capabilities.length !== 1 || !['chat-bubble', 'banner', 'popup', 'scroll-top'].includes(String(embed.capabilities[0]))) {
-      throw fail(`The ${where}.capabilities must contain exactly one of: chat-bubble, banner, popup, scroll-top.`);
+      throw fail(`The ${where}.capabilities must contain exactly one of: chat-bubble, banner, popup, scroll-top, link-button.`);
     }
     if (embed.settings !== undefined && !Array.isArray(embed.settings)) throw fail(`The ${where}.settings must be a list of setting keys.`);
     const embedSettings = (embed.settings ?? []) as unknown[];

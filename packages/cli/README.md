@@ -230,8 +230,14 @@ grouped: `[listing]`, `[access]`, `[webhooks]`, `[app]`, `[[settings]]`,
 `[extensions]`, `[dashboard]`); `-c/--config <name>` reads `queek.app.<name>.toml`.
 Storefront embeds are declared as `[[extensions.embeds]]` array tables with
 `key`, `title`, `target = "body"`, an HTTPS `url`, and exactly one capability
-(`chat-bubble`, `banner`, `popup`, or `scroll-top`). A manifest can declare up
-to three embeds. Optional `settings = ["key"]` entries must name non-secret
+(`chat-bubble`, `banner`, `popup`, `scroll-top`, or `link-button`). A manifest can declare up
+to three embeds. A `link-button` frames no page: Queek draws the button, so it has no `url`
+and no `settings`; it takes a `label` (max 40), an `icon` (`whatsapp`, `telegram`,
+`messenger` or `chat`), `link` (the key of an installation metafield in your app's
+`app_{slug}` namespace that your app writes with the link) and an optional default
+`position`. The link must be `https` on exactly `wa.me`, `api.whatsapp.com`, `t.me` or
+`m.me`; the server checks it when your app writes it and again at the storefront. The
+merchant switches the button on in the storefront editor, under App embeds. Optional `settings = ["key"]` entries must name non-secret
 keys declared in `[[settings]]`; embed URLs cannot contain fragments or use a
 Queek origin; first-party `{app}.apps.queek.com.ng` hosts are allowed.
 `queek app deploy` maps these tables to `manifest.extensions.embeds`
