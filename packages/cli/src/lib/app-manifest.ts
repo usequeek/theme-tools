@@ -24,14 +24,14 @@ export const MANIFEST_KEYS = [
   'extensions', 'dashboard',
 ] as const;
 
-/**
- * The `extensions` sub-keys the API accepts: nothing else is sent under
- * `extensions`.
- */
 /** The closed lists of a `link-button` embed (the server's config apps.embeds.link_button_icons, and the fields it accepts). */
 const LINK_BUTTON_ICONS = ['whatsapp', 'telegram', 'messenger', 'chat'];
 const LINK_BUTTON_EMBED_KEYS = ['key', 'title', 'target', 'capabilities', 'label', 'icon', 'link', 'position'];
 
+/**
+ * The `extensions` sub-keys the API accepts: nothing else is sent under
+ * `extensions`.
+ */
 export const EXTENSION_KEYS = ['proxy', 'blocks', 'merchant_page_url', 'nav', 'embeds'] as const;
 
 export type ManifestKey = (typeof MANIFEST_KEYS)[number];
