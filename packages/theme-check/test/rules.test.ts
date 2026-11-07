@@ -1,7 +1,10 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { DESIGN_TOKEN_CHOICES } from '@usequeek/theme-kit/utils/brand';
+import * as contextModule from '../src/context.js';
+import { designTokensRule } from '../src/rules/analysis.js';
 import { BUSINESS_KEYS, businessRoot, isBusinessKey, vocabularyViewOf } from '../src/utils/business-vocabulary.js';
 import { codeQualityRule, demoStoresRule, fontsSelfHostedRule, frameworkImport, placeholderContentRule, sdkBoundaryRule, vendorFactsRule, templateBusinessRule, templateCopyRule, templateDescriptionRule, templateDesignsRule, templatePagesRule, templateVersionsRule, compositionVariantsRule } from '../src/rules/static.js';
 import { copyViolations, manifestViolations } from '../src/utils/template-copy.js';
@@ -996,5 +999,153 @@ describe('theme/fonts-self-hosted', () => {
       where: 'styles/type.css',
       found: 'loads a font with @import from fonts.googleapis.com',
     });
+  });
+});
+
+describe('theme/design-tokens', () => {
+  const validTokens = {
+    color: { scheme: 'light', primary: '#111111', bg: '#ffffff', text: '#111111' },
+    type: { heading_font: 'Inter', body_font: 'Inter', scale_ratio: 1.25, heading_case: 'none' },
+    space: { density: 'cozy' },
+    shape: { radius: 'soft', border_weight: 'hairline' },
+    elevation: 'subtle',
+    motion: 'subtle',
+    image: { radius: 'soft', fit: 'cover', filter: 'none' },
+  };
+  const leaf = (path: string, value: unknown): Record<string, unknown> =>
+    path.split('.').reduceRight<unknown>((nested, key) => ({ [key]: nested }), value) as Record<string, unknown>;
+  const store = (tokens: unknown): DemoStore => ({ id: 'wellness', file: 'demos/wellness.json', data: { config: { tokens } } });
+  const ctx = (demos: DemoStore[] = [], tokens = validTokens): ThemeContext => ({
+    ...context({ demos, manifest: { tokens } }),
+    // Resolve the kit from this package's devDependency, rather than the root's older kit.
+    dir: resolve(import.meta.dirname, '..'),
+    read: (path) => path === 'theme.css' ? 'var(--space-4)'.repeat(51) : null,
+  });
+
+  it('rejects thin border weight in a demo, naming its value and allowed choices', async () => {
+    const found = await designTokensRule.run(ctx([store({ shape: { border_weight: 'thin' } })]));
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({
+      rule: 'theme/design-tokens', severity: 'reject',
+      where: 'theme/demos/wellness.json → config.tokens.shape.border_weight',
+      found: '"thin" is not a shape.border_weight value',
+      fix: 'Use one of: hairline, medium, bold.',
+    });
+  });
+
+  it.each([
+    'type.scale_ratio', 'type.heading_case', 'space.density', 'shape.radius',
+    'shape.border_weight', 'elevation', 'motion', 'image.radius', 'image.fit', 'image.filter', 'color.scheme',
+  ])('rejects an invalid %s in a demo', async (axis) => {
+    const found = await designTokensRule.run(ctx([store(leaf(axis, 'bogus'))]));
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({
+      rule: 'theme/design-tokens', severity: 'reject',
+      where: `theme/demos/wellness.json → config.tokens.${axis}`,
+      found: `"bogus" is not a ${axis} value`,
+      fix: `Use one of: ${DESIGN_TOKEN_CHOICES[axis as keyof typeof DESIGN_TOKEN_CHOICES].join(', ')}.`,
+    });
+  });
+
+  it.each([
+    ['image.fit', 'fill'], ['color.scheme', 'sepia'],
+    ['type.scale_ratio', 1.3], ['type.scale_ratio', '1.25'],
+  ])('rejects %s = %s using the kit choices', async (axis, value) => {
+    const found = await designTokensRule.run(ctx([store(leaf(axis as string, value))]));
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({
+      severity: 'reject', where: `theme/demos/wellness.json → config.tokens.${axis}`,
+      found: `${JSON.stringify(value)} is not a ${axis} value`,
+      fix: `Use one of: ${DESIGN_TOKEN_CHOICES[axis as keyof typeof DESIGN_TOKEN_CHOICES].join(', ')}.`,
+    });
+  });
+
+  it('accepts a valid manifest and a fully valid demo', async () => {
+    expect(await designTokensRule.run(ctx([store(validTokens)]))).toEqual([]);
+  });
+
+  it('skips stores without tokens or parseable data', async () => {
+    expect(await designTokensRule.run(ctx([
+      { id: 'default', file: 'demo.json', data: { config: {} } },
+      { id: 'empty', file: 'demos/empty.json', data: {} },
+      { id: 'broken', file: 'demos/broken.json', data: null },
+    ]))).toEqual([]);
+  });
+
+  it.each([
+    'type.scale_ratio', 'type.heading_case', 'space.density', 'shape.radius',
+    'shape.border_weight', 'elevation', 'motion', 'image.radius', 'image.fit', 'image.filter', 'color.scheme',
+  ])('names an invalid manifest %s without throwing', async (axis) => {
+    const overrides = leaf(axis, 'bogus');
+    // Retain required siblings when overriding a leaf inside a group.
+    const tokens = {
+      ...validTokens, ...overrides,
+      type: { ...validTokens.type, ...overrides.type as object },
+      space: { ...validTokens.space, ...overrides.space as object },
+      shape: { ...validTokens.shape, ...overrides.shape as object },
+    };
+    const found = await designTokensRule.run(ctx([], tokens));
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({
+      severity: 'reject', where: `theme/manifest.ts → tokens.${axis}`, found: `"bogus" is not a ${axis} value`,
+      fix: `Use one of: ${DESIGN_TOKEN_CHOICES[axis as keyof typeof DESIGN_TOKEN_CHOICES].join(', ')}.`,
+    });
+  });
+
+  it('skips expansion for invalid manifest motion and still checks CSS', async () => {
+    const kit = await contextModule.importKit<Record<string, unknown>>(ctx().dir, '@usequeek/theme-kit/utils/brand');
+    const expandDesignTokens = vi.fn(() => { throw new Error('invalid motion cannot expand'); });
+    const mock = vi.spyOn(contextModule, 'importKit').mockResolvedValueOnce({ ...kit, expandDesignTokens });
+    try {
+      const base = ctx([], { ...validTokens, motion: 'bogus' });
+      const found = await designTokensRule.run({ ...base, read: () => '' });
+      expect(found.map((f) => f.found)).toEqual([
+        '"bogus" is not a motion value',
+        'theme.css references design tokens only 0 time(s); it needs more than 50',
+      ]);
+      expect(found[0].where).toBe('theme/manifest.ts → tokens.motion');
+      expect(expandDesignTokens).not.toHaveBeenCalled();
+      expect(mock).toHaveBeenCalledTimes(1);
+      expect(mock).toHaveBeenCalledWith(base.dir, '@usequeek/theme-kit/utils/brand');
+    } finally {
+      mock.mockRestore();
+    }
+  });
+
+  it('reports each bad leaf once even when expansion would throw', async () => {
+    const found = await designTokensRule.run(ctx([store({
+      shape: { border_weight: 'thin', radius: 'bogus' }, elevation: 'bogus', motion: 'bogus',
+    })]));
+    expect(found.map((f) => f.where).sort()).toEqual([
+      'elevation', 'motion', 'shape.border_weight', 'shape.radius',
+    ].map((path) => `theme/demos/wellness.json → config.tokens.${path}`).sort());
+  });
+
+  it('still checks demo tokens when the manifest has no tokens', async () => {
+    const base = ctx([store({ motion: 'bogus' })]);
+    const found = await designTokensRule.run({ ...base, manifest: {} });
+    expect(found.map((f) => f.where)).toContain('theme/demos/wellness.json → config.tokens.motion');
+    expect(found.map((f) => f.found)).toContain('no design-token block');
+  });
+
+  it('keeps the existing manifest and CSS checks', async () => {
+    const base = ctx();
+    const found = await designTokensRule.run({
+      ...base, manifest: { tokens: { color: {} } }, read: () => '',
+    });
+    expect(found.map((f) => f.found)).toEqual([
+      expect.stringContaining('tokens missing:'),
+      expect.stringContaining('theme.css references design tokens only 0'),
+    ]);
+  });
+
+  it('skips value validation when the theme kit has no validator', async () => {
+    const kit = await contextModule.importKit<{ expandDesignTokens: (tokens: unknown) => Record<string, string> }>(ctx().dir, '@usequeek/theme-kit/utils/brand');
+    const mock = vi.spyOn(contextModule, 'importKit').mockResolvedValueOnce({ expandDesignTokens: kit.expandDesignTokens });
+    try {
+      expect(await designTokensRule.run(ctx([store({ shape: { border_weight: 'thin' } })]))).toEqual([]);
+    } finally {
+      mock.mockRestore();
+    }
   });
 });

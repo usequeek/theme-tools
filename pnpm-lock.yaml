@@ -300,9 +300,6 @@ importers:
 
   packages/theme-check:
     dependencies:
-      '@usequeek/theme-kit':
-        specifier: '>=0.1.8'
-        version: 0.1.25(@types/react@19.3.0)(@usequeek/client-sdk@0.4.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
       jiti:
         specifier: ^2.7.0
         version: 2.7.0
@@ -319,6 +316,9 @@ importers:
       '@types/picomatch':
         specifier: ^4.0.3
         version: 4.0.3
+      '@usequeek/theme-kit':
+        specifier: ^0.1.43
+        version: 0.1.43(@types/react@19.3.0)(@usequeek/client-sdk@0.4.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
 
 packages:
 
@@ -995,6 +995,15 @@ packages:
 
   '@usequeek/theme-kit@0.1.25':
     resolution: {integrity: sha512-PMy/Sn9wn1zA2cMMhJyyhAVPKl2JEp33fm+w3hyTjS4Suwpa1glZ/6fcnDN1VWiQAZ9lKwNqGzdrZzLeVAnq1Q==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@usequeek/client-sdk': ^0.4.0
+      next: '>=15'
+      react: '>=19'
+      react-dom: '>=19'
+
+  '@usequeek/theme-kit@0.1.43':
+    resolution: {integrity: sha512-pMj8KF+WYNr2xyeWz/FuCn2KlsOwyG4D92zmSEWizrI+UoP1IKunGnGK9sUTIAx/UnLoM1NIHIx8ryIJwRt1Xw==}
     engines: {node: '>=22'}
     peerDependencies:
       '@usequeek/client-sdk': ^0.4.0
@@ -2899,6 +2908,22 @@ snapshots:
       - use-sync-external-store
 
   '@usequeek/theme-kit@0.1.25(@types/react@19.3.0)(@usequeek/client-sdk@0.4.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
+    dependencies:
+      '@usequeek/client-sdk': 0.4.0
+      html-to-image: 1.11.13
+      next: 16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+      react-markdown: 10.1.0(@types/react@19.3.0)(react@19.3.0)(supports-color@7.2.0)
+      remark-gfm: 4.0.1(supports-color@7.2.0)
+      zustand: 5.0.15(@types/react@19.3.0)(react@19.3.0)
+    transitivePeerDependencies:
+      - '@types/react'
+      - immer
+      - supports-color
+      - use-sync-external-store
+
+  '@usequeek/theme-kit@0.1.43(@types/react@19.3.0)(@usequeek/client-sdk@0.4.0)(next@16.3.6(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
     dependencies:
       '@usequeek/client-sdk': 0.4.0
       html-to-image: 1.11.13

@@ -60,6 +60,7 @@
     }
   },
   "devDependencies": {
-    "@types/picomatch": "^4.0.3"
+    "@types/picomatch": "^4.0.3",
+    "@usequeek/theme-kit": "^0.1.43"
   }
 }

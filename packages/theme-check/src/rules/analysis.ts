@@ -89,11 +89,36 @@ export const designTokensRule: Rule = {
     const add = (found: string, fix: string, where = at): Finding =>
       finding(context, 'theme/design-tokens', 'reject', { where, found, fix, docs: `${context.env.docs}#manifest` });
 
-    if (!tokens) {
-      return [add('no design-token block', 'Declare `tokens` in manifest.ts. Without it a vendor cannot recolour or restyle the theme at all — it is the whole customisation surface.')];
+    const findings: Finding[] = [];
+    const sets = context.demos.flatMap((store) => {
+      const config = store.data?.config as { tokens?: DesignTokens } | undefined | null;
+      return config?.tokens ? [{ tokens: config.tokens, where: `${context.env.root}${store.file} → config.tokens` }] : [];
+    });
+    if (tokens) sets.unshift({ tokens, where: `${at} → tokens` });
+    const kit = sets.length > 0 ? await importKit<{
+      expandDesignTokens: (tokens: DesignTokens) => Record<string, string>;
+      findInvalidDesignTokens?: (tokens: unknown) => Array<{
+        path: string; value: unknown; allowed: readonly (string | number)[];
+      }>;
+    }>(context.dir, '@usequeek/theme-kit/utils/brand') : null;
+    let invalidManifestLeaves = 0;
+    if (kit?.findInvalidDesignTokens) {
+      for (const set of sets) {
+        const invalid = kit.findInvalidDesignTokens(set.tokens);
+        if (set.where === `${at} → tokens`) invalidManifestLeaves = invalid.length;
+        for (const { path, value, allowed } of invalid) {
+          findings.push(add(
+            `${JSON.stringify(value)} is not a ${path} value`,
+            `Use one of: ${allowed.join(', ')}.`,
+            `${set.where}.${path}`,
+          ));
+        }
+      }
     }
 
-    const findings: Finding[] = [];
+    if (!tokens) {
+      return [add('no design-token block', 'Declare `tokens` in manifest.ts. Without it a vendor cannot recolour or restyle the theme at all — it is the whole customisation surface.'), ...findings];
+    }
     const missing = [
       ['color', tokens.color],
       ['type.heading_font', tokens.type?.heading_font],
@@ -108,12 +133,14 @@ export const designTokensRule: Rule = {
       findings.push(add(`tokens missing: ${missing.join(', ')}`, "Declare every dimension in manifest.ts tokens. Each one is a control in the vendor's theme editor, and a missing one leaves that control out."));
     }
 
-    const { expandDesignTokens } = await importKit<{ expandDesignTokens: (tokens: DesignTokens) => Record<string, string> }>(context.dir, '@usequeek/theme-kit/utils/brand');
-    const vars = expandDesignTokens(tokens);
-    const unexpanded = ['--brand-primary', '--brand-bg', '--brand-text', '--fs-base', '--fs-3xl', '--space-4', '--radius-md', '--shadow-2', '--duration-base', '--font-heading', '--font-body']
-      .filter((key) => !vars[key]);
-    if (unexpanded.length > 0) {
-      findings.push(add(`tokens do not expand to: ${unexpanded.join(', ')}`, "Usually a malformed token value. Compare tokens in manifest.ts with the starter's manifest.ts."));
+    if (invalidManifestLeaves === 0) {
+      const { expandDesignTokens } = kit!;
+      const vars = expandDesignTokens(tokens);
+      const unexpanded = ['--brand-primary', '--brand-bg', '--brand-text', '--fs-base', '--fs-3xl', '--space-4', '--radius-md', '--shadow-2', '--duration-base', '--font-heading', '--font-body']
+        .filter((key) => !vars[key]);
+      if (unexpanded.length > 0) {
+        findings.push(add(`tokens do not expand to: ${unexpanded.join(', ')}`, "Usually a malformed token value. Compare tokens in manifest.ts with the starter's manifest.ts."));
+      }
     }
 
     const css = context.read('theme.css') ?? '';
