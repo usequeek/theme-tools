@@ -30,7 +30,7 @@
     "giget": "^3.3.1"
   },
   "devDependencies": {
-    "smol-toml": "^1.4.2"
+    "smol-toml": "^1.9.1"
   },
   "keywords": [
     "queek",
