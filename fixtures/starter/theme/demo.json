@@ -6,7 +6,7 @@
     "tagline": "A starting point, not a design.",
     "logo": null,
     "banner": "https://media.usequeek.com/theme-assets/_bare/dcdae58f874939a9.jpg",
-    "currency": "NGN",
+    "currency": "USD",
     "rating": 5,
     "rating_count": 1,
     "delivery_time": "1-3 days",
@@ -94,18 +94,18 @@
       "description": "Placeholder One. Replace this demo store with your own before submitting.",
       "kind": "physical",
       "status": "active",
-      "currency": "NGN",
+      "currency": "USD",
       "pricing": {
-        "base_amount": 12000,
-        "sale_amount": 12000,
-        "compare_at_amount": 12000,
+        "base_amount": 12,
+        "sale_amount": 12,
+        "compare_at_amount": 12,
         "discount_amount": 0,
         "discount_percent": 0,
         "is_price_from": false,
         "tax_inclusive": false,
         "price_range": {
-          "min_amount": 12000,
-          "max_amount": 12000
+          "min_amount": 12,
+          "max_amount": 12
         }
       },
       "shop": {
@@ -168,18 +168,18 @@
       "description": "Placeholder Two. Replace this demo store with your own before submitting.",
       "kind": "physical",
       "status": "active",
-      "currency": "NGN",
+      "currency": "USD",
       "pricing": {
-        "base_amount": 18500,
-        "sale_amount": 18500,
-        "compare_at_amount": 18500,
+        "base_amount": 18.5,
+        "sale_amount": 18.5,
+        "compare_at_amount": 18.5,
         "discount_amount": 0,
         "discount_percent": 0,
         "is_price_from": false,
         "tax_inclusive": false,
         "price_range": {
-          "min_amount": 18500,
-          "max_amount": 18500
+          "min_amount": 18.5,
+          "max_amount": 18.5
         }
       },
       "shop": {
@@ -242,18 +242,18 @@
       "description": "Placeholder Three. Replace this demo store with your own before submitting.",
       "kind": "physical",
       "status": "active",
-      "currency": "NGN",
+      "currency": "USD",
       "pricing": {
-        "base_amount": 9000,
-        "sale_amount": 9000,
-        "compare_at_amount": 9000,
+        "base_amount": 9,
+        "sale_amount": 9,
+        "compare_at_amount": 9,
         "discount_amount": 0,
         "discount_percent": 0,
         "is_price_from": false,
         "tax_inclusive": false,
         "price_range": {
-          "min_amount": 9000,
-          "max_amount": 9000
+          "min_amount": 9,
+          "max_amount": 9
         }
       },
       "shop": {
@@ -316,18 +316,18 @@
       "description": "Placeholder Four. Replace this demo store with your own before submitting.",
       "kind": "physical",
       "status": "active",
-      "currency": "NGN",
+      "currency": "USD",
       "pricing": {
-        "base_amount": 24000,
-        "sale_amount": 24000,
-        "compare_at_amount": 24000,
+        "base_amount": 24,
+        "sale_amount": 24,
+        "compare_at_amount": 24,
         "discount_amount": 0,
         "discount_percent": 0,
         "is_price_from": false,
         "tax_inclusive": false,
         "price_range": {
-          "min_amount": 24000,
-          "max_amount": 24000
+          "min_amount": 24,
+          "max_amount": 24
         }
       },
       "shop": {
@@ -390,18 +390,18 @@
       "description": "Placeholder Five. Replace this demo store with your own before submitting.",
       "kind": "physical",
       "status": "active",
-      "currency": "NGN",
+      "currency": "USD",
       "pricing": {
-        "base_amount": 15000,
-        "sale_amount": 15000,
-        "compare_at_amount": 15000,
+        "base_amount": 15,
+        "sale_amount": 15,
+        "compare_at_amount": 15,
         "discount_amount": 0,
         "discount_percent": 0,
         "is_price_from": false,
         "tax_inclusive": false,
         "price_range": {
-          "min_amount": 15000,
-          "max_amount": 15000
+          "min_amount": 15,
+          "max_amount": 15
         }
       },
       "shop": {
@@ -464,18 +464,18 @@
       "description": "Placeholder Six. Replace this demo store with your own before submitting.",
       "kind": "physical",
       "status": "active",
-      "currency": "NGN",
+      "currency": "USD",
       "pricing": {
-        "base_amount": 31000,
-        "sale_amount": 31000,
-        "compare_at_amount": 31000,
+        "base_amount": 31,
+        "sale_amount": 31,
+        "compare_at_amount": 31,
         "discount_amount": 0,
         "discount_percent": 0,
         "is_price_from": false,
         "tax_inclusive": false,
         "price_range": {
-          "min_amount": 31000,
-          "max_amount": 31000
+          "min_amount": 31,
+          "max_amount": 31
         }
       },
       "shop": {
