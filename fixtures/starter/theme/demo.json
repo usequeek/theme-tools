@@ -170,16 +170,16 @@
       "status": "active",
       "currency": "USD",
       "pricing": {
-        "base_amount": 18.5,
-        "sale_amount": 18.5,
-        "compare_at_amount": 18.5,
+        "base_amount": 19,
+        "sale_amount": 19,
+        "compare_at_amount": 19,
         "discount_amount": 0,
         "discount_percent": 0,
         "is_price_from": false,
         "tax_inclusive": false,
         "price_range": {
-          "min_amount": 18.5,
-          "max_amount": 18.5
+          "min_amount": 19,
+          "max_amount": 19
         }
       },
       "shop": {
