@@ -4,7 +4,7 @@ import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 
 /**
  * `queek.app.toml` — the local source of truth for an app's manifest, mapped
- * EXACTLY to the 28 top-level manifest keys the Queek API accepts.
+ * EXACTLY to the 29 top-level manifest keys the Queek API accepts (the server also takes `payment_provider` and `store`, for private payment-gateway apps; the CLI does not map those).
  * The server never fetches a live manifest URL; `deploy` pushes this file.
  *
  * Secrets NEVER live here: the registration secret (`whsec_…`) goes to
@@ -15,13 +15,13 @@ import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 export const APP_TOML = 'queek.app.toml';
 export const APP_TOML_VARIANT = (name: string): string => `queek.app.${name}.toml`;
 
-/** The 28 manifest keys the API accepts — nothing else is sent. */
+/** The 29 manifest keys the CLI sends — nothing else is sent. */
 export const MANIFEST_KEYS = [
   'slug', 'name', 'description', 'icon', 'developer', 'version', 'distribution',
   'category', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing',
   'developer_url', 'privacy_url', 'support_url', 'demo_url', 'video_url', 'scopes', 'optional_scopes', 'webhook_topics',
   'settings', 'install_url', 'uninstall_url', 'settings_url', 'webhook_url',
-  'extensions', 'dashboard',
+  'extensions', 'dashboard', 'ai',
 ] as const;
 
 /** The closed lists of a `link-button` embed (the server's config apps.embeds.link_button_icons, and the fields it accepts). */
@@ -46,7 +46,7 @@ export const unknownField = (key: string, where = 'manifest'): string => `Unknow
 
 const TOP_LEVEL_TOML_KEYS = new Set([
   'slug', 'handle', 'name', 'version', 'distribution', 'icon', 'developer', 'category',
-  'listing', 'access', 'webhooks', 'app', 'settings', 'extensions', 'dashboard', 'dev',
+  'listing', 'access', 'webhooks', 'app', 'settings', 'extensions', 'dashboard', 'ai', 'dev',
 ]);
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,63}$/;
@@ -54,7 +54,7 @@ const SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const ICON_RE = /^[a-z0-9_-]+$/;
 const SETTING_KEY_RE = /^[a-z0-9_]{1,64}$/;
 /** Hosts of first-party app pages. */
-const TEMPORARY_PAGE_SUFFIXES = ['.apps.queek.com.ng'];
+const TEMPORARY_PAGE_SUFFIXES = ['.apps.queek.app'];
 
 /** Scopes the CLI refuses without asking the server (never `merchant-apps-*`). */
 const NON_DELEGABLE_PREFIXES = ['merchant-apps-', 'merchant-api_keys-', 'merchant-roles-', 'merchant-users-', 'merchant-employees-', 'merchant-pos-'];
@@ -446,7 +446,7 @@ export function loadTomlFile(path: string): LoadedToml {
 }
 
 /**
- * Map the grouped toml onto the flat 28-key manifest the API takes.
+ * Map the grouped toml onto the flat 29-key manifest the API takes.
  * Throws `TomlError` (exit 2) on anything the API would refuse —
  * the same names, the same limits, the same error text where it matters.
  */
@@ -676,10 +676,11 @@ export function toManifest(source: Record<string, unknown>): TomlManifest {
   // Declared means either tier: an optional-scope action
   // registers, and the grant-based submit check passes it once approved.
   checkDashboard(doc.dashboard, manifest, fail, [...manifest.scopes, ...(manifest.optional_scopes ?? [])]);
+  checkAi(doc.ai, manifest, fail);
 
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
 
-  // Closed-world guard: the mapped object carries only the 28 keys, so a
+  // Closed-world guard: the mapped object carries only the 29 keys, so a
   // typo can never smuggle an unknown field past this point.
   for (const key of Object.keys(manifest)) {
     if (!(MANIFEST_KEYS as readonly string[]).includes(key)) throw new TomlError(unknownField(key));
@@ -1200,6 +1201,47 @@ function checkDashboard(dashboard: unknown, manifest: AppManifest, fail: (messag
 }
 
 /**
+ * The `ai` section (what Queek AI may do with the app): `summary`, `[[ai.tools]]`, `[[ai.actions]]`. The toml
+ * table IS the server's shape, so it is sent as written (strings trimmed by `normalizeStrings`, like every field).
+ * Structural checks only, with the server's own wording: the keys, caps, types and the action pages are validated
+ * authoritatively by the API (`AppAiManifest`), and its message is printed as it comes.
+ */
+const AI_KEYS = ['summary', 'tools', 'actions'];
+
+function checkAi(ai: unknown, manifest: AppManifest, fail: (message: string) => never): void {
+  if (ai === undefined) return;
+  if (!isRecord(ai)) throw fail('The ai section must be a table.');
+  const problems: string[] = [];
+  for (const key of Object.keys(ai)) {
+    if (!AI_KEYS.includes(key)) problems.push(unknownField(key, 'ai'));
+  }
+  // An empty summary reads as null on the API, which refuses it; dropping it here would let it through.
+  if ('summary' in ai && (typeof ai.summary !== 'string' || charCount(ai.summary) > 1000)) {
+    problems.push('ai.summary must be a non-empty string of at most 1000 characters.');
+  }
+  for (const section of ['tools', 'actions'] as const) {
+    const list = ai[section];
+    if (list === undefined) continue;
+    if (!Array.isArray(list)) {
+      problems.push(`ai.${section} must be a list.`);
+      continue;
+    }
+    list.forEach((entry: unknown, index) => {
+      if (!isRecord(entry)) problems.push(`ai.${section}[${index}] must be an object.`);
+    });
+  }
+  if (problems.length > 0) throw new TomlError(problems.join('\n'));
+  manifest.ai = ai;
+}
+
+/** The server stores an absent value as null (`summary: null`), which toml cannot hold: leave it out. */
+function withoutNulls(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutNulls);
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(Object.entries(value).filter(([, child]) => child !== null).map(([key, child]) => [key, withoutNulls(child)]));
+}
+
+/**
  * Render a server manifest back to grouped toml (`app config link`).
  * The inverse of `toManifest` — same groups, same names.
  */
@@ -1231,6 +1273,7 @@ export function fromManifest(manifest: Record<string, unknown>): string {
   if (manifest.settings !== undefined) doc.settings = manifest.settings;
   if (manifest.extensions !== undefined) doc.extensions = manifest.extensions;
   if (manifest.dashboard !== undefined) doc.dashboard = manifest.dashboard;
+  if (manifest.ai !== undefined) doc.ai = withoutNulls(manifest.ai);
   return `# queek.app.toml — local source of truth for \`queek app deploy\`. Secrets never live here.\n${stringifyToml(doc)}`;
 }
 

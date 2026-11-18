@@ -228,6 +228,10 @@ ID, scopes, dev store, user). `deploy` prints `New version released — <slug>-N
 `queek.app.toml` is the local source of truth (same names as the server manifest,
 grouped: `[listing]`, `[access]`, `[webhooks]`, `[app]`, `[[settings]]`,
 `[extensions]`, `[dashboard]`); `-c/--config <name>` reads `queek.app.<name>.toml`.
+An app declares the tools and actions Queek AI may use in `[ai]`: a `summary`, `[[ai.tools]]` (each with
+`key`, `description`, `[[ai.tools.inputs]]` and an `[ai.tools.output]` of `[[ai.tools.output.fields]]`) and
+`[[ai.actions]]`. The CLI checks only the shape of the section and sends it as written; the API validates
+it and its message is printed as it comes.
 Storefront embeds are declared as `[[extensions.embeds]]` array tables with
 `key`, `title`, `target = "body"`, an HTTPS `url`, and exactly one capability
 (`chat-bubble`, `banner`, `popup`, `scroll-top`, or `link-button`). A manifest can declare up
@@ -239,7 +243,7 @@ and no `settings`; it takes a `label` (max 40), an `icon` (`whatsapp`, `telegram
 `m.me`; the server checks it when your app writes it and again at the storefront. The
 merchant switches the button on in the storefront editor, under App embeds. Optional `settings = ["key"]` entries must name non-secret
 keys declared in `[[settings]]`; embed URLs cannot contain fragments or use a
-Queek origin; first-party `{app}.apps.queek.com.ng` hosts are allowed.
+Queek origin; first-party `{app}.apps.queek.app` hosts are allowed.
 `queek app deploy` maps these tables to `manifest.extensions.embeds`
 and checks the contract before upload.
 The toml carries no `version` — the API assigns the next patch (a leftover

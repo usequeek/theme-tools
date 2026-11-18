@@ -501,8 +501,8 @@ describe('[[extensions.embeds]] — storefront embeds', () => {
   });
 
   it('accepts first-party temporary app hosts and rejects Queek host scopes', () => {
-    expect(() => parsed(embed().replace('forms.example.com', 'x.apps.queek.com.ng'))).not.toThrow();
-    for (const host of ['apps.queek.com.ng', 'x.apps.usequeek.com', 'usequeek.com', 'queek.com.ng:8443']) {
+    expect(() => parsed(embed().replace('forms.example.com', 'x.apps.queek.app'))).not.toThrow();
+    for (const host of ['x.apps.queek.com.ng', 'apps.queek.com.ng', 'x.apps.usequeek.com', 'usequeek.com', 'queek.com.ng:8443']) {
       expect(() => parsed(embed().replace('forms.example.com', host))).toThrow(/must not share a Queek origin/);
     }
   });
@@ -602,7 +602,7 @@ describe('manifest key snapshot (drift tripwire)', () => {
     const drift =
       'the accepted manifest keys changed — update MANIFEST_KEYS + this snapshot consciously';
     expect([...MANIFEST_KEYS].sort(), drift).toEqual([
-      'category', 'dashboard', 'demo_url', 'description', 'description_long', 'developer',
+      'ai', 'category', 'dashboard', 'demo_url', 'description', 'description_long', 'developer',
       'developer_url', 'distribution', 'extensions', 'highlights', 'icon',
       'install_url', 'logo_url', 'name', 'optional_scopes', 'pricing',
       'privacy_url', 'scopes', 'settings', 'settings_url', 'slug', 'support_url',
@@ -780,5 +780,95 @@ describe('line_text (the shopper text input on a product page)', () => {
       expect(message(dashField('type = "select"\noptions = ["a"]\n'))).toBe('no error');
       expect(message(dashField('type = "submit"\n'))).toContain('The schema primitive must be one of: date, time, select, text, slot-list.');
     });
+  });
+});
+
+describe('[ai] — what Queek AI may use in the app', () => {
+  // The [ai] section of the Booking app's queek.app.toml, as written there.
+  const AI = `
+[ai]
+summary = "Takes bookings for services such as car wash, cleaning, laundry and beauty: staff, working hours and the booked time slots."
+
+[[ai.tools]]
+key = "upcoming_bookings"
+description = "Upcoming bookings (confirmed, or paid and waiting for review) for the next few days, soonest first, with the service, status and order number."
+
+[[ai.tools.inputs]]
+key = "days"
+type = "integer"
+label = "Days ahead"
+required = false
+min = 1
+max = 30
+
+[ai.tools.output]
+list = true
+
+[[ai.tools.output.fields]]
+key = "date"
+type = "date"
+
+[[ai.tools.output.fields]]
+key = "order"
+type = "integer"
+
+[[ai.actions]]
+key = "open_settings"
+description = "Open the booking settings, pre-filled."
+page = "/admin/settings"
+
+[[ai.actions.inputs]]
+key = "note"
+type = "text"
+max_length = 120
+`;
+  const parsed = (toml: string): Record<string, unknown> => toManifest(loadTomlFile(stageFile(toml)).doc).manifest;
+  const message = (toml: string): string => {
+    try {
+      parsed(toml);
+      return 'no error';
+    } catch (error) {
+      return (error as Error).message;
+    }
+  };
+  // `[ai]` is its own top-level table, so the whole of it goes after the tables of BASE.
+  const withAi = (ai: string): string => `${BASE}${ai}`;
+
+  it('maps the [ai] table into manifest.ai in the shape the API takes', () => {
+    expect(parsed(withAi(AI)).ai).toEqual({
+      summary: 'Takes bookings for services such as car wash, cleaning, laundry and beauty: staff, working hours and the booked time slots.',
+      tools: [{
+        key: 'upcoming_bookings',
+        description: 'Upcoming bookings (confirmed, or paid and waiting for review) for the next few days, soonest first, with the service, status and order number.',
+        inputs: [{ key: 'days', type: 'integer', label: 'Days ahead', required: false, min: 1, max: 30 }],
+        output: { list: true, fields: [{ key: 'date', type: 'date' }, { key: 'order', type: 'integer' }] },
+      }],
+      actions: [{ key: 'open_settings', description: 'Open the booking settings, pre-filled.', page: '/admin/settings', inputs: [{ key: 'note', type: 'text', max_length: 120 }] }],
+    });
+  });
+
+  it('sends no ai key when the toml has no [ai]', () => {
+    expect(parsed(BASE)).not.toHaveProperty('ai');
+  });
+
+  it('refuses an unknown key inside [ai] with the API wording', () => {
+    expect(message(withAi(`${AI}\n[ai.extra]\nx = 1\n`))).toBe("Unknown field 'extra' in ai.");
+    expect(message(withAi('\n[ai]\nsummary = "ok"\nwidgets = []\n'))).toBe("Unknown field 'widgets' in ai.");
+  });
+
+  it('checks only the shape of the section; the API owns the rules inside', () => {
+    expect(message(top('ai = "x"\n'))).toBe('The ai section must be a table.');
+    expect(message(withAi('\n[ai]\ntools = "x"\n'))).toBe('ai.tools must be a list.');
+    expect(message(withAi('\n[ai]\nactions = ["x"]\n'))).toBe('ai.actions[0] must be an object.');
+    expect(message(withAi('\n[ai]\nsummary = "  "\n'))).toBe('ai.summary must be a non-empty string of at most 1000 characters.');
+    // A bad key or type inside a tool is not judged here: the API's own message comes back at deploy.
+    expect(message(withAi('\n[ai]\n[[ai.tools]]\nkey = "Bad Key"\n'))).toBe('no error');
+  });
+
+  it('writes ai back to the toml and reads it again unchanged (the stored form has nulls)', () => {
+    const { manifest } = toManifest(loadTomlFile(stageFile(withAi(AI))).doc);
+    expect(toManifest(loadTomlFile(stageFile(fromManifest(manifest))).doc).manifest).toEqual(manifest);
+    const stored = { ...manifest, ai: { summary: null, tools: [], actions: [] } };
+    expect(toManifest(loadTomlFile(stageFile(fromManifest(stored))).doc).manifest.ai).toEqual({ tools: [], actions: [] });
   });
 });
