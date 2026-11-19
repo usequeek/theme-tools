@@ -1,3 +1,4 @@
 # Byte-pinned: its sha256 must equal the constant the API test pins, so a
 # Windows checkout (core.autocrlf) must never rewrite its line endings.
 packages/cli/test/fixtures/add-to-cart-parity.json -text
+packages/cli/test/fixtures/manifest-parity.json -text
