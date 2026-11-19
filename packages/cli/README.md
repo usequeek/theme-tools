@@ -159,14 +159,30 @@ queek app deploy            # queek.app.toml → version N+1, released (secret s
 queek app deploy --version 1.2.0 --message "Greeting"   # name the version + note
 queek app deploy --no-release                           # create without serving
 queek app config link hello # server manifest → queek.app.toml (no config push: deploy carries config)
-queek app versions list hello
+queek app versions list hello   # each version's review status, the reviewer's note under it
 queek app release hello 1.2.0   # semver resolves to its sequence; digits address it directly
+queek app icon ./icon.png       # the listing icon (512x512, ≤15 KB; required to submit)
+queek app install --store 1259  # install the deployed app (latest development build) on a dev store
+queek app env pull              # secret + keypair + encryption key → .queek/.env.local (never printed)
+queek app submit hello --check-only --refresh   # the checklist only, re-checked now; exit 1 when not ready
 queek app submit hello                # checklist + form + attestation → review (default: latest version)
 queek app submit hello --sequence 3   # submit one sequence explicitly
 queek app withdraw hello              # in_review back to development (--yes in CI)
+queek app review reply hello --message "Fixed in 1.2.1"   # answer the reviewer
+queek dev-store list            # your dev stores (p_id, test data status, storefront)
+queek dev-store create "Hello demo"   # a new dev store with test data
+queek dev-store test-data 1259  # generate or top up test data
+queek auth status           # which developer account the app commands act as
 queek auth login            # rarely needed: app commands sign in automatically
 queek auth logout
 ```
+
+An app has one version in review at a time. When one already is, `submit`
+submits nothing: it names the version in review and how to withdraw it, exits 1
+(0 when the version you asked for is the one in review), and `--json` prints
+`"submitted": false` with the `reason` (`other_version_in_review` or
+`already_in_review`) and the `blocking` versions. This is checked before the
+submit, so it does not spend the 5-a-day submit limit.
 
 If your Developer Terms are stale, `submit` answers HTTP 409
 `terms_update_required`: accept the current terms in the dashboard

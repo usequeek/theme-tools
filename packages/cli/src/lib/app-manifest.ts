@@ -4,7 +4,8 @@ import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 
 /**
  * `queek.app.toml` — the local source of truth for an app's manifest, mapped
- * EXACTLY to the 29 top-level manifest keys the Queek API accepts (the server also takes `payment_provider` and `store`, for private payment-gateway apps; the CLI does not map those).
+ * EXACTLY to the 31 top-level manifest keys the Queek API accepts (`payment_provider` and `store` are for
+ * private payment-gateway apps: the CLI checks only their TOML structure — the server owns their rules).
  * The server never fetches a live manifest URL; `deploy` pushes this file.
  *
  * Secrets NEVER live here: the registration secret (`whsec_…`) goes to
@@ -15,13 +16,13 @@ import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 export const APP_TOML = 'queek.app.toml';
 export const APP_TOML_VARIANT = (name: string): string => `queek.app.${name}.toml`;
 
-/** The 29 manifest keys the CLI sends — nothing else is sent. */
+/** The 31 manifest keys the CLI sends — nothing else is sent (the API's AppManifestValidator::topLevelKeys; manifest-parity.json pins both). */
 export const MANIFEST_KEYS = [
   'slug', 'name', 'description', 'icon', 'developer', 'version', 'distribution',
   'category', 'tagline', 'description_long', 'highlights', 'logo_url', 'pricing',
   'developer_url', 'privacy_url', 'support_url', 'demo_url', 'video_url', 'scopes', 'optional_scopes', 'webhook_topics',
   'settings', 'install_url', 'uninstall_url', 'settings_url', 'webhook_url',
-  'extensions', 'dashboard', 'ai',
+  'extensions', 'dashboard', 'ai', 'payment_provider', 'store',
 ] as const;
 
 /** The closed lists of a `link-button` embed (the server's config apps.embeds.link_button_icons, and the fields it accepts). */
@@ -47,6 +48,7 @@ export const unknownField = (key: string, where = 'manifest'): string => `Unknow
 const TOP_LEVEL_TOML_KEYS = new Set([
   'slug', 'handle', 'name', 'version', 'distribution', 'icon', 'developer', 'category',
   'listing', 'access', 'webhooks', 'app', 'settings', 'extensions', 'dashboard', 'ai', 'dev',
+  'store', 'payment_provider',
 ]);
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,63}$/;
@@ -446,7 +448,7 @@ export function loadTomlFile(path: string): LoadedToml {
 }
 
 /**
- * Map the grouped toml onto the flat 29-key manifest the API takes.
+ * Map the grouped toml onto the flat 31-key manifest the API takes.
  * Throws `TomlError` (exit 2) on anything the API would refuse —
  * the same names, the same limits, the same error text where it matters.
  */
@@ -541,7 +543,14 @@ export function toManifest(source: Record<string, unknown>): TomlManifest {
     warnings.push('`version` in queek.app.toml is ignored — the API assigns the next patch; name one with `queek app deploy --version X.Y.Z` instead.');
   }
   const distribution = doc.distribution === undefined ? 'public' : (doc.distribution as string);
-  if (!['public', 'development'].includes(distribution as string)) throw fail('The distribution must be one of: public, development.');
+  if (!['public', 'development', 'private'].includes(distribution as string)) throw fail('The distribution must be one of: public, development, private.');
+  // A private app (a store's own payment gateway): structure only here —
+  // which store, the provider contract and what a private app may declare
+  // are the API's rules, and its messages are the truth.
+  if (doc.store !== undefined && (typeof doc.store !== 'number' || !Number.isInteger(doc.store) || doc.store < 1)) {
+    throw fail('The store must be the store p_id (a positive integer).');
+  }
+  if (doc.payment_provider !== undefined && !isRecord(doc.payment_provider)) throw fail('The payment_provider section must be a table.');
   if (doc.icon !== undefined && (typeof doc.icon !== 'string' || doc.icon.length > 64 || !ICON_RE.test(doc.icon))) {
     throw fail('The icon must be an icon name (letters, digits, dash, underscore) — never a URL or image.');
   }
@@ -637,7 +646,7 @@ export function toManifest(source: Record<string, unknown>): TomlManifest {
   // phantom version.
   if (optionalScopes !== undefined) manifest.optional_scopes = optionalScopes as string[];
   if (distribution !== 'public') manifest.distribution = distribution;
-  for (const key of ['icon', 'developer', 'category'] as const) {
+  for (const key of ['icon', 'developer', 'category', 'store', 'payment_provider'] as const) {
     if (doc[key] !== undefined) manifest[key] = doc[key];
   }
   const listingOut: Record<string, unknown> = {};
@@ -680,7 +689,7 @@ export function toManifest(source: Record<string, unknown>): TomlManifest {
 
   if (problems.length > 0) throw new TomlError(problems.join('\n'));
 
-  // Closed-world guard: the mapped object carries only the 29 keys, so a
+  // Closed-world guard: the mapped object carries only the 31 keys, so a
   // typo can never smuggle an unknown field past this point.
   for (const key of Object.keys(manifest)) {
     if (!(MANIFEST_KEYS as readonly string[]).includes(key)) throw new TomlError(unknownField(key));
@@ -1083,11 +1092,16 @@ export function isEmbedDescriptorWithinLimit(descriptor: Record<string, unknown>
   return new TextEncoder().encode(JSON.stringify(descriptor)).byteLength <= 4096;
 }
 
-/** Backend Queek host suffix guard, applied to normalized URL hostnames. */
-function sharesKnownQueekOrigin(value: string): boolean {
+/**
+ * The API's Queek-origin guard (AppManifestValidator::sharesQueekOrigin) over
+ * the public Queek hosts, applied to normalized URL hostnames. `queek.app` is
+ * the storefront domain: only the first-party page subtree `{app}.apps.queek.app`
+ * is allowed under it. manifest-parity.json pins the verdicts against the API.
+ */
+export function sharesKnownQueekOrigin(value: string): boolean {
   let host: string;
   try { host = new URL(value).hostname.toLowerCase().replace(/\.$/, ''); } catch { return true; }
-  const scopes = ['queek.com.ng', 'usequeek.com', 'on-queek.name.ng', 'apps.usequeek.com'];
+  const scopes = ['queek.com.ng', 'usequeek.com', 'on-queek.name.ng', 'apps.usequeek.com', 'queek.app'];
   const temporary = TEMPORARY_PAGE_SUFFIXES.some((suffix) => {
     const suffixHost = suffix.slice(1);
     return host !== suffixHost && host.endsWith(suffix);
@@ -1249,7 +1263,7 @@ export function fromManifest(manifest: Record<string, unknown>): string {
   const doc: Record<string, unknown> = {};
   // No `version`: the toml never carries one — the linked
   // version is printed by `config link` itself.
-  for (const key of ['slug', 'name', 'distribution', 'icon', 'developer', 'category']) {
+  for (const key of ['slug', 'name', 'distribution', 'store', 'icon', 'developer', 'category']) {
     if (manifest[key] !== undefined) doc[key] = manifest[key];
   }
   const listing: Record<string, unknown> = {};
@@ -1274,6 +1288,7 @@ export function fromManifest(manifest: Record<string, unknown>): string {
   if (manifest.extensions !== undefined) doc.extensions = manifest.extensions;
   if (manifest.dashboard !== undefined) doc.dashboard = manifest.dashboard;
   if (manifest.ai !== undefined) doc.ai = withoutNulls(manifest.ai);
+  if (manifest.payment_provider !== undefined && manifest.payment_provider !== null) doc.payment_provider = withoutNulls(manifest.payment_provider);
   return `# queek.app.toml — local source of truth for \`queek app deploy\`. Secrets never live here.\n${stringifyToml(doc)}`;
 }
 

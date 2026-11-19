@@ -640,3 +640,83 @@ describe('request ids on failures', () => {
     expect(errorText(new Error('boom'))).toBe('boom');
   });
 });
+
+describe('DeveloperApi: the full-lifecycle calls (icon, who am I, review reply, test data, Check again)', () => {
+  it('uploads the icon as multipart field `icon` (no JSON content type) and reads data.icon_url', async () => {
+    const { fetchImpl, calls } = mockFetch({
+      'POST /api/v1/biz/vendor/developer/apps/hello/icon': ok({ icon_url: 'https://cdn.test/icon.png' }),
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    const result = await api.uploadIcon('hello', { bytes: new Uint8Array([137, 80, 78, 71]), name: 'icon.png', type: 'image/png' });
+    expect(result.iconUrl).toBe('https://cdn.test/icon.png');
+    const init = (fetchImpl as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0]![1];
+    expect(init.body).toBeInstanceOf(FormData);
+    const file = (init.body as FormData).get('icon') as File;
+    expect(file.name).toBe('icon.png');
+    expect(file.type).toBe('image/png');
+    expect(calls[0]!.headers['content-type']).toBeUndefined();
+    expect(calls[0]!.headers.authorization).toBe('Bearer tok');
+  });
+
+  it('passes the server sentence of a refused icon through verbatim', async () => {
+    const { fetchImpl } = mockFetch({
+      'POST /api/v1/biz/vendor/developer/apps/hello/icon': fail(422, 'The icon is too heavy: it must be 15 KB or smaller.', 'validation_error'),
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    await expect(api.uploadIcon('hello', { bytes: new Uint8Array([1]), name: 'icon.png', type: 'image/png' })).rejects.toThrow('The icon is too heavy');
+  });
+
+  it('reads the signed-in email from meta.developer.email on GET /apps, null on an older API', async () => {
+    const withMeta = mockFetch({
+      'GET /api/v1/biz/vendor/developer/apps': [200, { status: 'success', message: 'ok', data: [], meta: { developer: { email: 'dev@example.com' } } }],
+    });
+    expect(await new DeveloperApi('https://api.test', { fetchImpl: withMeta.fetchImpl, getAuth: userAuth() }).developerEmail()).toBe('dev@example.com');
+    const older = mockFetch({ 'GET /api/v1/biz/vendor/developer/apps': ok([]) });
+    expect(await new DeveloperApi('https://api.test', { fetchImpl: older.fetchImpl, getAuth: userAuth() }).developerEmail()).toBeNull();
+  });
+
+  it('replies on the thread with an Idempotency-Key and maps the thread', async () => {
+    const { fetchImpl, calls } = mockFetch({
+      'POST /api/v1/biz/vendor/developer/apps/hello/versions/3/thread': ok({
+        version: '1.0.2', sequence: 3, review_status: 'rejected', reply_id: 'c1',
+        thread: [
+          { id: 'c0', from: 'queek', body: 'Broken page.', answer: null, answered_at: null, created_at: '2026-11-18T10:00:00Z' },
+          { id: 'c1', from: 'developer', body: 'Fixed.', answer: null, answered_at: null, created_at: '2026-11-18T11:00:00Z' },
+        ],
+      }),
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    const replied = await api.replyToReview('hello', 3, 'Fixed.', 'key-9');
+    expect(replied.replyId).toBe('c1');
+    expect(replied.thread).toEqual([
+      { from: 'queek', body: 'Broken page.', answer: null, createdAt: '2026-11-18T10:00:00Z' },
+      { from: 'developer', body: 'Fixed.', answer: null, createdAt: '2026-11-18T11:00:00Z' },
+    ]);
+    expect(calls[0]!.body).toEqual({ body: 'Fixed.' });
+    expect(calls[0]!.headers['Idempotency-Key']).toBe('key-9');
+  });
+
+  it('queues dev-store test data by p_id and reads the status', async () => {
+    const { fetchImpl, calls } = mockFetch({
+      'POST /api/v1/biz/vendor/developer/dev-stores/1259/test-data': [202, { status: 'success', message: 'Test data queued', data: { test_data_status: 'queued' } }],
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    expect(await api.seedDevStoreTestData(1259)).toEqual({ status: 'queued' });
+    expect(calls[0]!.method).toBe('POST');
+  });
+
+  it('"Check again" POSTs the checklist route; versions carry the review note', async () => {
+    const { fetchImpl, calls } = mockFetch({
+      'POST /api/v1/biz/vendor/developer/apps/hello/versions/2/submission': ok({ version: '1.0.1', sequence: 2, review_status: 'development', checks: [] }),
+      'GET /api/v1/biz/vendor/developer/apps/hello/versions': ok([
+        { version: '1.0.1', sequence: 2, review_status: 'rejected', review_note: 'Icon missing.', changelog: null, is_current: false, created_at: null },
+        { version: '1.0.0', sequence: 1, review_status: 'public', review_note: '', changelog: null, is_current: true, created_at: null },
+      ]),
+    });
+    const api = new DeveloperApi('https://api.test', { fetchImpl, getAuth: userAuth() });
+    expect((await api.submission('hello', 2, true)).sequence).toBe(2);
+    expect(calls[0]!.method).toBe('POST');
+    const { versions } = await api.appVersions('hello');
+    expect(versions.map((row) => row.review_note)).toEqual(['Icon missing.', null]);
+  });
+});

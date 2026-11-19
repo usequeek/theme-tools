@@ -1,5 +1,6 @@
 import { Flags } from '@oclif/core';
 import type { DeveloperApi } from './app-api.js';
+import { loadApp } from './app-manifest.js';
 import { resolveSession } from './app-session.js';
 
 /**
@@ -35,4 +36,15 @@ export async function appSession(options: {
   debug: (line: string) => void;
 }): Promise<AppContext> {
   return resolveSession({ noBrowser: options.noBrowser, log: options.log, logError: options.logError, debug: options.debug });
+}
+
+/** `--app` for the commands that otherwise read the app from queek.app.toml. */
+export const appRefFlag = {
+  app: Flags.string({ summary: 'The app: p_id or slug (never UUID). Default: the slug in queek.app.toml.', env: 'QUEEK_APP' }),
+};
+
+/** The app a command acts on: `--app` when given, else the toml's slug (which also validates the toml). */
+export function appRef(flags: { app?: string; path: string; config?: string }): string {
+  if (flags.app !== undefined && flags.app !== '') return flags.app;
+  return loadApp(flags.path, flags.config).manifest.slug;
 }

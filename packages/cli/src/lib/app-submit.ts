@@ -1,4 +1,4 @@
-import type { ApiFailure, SubmissionCheck, SubmitBody } from './app-api.js';
+import type { ApiFailure, AppVersion, SubmissionCheck, SubmitBody } from './app-api.js';
 
 /**
  * Pure submit plumbing for `queek app submit` (tested in
@@ -102,7 +102,11 @@ export function failureLine(key: string, reason: string): string {
   return `${key}: ${reason}`;
 }
 
-/** How a thrown submit failure reads: already-submitted is a no-op, the rest are fatal with clear messages. */
+/**
+ * How a thrown submit failure reads. `already` is the 409 `already_submitted`
+ * (the review slot is taken — the caller names who holds it); the rest are
+ * fatal with clear messages.
+ */
 export function wordSubmitFailure(failure: ApiFailure): { already: true } | { already: false; message: string; exit: number } {
   if (failure.errorType === 'already_submitted') return { already: true };
   if (failure.errorType === 'terms_update_required') {
@@ -128,4 +132,57 @@ export function wordSubmitFailure(failure: ApiFailure): { already: true } | { al
     return { already: false, message: 'Submit rate limited (5/day) — try again tomorrow.', exit: 1 };
   }
   return { already: false, message: failure.message, exit: 1 };
+}
+
+/** A version blocking a submit: it sits in review already. */
+export interface BlockingVersion {
+  version: string;
+  sequence: number;
+}
+
+/**
+ * Why a submit did not happen (the `--json` `reason`):
+ * - `already_in_review`: the target itself is in review — nothing to do;
+ * - `other_version_in_review`: another version holds the one review slot.
+ */
+export type NotSubmittedReason = 'already_in_review' | 'other_version_in_review';
+
+export interface ReviewSlot {
+  reason: NotSubmittedReason;
+  blocking: BlockingVersion[];
+}
+
+/**
+ * Who holds the app's one review slot, before anything is submitted (the
+ * server answers 409 `already_submitted` for both cases, and that refusal
+ * still spends the 5/day submit budget). Null when the slot is free.
+ */
+export function reviewSlotTaken(versions: Array<Pick<AppVersion, 'version' | 'sequence' | 'review_status'>>, sequence: number): ReviewSlot | null {
+  // Only a version that could be submitted competes for the slot; anything else (a public version, an unknown
+  // sequence) gets the server's own refusal instead.
+  const target = versions.find((row) => row.sequence === sequence);
+  if (!target || !['development', 'rejected', 'in_review'].includes(target.review_status)) return null;
+  const inReview = versions.filter((row) => row.review_status === 'in_review');
+  if (inReview.some((row) => row.sequence === sequence)) {
+    return { reason: 'already_in_review', blocking: [] };
+  }
+  const blocking = inReview
+    .map((row) => ({ version: row.version, sequence: row.sequence }))
+    .sort((a, b) => b.sequence - a.sequence);
+  return blocking.length > 0 ? { reason: 'other_version_in_review', blocking } : null;
+}
+
+/** The sentence for a taken slot, naming each blocking version and the way out. */
+export function reviewSlotLine(app: string, version: string, sequence: number, slot: ReviewSlot): string {
+  if (slot.reason === 'already_in_review') {
+    return `Not submitted: v${version} (sequence ${sequence}) is already in review — nothing to do.`;
+  }
+  // The server refused (409) but no version is in review by the time the list is read again: a decision landed in between.
+  if (slot.blocking.length === 0) {
+    return `Not submitted: Queek answered that a version of '${app}' is already in review, but none is now — run the same command again.`;
+  }
+  const names = slot.blocking.map((row) => `v${row.version} (sequence ${row.sequence})`).join(', ');
+  const verb = slot.blocking.length === 1 ? 'is' : 'are';
+  const withdraw = slot.blocking.map((row) => `queek app withdraw ${app} --sequence ${row.sequence} --yes`).join(' && ');
+  return `Not submitted: ${names} ${verb} already in review, and an app has one version in review at a time. Withdraw it first (${withdraw}), or wait for the decision.`;
 }

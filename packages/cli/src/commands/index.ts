@@ -9,6 +9,7 @@ import Package from './package.js';
 import Screenshot from './screenshot.js';
 import AuthLogin from './auth/login.js';
 import AuthLogout from './auth/logout.js';
+import AuthStatus from './auth/status.js';
 import AppInit from './app/init.js';
 import AppCodegen from './app/codegen.js';
 import AppDev from './app/dev.js';
@@ -20,6 +21,13 @@ import AppVersionsList from './app/versions/list.js';
 import AppRelease from './app/release.js';
 import AppSubmit from './app/submit.js';
 import AppWithdraw from './app/withdraw.js';
+import AppIcon from './app/icon.js';
+import AppInstall from './app/install.js';
+import AppEnvPull from './app/env/pull.js';
+import AppReviewReply from './app/review/reply.js';
+import DevStoreList from './dev-store/list.js';
+import DevStoreCreate from './dev-store/create.js';
+import DevStoreTestData from './dev-store/test-data.js';
 
 /**
  * Every command, listed explicitly (oclif's `explicit` strategy) rather than
@@ -41,6 +49,7 @@ export const COMMANDS = {
   'theme:screenshot': Screenshot,
   'auth:login': AuthLogin,
   'auth:logout': AuthLogout,
+  'auth:status': AuthStatus,
   'app:init': AppInit,
   'app:codegen': AppCodegen,
   'app:dev': AppDev,
@@ -52,4 +61,11 @@ export const COMMANDS = {
   'app:release': AppRelease,
   'app:submit': AppSubmit,
   'app:withdraw': AppWithdraw,
+  'app:icon': AppIcon,
+  'app:install': AppInstall,
+  'app:env:pull': AppEnvPull,
+  'app:review:reply': AppReviewReply,
+  'dev-store:list': DevStoreList,
+  'dev-store:create': DevStoreCreate,
+  'dev-store:test-data': DevStoreTestData,
 };

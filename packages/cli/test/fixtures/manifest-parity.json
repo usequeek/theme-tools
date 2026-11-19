@@ -1,0 +1,288 @@
+{
+ "note": "Shared parity rows for the top-level manifest: one byte-identical copy in the API (tests/Fixtures/manifest-parity.json) and in the CLI (packages/cli/test/fixtures/manifest-parity.json); each side pins its sha256. manifest_keys is the API's AppManifestValidator::topLevelKeys() and the CLI's MANIFEST_KEYS. Each row: the CLI maps base_toml + toml (a TOML document as JSON) to exactly `manifest` and never refuses it; the API validates `manifest` with server_valid (server_contains: a fragment of its message). The CLI checks only TOML structure, so a server-only rule reads as a row the CLI maps and the API refuses. origins: the API's sharesQueekOrigin under the public Queek hosts (the test sets them) and the CLI's sharesKnownQueekOrigin answer `shares`.",
+ "manifest_keys": [
+  "ai",
+  "category",
+  "dashboard",
+  "demo_url",
+  "description",
+  "description_long",
+  "developer",
+  "developer_url",
+  "distribution",
+  "extensions",
+  "highlights",
+  "icon",
+  "install_url",
+  "logo_url",
+  "name",
+  "optional_scopes",
+  "payment_provider",
+  "pricing",
+  "privacy_url",
+  "scopes",
+  "settings",
+  "settings_url",
+  "slug",
+  "store",
+  "support_url",
+  "tagline",
+  "uninstall_url",
+  "version",
+  "video_url",
+  "webhook_topics",
+  "webhook_url"
+ ],
+ "base_toml": {
+  "slug": "parity-app",
+  "name": "Parity app",
+  "access": {
+   "scopes": [
+    "merchant-items-read"
+   ]
+  },
+  "app": {
+   "install_url": "https://apps.example.com/parity/install",
+   "uninstall_url": "https://apps.example.com/parity/uninstall"
+  }
+ },
+ "rows": [
+  {
+   "name": "a public app",
+   "toml": {},
+   "manifest": {
+    "slug": "parity-app",
+    "name": "Parity app",
+    "scopes": [
+     "merchant-items-read"
+    ],
+    "install_url": "https://apps.example.com/parity/install",
+    "uninstall_url": "https://apps.example.com/parity/uninstall",
+    "webhook_topics": []
+   },
+   "server_valid": true,
+   "server_contains": null
+  },
+  {
+   "name": "a development app",
+   "toml": {
+    "distribution": "development"
+   },
+   "manifest": {
+    "slug": "parity-app",
+    "name": "Parity app",
+    "scopes": [
+     "merchant-items-read"
+    ],
+    "install_url": "https://apps.example.com/parity/install",
+    "uninstall_url": "https://apps.example.com/parity/uninstall",
+    "webhook_topics": [],
+    "distribution": "development"
+   },
+   "server_valid": true,
+   "server_contains": null
+  },
+  {
+   "name": "a private payment gateway with its store",
+   "toml": {
+    "distribution": "private",
+    "store": 1259,
+    "payment_provider": {
+     "contract": "custom",
+     "name": "Acme Pay",
+     "create_url": "https://pay.acme-gateway.example.com/create",
+     "verify_url": "https://pay.acme-gateway.example.com/verify"
+    }
+   },
+   "manifest": {
+    "slug": "parity-app",
+    "name": "Parity app",
+    "scopes": [
+     "merchant-items-read"
+    ],
+    "install_url": "https://apps.example.com/parity/install",
+    "uninstall_url": "https://apps.example.com/parity/uninstall",
+    "webhook_topics": [],
+    "distribution": "private",
+    "store": 1259,
+    "payment_provider": {
+     "contract": "custom",
+     "name": "Acme Pay",
+     "create_url": "https://pay.acme-gateway.example.com/create",
+     "verify_url": "https://pay.acme-gateway.example.com/verify"
+    }
+   },
+   "server_valid": true,
+   "server_contains": null
+  },
+  {
+   "name": "a private app without its store (the CLI defers to the API)",
+   "toml": {
+    "distribution": "private",
+    "payment_provider": {
+     "contract": "custom",
+     "name": "Acme Pay",
+     "create_url": "https://pay.acme-gateway.example.com/create",
+     "verify_url": "https://pay.acme-gateway.example.com/verify"
+    }
+   },
+   "manifest": {
+    "slug": "parity-app",
+    "name": "Parity app",
+    "scopes": [
+     "merchant-items-read"
+    ],
+    "install_url": "https://apps.example.com/parity/install",
+    "uninstall_url": "https://apps.example.com/parity/uninstall",
+    "webhook_topics": [],
+    "distribution": "private",
+    "payment_provider": {
+     "contract": "custom",
+     "name": "Acme Pay",
+     "create_url": "https://pay.acme-gateway.example.com/create",
+     "verify_url": "https://pay.acme-gateway.example.com/verify"
+    }
+   },
+   "server_valid": false,
+   "server_contains": "needs the store it belongs to"
+  },
+  {
+   "name": "a store on a public app (the CLI defers to the API)",
+   "toml": {
+    "store": 1259
+   },
+   "manifest": {
+    "slug": "parity-app",
+    "name": "Parity app",
+    "scopes": [
+     "merchant-items-read"
+    ],
+    "install_url": "https://apps.example.com/parity/install",
+    "uninstall_url": "https://apps.example.com/parity/uninstall",
+    "webhook_topics": [],
+    "store": 1259
+   },
+   "server_valid": false,
+   "server_contains": "The store is only allowed on a private app."
+  },
+  {
+   "name": "an [ai] section",
+   "toml": {
+    "ai": {
+     "summary": "Takes bookings: staff, working hours and the booked time slots.",
+     "tools": [
+      {
+       "key": "upcoming_bookings",
+       "description": "Upcoming bookings for the next few days, soonest first.",
+       "inputs": [
+        {
+         "key": "days",
+         "type": "integer",
+         "label": "Days ahead",
+         "required": false,
+         "min": 1,
+         "max": 30
+        }
+       ],
+       "output": {
+        "list": true,
+        "fields": [
+         {
+          "key": "date",
+          "type": "date"
+         },
+         {
+          "key": "order",
+          "type": "integer"
+         }
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "manifest": {
+    "slug": "parity-app",
+    "name": "Parity app",
+    "scopes": [
+     "merchant-items-read"
+    ],
+    "install_url": "https://apps.example.com/parity/install",
+    "uninstall_url": "https://apps.example.com/parity/uninstall",
+    "webhook_topics": [],
+    "ai": {
+     "summary": "Takes bookings: staff, working hours and the booked time slots.",
+     "tools": [
+      {
+       "key": "upcoming_bookings",
+       "description": "Upcoming bookings for the next few days, soonest first.",
+       "inputs": [
+        {
+         "key": "days",
+         "type": "integer",
+         "label": "Days ahead",
+         "required": false,
+         "min": 1,
+         "max": 30
+        }
+       ],
+       "output": {
+        "list": true,
+        "fields": [
+         {
+          "key": "date",
+          "type": "date"
+         },
+         {
+          "key": "order",
+          "type": "integer"
+         }
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "server_valid": true,
+   "server_contains": null
+  }
+ ],
+ "origins": [
+  {
+   "url": "https://booking.apps.queek.app/admin",
+   "shares": false
+  },
+  {
+   "url": "https://apps.queek.app/admin",
+   "shares": true
+  },
+  {
+   "url": "https://queek.app/admin",
+   "shares": true
+  },
+  {
+   "url": "https://shop.queek.app/admin",
+   "shares": true
+  },
+  {
+   "url": "https://booking.apps.usequeek.com/admin",
+   "shares": true
+  },
+  {
+   "url": "https://booking.apps.queek.com.ng/admin",
+   "shares": true
+  },
+  {
+   "url": "https://dashboard.usequeek.com/admin",
+   "shares": true
+  },
+  {
+   "url": "https://shop.on-queek.name.ng/admin",
+   "shares": true
+  },
+  {
+   "url": "https://apps.example.com/admin",
+   "shares": false
+  }
+ ]
+}

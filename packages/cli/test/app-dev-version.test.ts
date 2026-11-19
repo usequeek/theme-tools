@@ -9,6 +9,7 @@ const row = (sequence: number, review_status: string, current = false): AppVersi
   version: `1.0.${sequence}`,
   sequence,
   review_status,
+  review_note: null,
   changelog: null,
   current,
   created_at: null,

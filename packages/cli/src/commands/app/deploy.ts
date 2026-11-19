@@ -56,12 +56,23 @@ export default class AppDeploy extends BaseCommand {
     const { path, manifest, warnings } = loadApp(flags.path, flags.config);
     for (const warning of warnings) this.logToStderr(`Warning: ${warning}`);
     this.debug(`toml: ${path}`);
-    const { api } = await appSession({
+    const { api, kind } = await appSession({
       noBrowser: flags['no-browser'],
       log: (line) => this.log(line),
       logError: (line) => this.logToStderr(line),
       debug: (line) => this.debug(line),
     }).catch((error: Error) => this.error(errorText(error), { exit: error instanceof LoginNeededError ? 2 : 1 }));
+
+    // Say whose account the app lands in before anything is created: an app
+    // deployed under the wrong sign-in belongs to that account. Never blocks
+    // the deploy (an older API names no account).
+    if (kind === 'user') {
+      const email = await api.developerEmail().catch((error: Error) => {
+        this.debug(`developer email unavailable: ${error.message}`);
+        return null;
+      });
+      if (email) this.log(`Deploying as ${email}`);
+    }
 
     // Server validation errors (422 whole-config refusals like
     // "[product]: requires write_products") surface verbatim: the server's

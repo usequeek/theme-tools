@@ -40,6 +40,15 @@
       },
       "theme:add": {
         "description": "Add a template, design or page to your theme."
+      },
+      "app:env": {
+        "description": "The app's local credentials (.queek/.env.local)."
+      },
+      "app:review": {
+        "description": "Talk to the reviewer about a version."
+      },
+      "dev-store": {
+        "description": "Your dev stores: list, create, fill with test data."
       }
     },
     "commands": {

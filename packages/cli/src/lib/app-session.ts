@@ -209,6 +209,26 @@ export async function resolveSession(options: SessionOptions): Promise<{ api: De
   return signIn(api, base, options);
 }
 
+/**
+ * The stored developer session's API, refreshed when stale — never a
+ * sign-in. Null when nothing is stored or the refresh is refused (the
+ * caller says "not logged in"). For read-only status checks.
+ */
+export async function storedSessionApi(): Promise<DeveloperApi | null> {
+  const found = await readSession();
+  if (!found) return null;
+  const api = new DeveloperApi(apiBase());
+  let session = found.session;
+  if (sessionExpired(session)) {
+    try {
+      session = await refreshSession(api, session);
+    } catch {
+      return null;
+    }
+  }
+  return withSession(api, session);
+}
+
 /** Refresh a session in place; throws LoginNeededError when the grant is dead. */
 export async function refreshSession(api: DeveloperApi, session: CliSession): Promise<CliSession> {
   let pair: TokenPair;

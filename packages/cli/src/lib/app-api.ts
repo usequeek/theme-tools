@@ -105,6 +105,8 @@ export interface DevStore {
   slug: string;
   storefront_url: string | null;
   admin_url: string | null;
+  /** Test data: none | queued | running | done | failed (served; absent on older servers). */
+  test_data_status?: string | null;
   created_at: string | null;
 }
 
@@ -119,6 +121,8 @@ export interface AppVersion {
   version: string;
   sequence: number;
   review_status: string;
+  /** The reviewer's (or the withdraw) note on this version; null when there is none. */
+  review_note: string | null;
   changelog: string | null;
   current: boolean;
   created_at: string | null;
@@ -201,7 +205,16 @@ export interface SubmissionChecklist {
   review_note?: string | null;
   submitted?: unknown;
   attestation?: SubmissionAttestation;
-  thread?: unknown[];
+  thread?: ReviewThreadEntry[];
+}
+
+/** One review-thread message: `from` is 'developer' or 'queek' (reviewers are never named). */
+export interface ReviewThreadEntry {
+  from: string;
+  body: string | null;
+  /** A reviewer's answer written onto this message, when there is one. */
+  answer: string | null;
+  createdAt: string | null;
 }
 
 /** POST …/versions/{sequence}/submit body. */
@@ -237,6 +250,11 @@ const REVIEW_ADDITIONS_SHOWN = 5;
 // eslint-disable-next-line no-control-regex
 const UNSAFE_TEXT = /[\u0000-\u001F\u007F-\u009F\u2028\u2029\u202A-\u202E\u2066-\u2069]+/g;
 
+/** Server-written text made safe for one terminal line: unsafe characters become a space, whitespace runs collapse. */
+export function cleanText(text: string): string {
+  return text.replace(UNSAFE_TEXT, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /**
  * The labels of `data.review_additions` (`[{facet, label}]`): only string
  * labels, treated as untrusted text (unsafe characters become a space, runs of
@@ -248,7 +266,7 @@ export function reviewAdditionsOf(data: unknown): string[] {
   if (!Array.isArray(rows)) return [];
   return rows.flatMap((row: unknown) => {
     const label = typeof row === 'object' && row !== null ? (row as Record<string, unknown>).label : undefined;
-    const clean = typeof label === 'string' ? label.replace(UNSAFE_TEXT, ' ').replace(/\s+/g, ' ').trim() : '';
+    const clean = typeof label === 'string' ? cleanText(label) : '';
     return clean === '' ? [] : [clean];
   });
 }
@@ -393,17 +411,24 @@ export class DeveloperApi {
     body?: unknown,
     appSlug?: string,
     headers?: Record<string, string>,
-  ): Promise<{ data: T; message: string; status: number }> {
+  ): Promise<{ data: T; message: string; status: number; meta: Record<string, unknown> }> {
     const automationRefusal = (status: number, raw: unknown, requestId?: string): AutomationTokenError => {
       const detail = messageOf(raw, status);
       const scope = appSlug ? `it only works for app '${appSlug}'s deploy, versions, release and submit` : 'it only works for its own app';
       return new AutomationTokenError(`This automation token can't do that — ${scope}. (Server: ${detail})`, status, raw, requestId);
     };
-    const attempt = async (token: string, kind: AuthKind, retried: boolean): Promise<{ data: unknown; message: string; status: number }> => {
+    const attempt = async (token: string, kind: AuthKind, retried: boolean): Promise<{ data: unknown; message: string; status: number; meta: Record<string, unknown> }> => {
+      // A FormData body (file upload) sets its own multipart content type.
+      const multipart = body instanceof FormData;
       const { status, body: raw, requestId } = await this.raw(`${this.base}${VENDOR_PREFIX}${path}`, {
         method,
-        headers: { 'content-type': 'application/json', accept: 'application/json', authorization: `Bearer ${token}`, ...(headers ?? {}) },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        headers: {
+          ...(multipart ? {} : { 'content-type': 'application/json' }),
+          accept: 'application/json',
+          authorization: `Bearer ${token}`,
+          ...(headers ?? {}),
+        },
+        body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
       });
       // Scoping moved into Sanctum's token resolution: an automation token
       // outside its app's allowed routes reads as 401, same as a dead
@@ -418,13 +443,14 @@ export class DeveloperApi {
       }
       if (status === 403 && kind === 'automation') throw automationRefusal(status, raw, requestId);
       if (status < 200 || status >= 300) throw new ApiError(messageOf(raw, status), status, raw, requestId);
-      const envelope = (raw ?? {}) as { data?: unknown; message?: unknown };
-      return { data: envelope.data ?? null, message: typeof envelope.message === 'string' ? envelope.message : '', status };
+      const envelope = (raw ?? {}) as { data?: unknown; message?: unknown; meta?: unknown };
+      const meta = envelope.meta !== null && typeof envelope.meta === 'object' && !Array.isArray(envelope.meta) ? (envelope.meta as Record<string, unknown>) : {};
+      return { data: envelope.data ?? null, message: typeof envelope.message === 'string' ? envelope.message : '', status, meta };
     };
 
     const auth = await this.getAuth();
-    const { data, message, status } = await attempt(auth.token, auth.kind, false);
-    return { data: data as T, message, status };
+    const { data, message, status, meta } = await attempt(auth.token, auth.kind, false);
+    return { data: data as T, message, status, meta };
   }
 
   // ── OAuth (web router, unauthenticated except by code/verifier) ──
@@ -718,6 +744,7 @@ export class DeveloperApi {
         version: row.version as string,
         sequence: row.sequence as number,
         review_status: row.review_status as string,
+        review_note: typeof row.review_note === 'string' && row.review_note !== '' ? row.review_note : null,
         changelog: (row.changelog ?? null) as string | null,
         current: row.is_current as boolean,
         created_at: (row.created_at ?? null) as string | null,
@@ -823,15 +850,69 @@ export class DeveloperApi {
   }
 
   /**
+   * The signed-in developer's email: `meta.developer.email` on GET /apps
+   * (a developer-scoped read the CLI token may call). Null when the server
+   * sends none (an older API).
+   */
+  async developerEmail(): Promise<string | null> {
+    const { meta } = await this.vendor<unknown>('GET', '/apps', 'reading your developer account');
+    const developer = meta.developer as Record<string, unknown> | undefined;
+    return typeof developer?.email === 'string' && developer.email !== '' ? developer.email : null;
+  }
+
+  /**
+   * Upload the app's listing icon: POST /apps/{app}/icon, multipart field
+   * `icon`. The server owns the rules (size, format, dimensions) and its
+   * 422 sentence reaches the caller verbatim. 200 `data.icon_url`.
+   */
+  async uploadIcon(app: string, file: { bytes: Uint8Array; name: string; type: string }): Promise<{ iconUrl: string | null }> {
+    const form = new FormData();
+    form.append('icon', new Blob([file.bytes], { type: file.type }), file.name);
+    const { data } = await this.vendor<Record<string, unknown>>('POST', `/apps/${encodeURIComponent(app)}/icon`, `uploading the icon of '${app}'`, form, app);
+    return { iconUrl: typeof data?.icon_url === 'string' ? data.icon_url : null };
+  }
+
+  /**
+   * Reply on a version's review thread: POST …/versions/{sequence}/thread
+   * `{body}` (≤5000 chars) with a caller-owned Idempotency-Key. The server
+   * refuses (422 invalid_thread_reply) until a reviewer has written.
+   */
+  async replyToReview(app: string, sequence: number, body: string, idempotencyKey: string): Promise<{ replyId: string; thread: ReviewThreadEntry[] }> {
+    const { data } = await this.vendor<Record<string, unknown>>(
+      'POST',
+      `/apps/${encodeURIComponent(app)}/versions/${sequence}/thread`,
+      `replying on the review of '${app}' sequence ${sequence}`,
+      { body },
+      app,
+      { 'Idempotency-Key': idempotencyKey },
+    );
+    return {
+      replyId: String(data.reply_id ?? ''),
+      thread: Array.isArray(data.thread) ? data.thread.map(threadEntryOf) : [],
+    };
+  }
+
+  /**
+   * Queue (or top up) a dev store's test data: POST /dev-stores/{p_id}/test-data
+   * → 202 `data.test_data_status`. A run already queued or running answers
+   * 409 test_data_in_progress (an ApiError for the caller to word).
+   */
+  async seedDevStoreTestData(storePId: number): Promise<{ status: string }> {
+    const { data } = await this.vendor<Record<string, unknown>>('POST', `/dev-stores/${storePId}/test-data`, `queueing test data for dev store ${storePId}`);
+    return { status: typeof data?.test_data_status === 'string' ? data.test_data_status : 'queued' };
+  }
+
+  /**
    * Readiness checklist for one owned version: stored checks return with zero egress when fresh,
-   * otherwise the server re-probes. `review_note`/`submitted`/`attestation`/
+   * otherwise the server re-probes. `refresh` is the dashboard's "Check again" (POST, the
+   * dev-install bucket): it re-probes now, on a development or rejected version only. `review_note`/`submitted`/`attestation`/
    * `thread` are read by exact name and defaulted when absent.
    */
-  async submission(app: string, sequence: number): Promise<SubmissionChecklist> {
+  async submission(app: string, sequence: number, refresh = false): Promise<SubmissionChecklist> {
     const { data } = await this.vendor<Record<string, unknown>>(
-      'GET',
+      refresh ? 'POST' : 'GET',
       `/apps/${encodeURIComponent(app)}/versions/${sequence}/submission`,
-      `reading the submission checklist of '${app}' sequence ${sequence}`,
+      `${refresh ? 're-checking' : 'reading'} the submission checklist of '${app}' sequence ${sequence}`,
       undefined,
       app,
     );
@@ -865,7 +946,7 @@ export class DeveloperApi {
             },
           }
         : {}),
-      ...(Array.isArray(data.thread) ? { thread: data.thread } : {}),
+      ...(Array.isArray(data.thread) ? { thread: data.thread.map(threadEntryOf) } : {}),
     };
   }
 
@@ -922,6 +1003,16 @@ export class DeveloperApi {
       review_note: typeof withdrawn.review_note === 'string' ? withdrawn.review_note : null,
     };
   }
+}
+
+function threadEntryOf(row: unknown): ReviewThreadEntry {
+  const entry = (row ?? {}) as Record<string, unknown>;
+  return {
+    from: entry.from === 'developer' ? 'developer' : 'queek',
+    body: typeof entry.body === 'string' ? entry.body : null,
+    answer: typeof entry.answer === 'string' && entry.answer !== '' ? entry.answer : null,
+    createdAt: typeof entry.created_at === 'string' ? entry.created_at : null,
+  };
 }
 
 function withoutStorefrontPassword(row: DevStore): DevStore {

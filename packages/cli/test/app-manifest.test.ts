@@ -95,7 +95,7 @@ describe('queek.app.toml', () => {
       }
     };
     expect(bad(`${BASE.replace('slug = "hello"', 'slug = "Hello!"')}`)).toContain('slug must be');
-    expect(bad(top('distribution = "private"\n'))).toContain('one of: public, development');
+    expect(bad(top('distribution = "secret"\n'))).toContain('one of: public, development, private');
     expect(bad(`${BASE.replace('[access]', '[access]\n').replace('scopes = ["merchant-business_profile-read"]', 'scopes = ["merchant-apps-install"]')}`)).toContain(
       'can never be granted',
     );
@@ -607,7 +607,8 @@ describe('manifest key snapshot (drift tripwire)', () => {
       'install_url', 'logo_url', 'name', 'optional_scopes', 'pricing',
       'privacy_url', 'scopes', 'settings', 'settings_url', 'slug', 'support_url',
       'tagline', 'uninstall_url', 'version', 'video_url', 'webhook_topics', 'webhook_url',
-    ]);
+      'payment_provider', 'store',
+    ].sort());
     expect([...EXTENSION_KEYS].sort(), drift).toEqual(['blocks', 'embeds', 'merchant_page_url', 'nav', 'proxy']);
   });
 });

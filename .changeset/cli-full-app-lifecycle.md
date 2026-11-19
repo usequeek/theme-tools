@@ -1,0 +1,5 @@
+---
+"@usequeek/cli": patch
+---
+
+The whole app lifecycle from the command line. `queek app submit` no longer reports a refused submit as done: when another version of the app is in review it submits nothing, names that version and how to withdraw it, exits 1, and `--json` prints `"submitted": false` with the `reason` and the `blocking` versions (checked before the submit, so it does not spend the 5-a-day limit). `submit --check-only [--refresh]` prints the checklist without submitting. New: `queek app icon <file>`, `queek app install --store <p_id>`, `queek app env pull`, `queek app review reply`, `queek dev-store list | create | test-data` and `queek auth status`; `queek app deploy` says which account it deploys as, and `queek app versions list` shows each version's review note. `queek.app.toml` accepts a private payment-gateway app (`distribution = "private"`, `store`, `[payment_provider]`), and an app page on a `queek.app` host other than `{app}.apps.queek.app` is refused like the API does.

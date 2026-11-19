@@ -4,6 +4,8 @@ import {
   failureLine,
   formatCheck,
   latestSequence,
+  reviewSlotLine,
+  reviewSlotTaken,
   submitBody,
   unackedWarnings,
   wordSubmitFailure,
@@ -148,5 +150,47 @@ describe('wordSubmitFailure (thrown submit failures, worded)', () => {
       message: expect.stringContaining('5/day'),
       exit: 1,
     });
+  });
+});
+
+describe('reviewSlotTaken / reviewSlotLine (one version in review at a time)', () => {
+  const v = (sequence: number, review_status: string) => ({ version: `1.1.${sequence}`, sequence, review_status });
+
+  it('is free when no version is in review', () => {
+    expect(reviewSlotTaken([v(20, 'development'), v(19, 'public')], 20)).toBeNull();
+  });
+
+  it('names the target itself when it is the one in review (nothing to do)', () => {
+    expect(reviewSlotTaken([v(21, 'in_review'), v(20, 'in_review')], 21)).toEqual({ reason: 'already_in_review', blocking: [] });
+    expect(reviewSlotLine('booking', '1.1.21', 21, { reason: 'already_in_review', blocking: [] })).toBe(
+      'Not submitted: v1.1.21 (sequence 21) is already in review — nothing to do.',
+    );
+  });
+
+  it('names every other version in review, newest first, with the withdraw command (Booking: 5 stale rows)', () => {
+    const versions = [v(22, 'development'), v(21, 'in_review'), v(19, 'in_review'), v(15, 'in_review'), v(18, 'in_review'), v(17, 'in_review')];
+    const slot = reviewSlotTaken(versions, 22);
+    expect(slot).toEqual({
+      reason: 'other_version_in_review',
+      blocking: [21, 19, 18, 17, 15].map((sequence) => ({ version: `1.1.${sequence}`, sequence })),
+    });
+    const one = reviewSlotLine('booking', '1.1.22', 22, { reason: 'other_version_in_review', blocking: [{ version: '1.1.21', sequence: 21 }] });
+    expect(one).toBe(
+      'Not submitted: v1.1.21 (sequence 21) is already in review, and an app has one version in review at a time. Withdraw it first (queek app withdraw booking --sequence 21 --yes), or wait for the decision.',
+    );
+    expect(reviewSlotLine('booking', '1.1.22', 22, slot!)).toContain('v1.1.21 (sequence 21), v1.1.19 (sequence 19)');
+    expect(reviewSlotLine('booking', '1.1.22', 22, slot!)).toContain(' are already in review');
+  });
+});
+
+describe('reviewSlotTaken edges (the server answers these itself)', () => {
+  it('leaves a public or unknown target to the server, and words a slot that freed up', () => {
+    const rows = [{ version: '1.0.0', sequence: 1, review_status: 'public' }, { version: '1.0.1', sequence: 2, review_status: 'in_review' }];
+    expect(reviewSlotTaken(rows, 1)).toBeNull();
+    expect(reviewSlotTaken(rows, 9)).toBeNull();
+    expect(reviewSlotTaken([...rows, { version: '1.0.2', sequence: 3, review_status: 'rejected' }], 3)?.reason).toBe('other_version_in_review');
+    expect(reviewSlotLine('hello', '1.0.2', 3, { reason: 'other_version_in_review', blocking: [] })).toBe(
+      "Not submitted: Queek answered that a version of 'hello' is already in review, but none is now — run the same command again.",
+    );
   });
 });
