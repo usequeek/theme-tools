@@ -26,11 +26,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@clack/prompts": "^1.8.1",
+    "@clack/prompts": "^1.9.0",
     "giget": "^3.3.1"
   },
   "devDependencies": {
-    "smol-toml": "^1.4.2"
+    "smol-toml": "^1.9.1"
   },
   "keywords": [
     "queek",
